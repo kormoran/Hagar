@@ -45,12 +45,13 @@ class FileSystemSandbox:
         if path is None:
             return self.current_directory
 
-        p = Path(path)
+        path = Path(path)
 
-        if not p.is_absolute():
-            p = self.current_directory / p
+        # percorso relativo → relativo alla current_directory
+        if not path.is_absolute():
+            path = self.current_directory / path
 
-        return p.resolve()
+        return path.resolve()
 
     def _effective_permissions(
         self,
@@ -59,24 +60,24 @@ class FileSystemSandbox:
 
         path = path.resolve()
 
-        matches: list[tuple[Path, DirectoryPermissions]] = []
+        matches = []
 
         for root, perms in self.roots.items():
+
+            root = root.resolve()
 
             try:
                 path.relative_to(root)
                 matches.append((root, perms))
 
             except ValueError:
-                continue
+                pass
 
         if not matches:
-
             raise PermissionError(
-                f"No permissions defined for {path}"
+                f"Path outside sandbox: {path}"
             )
 
-        # Dalla radice meno specifica alla più specifica
         matches.sort(
             key=lambda item: len(item[0].parts)
         )
