@@ -1,0 +1,20 @@
+model:
+  provider: ollama
+  host: http://localhost:11434
+  name: qwen3:30b
+
+vault:
+  path: D:/Vault
+
+filesystem:
+  allowed:
+    - D:/Projects/SMAC
+    - D:/Projects/Archiver
+
+permissions:
+  read: true
+  write: false
+  shell: false
+
+rag:
+  top_k: 8

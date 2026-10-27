@@ -32,6 +32,7 @@ class ConfigLoader:
             data = yaml.safe_load(fp)
 
         return ConfigLoader._parse(data)
+        
 
     @staticmethod
     def _parse(data: dict) -> AppConfig:
@@ -57,26 +58,73 @@ class ConfigLoader:
                 ]
             )
 
-            permissions = PermissionConfig(
-                read=data["permissions"].get(
-                    "read",
-                    True
-                ),
-                write=data["permissions"].get(
-                    "write",
-                    False
-                ),
-                shell=data["permissions"].get(
-                    "shell",
-                    False
-                ),
+            # -------------------------
+            # Permissions (optional)
+            # -------------------------
+
+            permissions_data = data.get(
+                "permissions",
+                {}
             )
 
-            rag = RagConfig(
-                top_k=data["rag"].get(
-                    "top_k",
-                    8
+            read = permissions_data.get(
+                "read",
+                True
+            )
+
+            write = permissions_data.get(
+                "write",
+                False
+            )
+
+            shell = permissions_data.get(
+                "shell",
+                False
+            )
+
+            for name, value in {
+                "read": read,
+                "write": write,
+                "shell": shell,
+            }.items():
+
+                if not isinstance(value, bool):
+                    raise ConfigError(
+                        f"permissions.{name} must be a boolean"
+                    )
+
+            permissions = PermissionConfig(
+                read=read,
+                write=write,
+                shell=shell,
+            )
+
+            # -------------------------
+            # RAG (optional)
+            # -------------------------
+
+            rag_data = data.get(
+                "rag",
+                {}
+            )
+
+            top_k = rag_data.get(
+                "top_k",
+                8
+            )
+
+            if not isinstance(top_k, int):
+                raise ConfigError(
+                    "rag.top_k must be an integer"
                 )
+
+            if top_k <= 0:
+                raise ConfigError(
+                    "rag.top_k must be greater than zero"
+                )
+
+            rag = RagConfig(
+                top_k=top_k
             )
 
             return AppConfig(

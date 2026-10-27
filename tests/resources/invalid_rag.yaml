@@ -1,0 +1,19 @@
+model:
+  provider: ollama
+  host: http://localhost:11434
+  name: qwen3:30b
+
+vault:
+  path: ./vault
+
+filesystem:
+  allowed:
+    - ./workspace
+
+permissions:
+  read: true
+  write: false
+  shell: false
+
+rag:
+  top_k: -5

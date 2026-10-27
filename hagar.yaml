@@ -1,7 +1,7 @@
 model:
   provider: ollama
   host: http://localhost:11434
-  model: qwen3:30b
+  name: qwen3:30b
 
 vault:
   path: D:/Vault
