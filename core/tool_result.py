@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(slots=True)
 class ToolResult:
+    """
+    Risultato strutturato di una chiamata tool.
 
-    tool: str | None
+    ``error`` è ``None`` quando la chiamata è riuscita.
+    """
+
+    tool_name: str | None
 
     success: bool
-    
-    output: str
-    
-    error: str
-    
-    
+
+    output: str = ""
+
+    error: str | None = None

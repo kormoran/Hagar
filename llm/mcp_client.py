@@ -26,9 +26,18 @@ class MCPClient:
         timeout: int = 30,
     ) -> None:
 
+        if not isinstance(
+            namespace,
+            str,
+        ) or not namespace.strip():
+
+            raise ValueError(
+                "namespace must be a non-empty string"
+            )
+
         self.endpoint = endpoint.rstrip("/")
 
-        self.namespace = namespace
+        self.namespace = namespace.strip()
 
         self.timeout = timeout
 
@@ -76,9 +85,21 @@ class MCPClient:
 
         body = response.json()
 
+        if not isinstance(body, dict):
+
+            raise RuntimeError(
+                "MCP response is not a JSON object"
+            )
+
         if "error" in body:
 
             error = body["error"]
+
+            if not isinstance(error, dict):
+
+                raise RuntimeError(
+                    f"MCP error: {error}"
+                )
 
             raise RuntimeError(
                 "MCP error "
@@ -86,10 +107,18 @@ class MCPClient:
                 f"{error.get('message')}"
             )
 
-        return body.get(
+        result = body.get(
             "result",
             {},
         )
+
+        if not isinstance(result, dict):
+
+            raise RuntimeError(
+                "MCP response 'result' must be an object"
+            )
+
+        return result
 
     # ==================================================
     # MCP lifecycle
@@ -141,10 +170,18 @@ class MCPClient:
             "tools/list"
         )
 
-        return result.get(
+        tools = result.get(
             "tools",
             [],
         )
+
+        if not isinstance(tools, list):
+
+            raise RuntimeError(
+                "MCP tools/list: 'tools' must be a list"
+            )
+
+        return tools
 
     # ==================================================
     # Tool execution
@@ -239,6 +276,7 @@ class MCPClient:
             ),
             category="mcp",
             parameters=parameters,
+            origin=f"mcp.{self.namespace}",
             handler=self._build_handler(
                 remote_name
             ),

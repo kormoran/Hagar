@@ -1,19 +1,102 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from .models import (
     AppConfig,
+    AuditConfig,
     ModelConfig,
     VaultConfig,
     FileSystemConfig,
     PermissionConfig,
     RagConfig,
+    MCPServerConfig,
 )
 
 
 class ConfigError(RuntimeError):
     pass
+
+
+def _mapping(
+    value: Any,
+    name: str,
+) -> dict[str, Any]:
+
+    if not isinstance(value, dict):
+
+        raise ConfigError(
+            f"'{name}' must be a mapping"
+        )
+
+    return value
+
+
+def _text(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+) -> str:
+
+    value = section.get(key)
+
+    if not isinstance(value, str) or not value.strip():
+
+        raise ConfigError(
+            f"{name} must be a non-empty string"
+        )
+
+    return value
+
+
+def _optional_text(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+) -> str | None:
+
+    value = section.get(key)
+
+    if value is None:
+        return None
+
+    if not isinstance(value, str) or not value.strip():
+
+        raise ConfigError(
+            f"{name} must be a non-empty string when provided"
+        )
+
+    return value
+
+
+def _positive_int(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+    default: int,
+) -> int:
+
+    value = section.get(key, default)
+
+    if isinstance(value, bool) or not isinstance(
+        value,
+        int,
+    ):
+
+        raise ConfigError(
+            f"{name} must be an integer"
+        )
+
+    if value <= 0:
+
+        raise ConfigError(
+            f"{name} must be greater than zero"
+        )
+
+    return value
 
 
 class ConfigLoader:
@@ -24,119 +107,301 @@ class ConfigLoader:
         path = Path(filename)
 
         if not path.exists():
+
             raise ConfigError(
                 f"Configuration file not found: {path}"
             )
 
-        with open(path, "r", encoding="utf-8") as fp:
-            data = yaml.safe_load(fp)
-
-        return ConfigLoader._parse(data)
-        
-
-    @staticmethod
-    def _parse(data: dict) -> AppConfig:
-
         try:
 
-            model = ModelConfig(
-                provider=data["model"]["provider"],
-                host=data["model"]["host"],
-                name=data["model"]["name"],
-            )
+            with open(
+                path,
+                "r",
+                encoding="utf-8",
+            ) as fp:
 
-            vault = VaultConfig(
-                path=Path(
-                    data["vault"]["path"]
-                ).expanduser()
-            )
+                data = yaml.safe_load(fp)
 
-            filesystem = FileSystemConfig(
-                allowed=[
-                    Path(p).expanduser()
-                    for p in data["filesystem"]["allowed"]
-                ]
-            )
-
-            # -------------------------
-            # Permissions (optional)
-            # -------------------------
-
-            permissions_data = data.get(
-                "permissions",
-                {}
-            )
-
-            read = permissions_data.get(
-                "read",
-                True
-            )
-
-            write = permissions_data.get(
-                "write",
-                False
-            )
-
-            shell = permissions_data.get(
-                "shell",
-                False
-            )
-
-            for name, value in {
-                "read": read,
-                "write": write,
-                "shell": shell,
-            }.items():
-
-                if not isinstance(value, bool):
-                    raise ConfigError(
-                        f"permissions.{name} must be a boolean"
-                    )
-
-            permissions = PermissionConfig(
-                read=read,
-                write=write,
-                shell=shell,
-            )
-
-            # -------------------------
-            # RAG (optional)
-            # -------------------------
-
-            rag_data = data.get(
-                "rag",
-                {}
-            )
-
-            top_k = rag_data.get(
-                "top_k",
-                8
-            )
-
-            if not isinstance(top_k, int):
-                raise ConfigError(
-                    "rag.top_k must be an integer"
-                )
-
-            if top_k <= 0:
-                raise ConfigError(
-                    "rag.top_k must be greater than zero"
-                )
-
-            rag = RagConfig(
-                top_k=top_k
-            )
-
-            return AppConfig(
-                model=model,
-                vault=vault,
-                filesystem=filesystem,
-                permissions=permissions,
-                rag=rag,
-            )
-
-        except KeyError as ex:
+        except yaml.YAMLError as exc:
 
             raise ConfigError(
-                f"Missing configuration key: {ex}"
-            ) from ex
+                f"Invalid YAML in {path}: {exc}"
+            ) from exc
+
+        except OSError as exc:
+
+            raise ConfigError(
+                f"Cannot read configuration {path}: {exc}"
+            ) from exc
+
+        if data is None:
+
+            raise ConfigError(
+                f"Configuration file is empty: {path}"
+            )
+
+        config = ConfigLoader._parse(data)
+
+        #
+        # I percorsi relativi dell'audit log sono relativi al file di
+        # configurazione: il log non deve cambiare posizione solo perché
+        # il harness è stato avviato da un'altra directory.
+        #
+
+        if not config.audit.path.is_absolute():
+
+            config.audit.path = (
+                path.resolve().parent
+                / config.audit.path
+            )
+
+        return config
+
+    @staticmethod
+    def _parse(data: Any) -> AppConfig:
+
+        if not isinstance(data, dict):
+
+            raise ConfigError(
+                "Configuration root must be a mapping"
+            )
+
+        # -------------------------
+        # Model
+        # -------------------------
+
+        model_data = _mapping(
+            data.get("model"),
+            "model",
+        )
+
+        model = ModelConfig(
+            provider=_text(
+                model_data,
+                "provider",
+                "model.provider",
+            ),
+            name=_text(
+                model_data,
+                "name",
+                "model.name",
+            ),
+            host=_optional_text(
+                model_data,
+                "host",
+                "model.host",
+            ),
+            max_tokens=_positive_int(
+                model_data,
+                "max_tokens",
+                "model.max_tokens",
+                1024,
+            ),
+            api_key_env=_optional_text(
+                model_data,
+                "api_key_env",
+                "model.api_key_env",
+            ),
+        )
+
+        # -------------------------
+        # Vault
+        # -------------------------
+
+        vault_data = _mapping(
+            data.get("vault"),
+            "vault",
+        )
+
+        vault = VaultConfig(
+            path=Path(
+                _text(
+                    vault_data,
+                    "path",
+                    "vault.path",
+                )
+            ).expanduser()
+        )
+
+        # -------------------------
+        # Filesystem
+        # -------------------------
+
+        filesystem_data = _mapping(
+            data.get("filesystem"),
+            "filesystem",
+        )
+
+        allowed = filesystem_data.get(
+            "allowed"
+        )
+
+        if not isinstance(allowed, list) or not allowed:
+
+            raise ConfigError(
+                "filesystem.allowed must be a "
+                "non-empty list of paths"
+            )
+
+        allowed_paths: list[Path] = []
+
+        for entry in allowed:
+
+            if not isinstance(entry, str) or not entry.strip():
+
+                raise ConfigError(
+                    "filesystem.allowed entries must "
+                    "be non-empty strings"
+                )
+
+            allowed_paths.append(
+                Path(entry).expanduser()
+            )
+
+        filesystem = FileSystemConfig(
+            allowed=allowed_paths
+        )
+
+        # -------------------------
+        # Permissions (optional)
+        # -------------------------
+
+        permissions_data = _mapping(
+            data.get("permissions", {}),
+            "permissions",
+        )
+
+        defaults = {
+            "read": True,
+            "write": False,
+            "shell": False,
+        }
+
+        values: dict[str, bool] = {}
+
+        for name, default in defaults.items():
+
+            value = permissions_data.get(
+                name,
+                default,
+            )
+
+            if not isinstance(value, bool):
+
+                raise ConfigError(
+                    f"permissions.{name} must be a boolean"
+                )
+
+            values[name] = value
+
+        permissions = PermissionConfig(**values)
+
+        # -------------------------
+        # RAG (optional)
+        # -------------------------
+
+        rag_data = _mapping(
+            data.get("rag", {}),
+            "rag",
+        )
+
+        rag = RagConfig(
+            top_k=_positive_int(
+                rag_data,
+                "top_k",
+                "rag.top_k",
+                8,
+            )
+        )
+
+        # -------------------------
+        # Audit (optional)
+        # -------------------------
+
+        audit_data = _mapping(
+            data.get("audit", {}),
+            "audit",
+        )
+
+        audit_enabled = audit_data.get(
+            "enabled",
+            True,
+        )
+
+        if not isinstance(audit_enabled, bool):
+
+            raise ConfigError(
+                "audit.enabled must be a boolean"
+            )
+
+        audit_path = audit_data.get(
+            "path",
+            "logs/audit.jsonl",
+        )
+
+        if not isinstance(audit_path, str) or not audit_path.strip():
+
+            raise ConfigError(
+                "audit.path must be a non-empty string"
+            )
+
+        audit = AuditConfig(
+            enabled=audit_enabled,
+            path=Path(audit_path).expanduser(),
+            max_field_chars=_positive_int(
+                audit_data,
+                "max_field_chars",
+                "audit.max_field_chars",
+                2000,
+            ),
+        )
+
+        # -------------------------
+        # MCP servers (optional)
+        # -------------------------
+
+        raw_servers = data.get("mcp_servers", [])
+
+        if raw_servers is None:
+            raw_servers = []
+
+        if not isinstance(raw_servers, list):
+
+            raise ConfigError(
+                "mcp_servers must be a list"
+            )
+
+        mcp_servers: list[MCPServerConfig] = []
+
+        for index, entry in enumerate(raw_servers):
+
+            if not isinstance(entry, dict):
+
+                raise ConfigError(
+                    f"mcp_servers[{index}] must be a mapping"
+                )
+
+            mcp_servers.append(
+                MCPServerConfig(
+                    endpoint=_text(
+                        entry,
+                        "endpoint",
+                        f"mcp_servers[{index}].endpoint",
+                    ),
+                    namespace=_text(
+                        entry,
+                        "namespace",
+                        f"mcp_servers[{index}].namespace",
+                    ),
+                )
+            )
+
+        return AppConfig(
+            model=model,
+            vault=vault,
+            filesystem=filesystem,
+            permissions=permissions,
+            rag=rag,
+            mcp_servers=mcp_servers,
+            audit=audit,
+        )

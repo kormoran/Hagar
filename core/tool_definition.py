@@ -8,7 +8,7 @@ from typing import Callable
 @dataclass(slots=True)
 class ToolParameter:
     """
-    Definition of a single tool parameter.
+    Definizione di un singolo parametro di un tool.
     """
 
     name: str
@@ -25,12 +25,14 @@ class ToolParameter:
 @dataclass(slots=True)
 class ToolDefinition:
     """
-    Metadata describing a tool exposed to the agent.
+    Metadati che descrivono un tool esposto all'agente.
+
+    ``origin`` distingue i tool locali da quelli remoti (es. ``mcp.github``)
+    e serve per l'audit log: la Quarta Legge di HAGAR richiede che ogni azione
+    sia riconducibile alla sua sorgente.
     """
 
     name: str
-    
-    origin: str
 
     description: str
 
@@ -41,6 +43,8 @@ class ToolDefinition:
     parameters: list[ToolParameter] = field(
         default_factory=list
     )
+
+    origin: str = "local"
 
     enabled: bool = True
 

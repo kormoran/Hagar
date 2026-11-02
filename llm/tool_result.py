@@ -1,15 +1,8 @@
-from __future__ import annotations
+# llm/tool_result.py
+#
+# Alias storico: il ToolResult canonico vive in core.tool_result.
+# Questo modulo resta solo per non rompere import preesistenti.
 
-from dataclasses import dataclass
+from core.tool_result import ToolResult
 
-
-@dataclass(slots=True)
-class ToolResult:
-
-    tool_name: str
-
-    success: bool
-
-    output: str
-
-    error: str | None = None
+__all__ = ["ToolResult"]

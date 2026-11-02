@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import sys
+import time
+import uuid
+
+from typing import Any
+
 from core.tool_call import ToolCall
 from core.tool_result import ToolResult
 
@@ -14,6 +20,7 @@ class Agent:
         tool_registry,
         vault,
         max_tool_calls: int = 10,
+        audit: Any = None,
     ) -> None:
 
         self.llm = llm
@@ -24,6 +31,8 @@ class Agent:
             max_tool_calls
         )
 
+        self.audit = audit
+
     # ==================================================
     # Public API
     # ==================================================
@@ -32,6 +41,19 @@ class Agent:
         self,
         question: str,
     ) -> str:
+        """
+        Ciclo agentico multi-step.
+
+        Il modello può chiedere al massimo ``max_tool_calls`` esecuzioni;
+        dopo l'ultima gli viene comunque concessa una richiesta finale per
+        formulare la risposta. Se insiste con un altro tool, il ciclo si
+        interrompe (protezione contro loop infiniti).
+
+        Ogni passo viene registrato nell'audit log: domanda, scelta del
+        tool, argomenti, esito, durata e risposta finale.
+        """
+
+        turn = uuid.uuid4().hex[:8]
 
         messages = [
             {
@@ -40,9 +62,16 @@ class Agent:
             }
         ]
 
-        for _ in range(
-            self.max_tool_calls
-        ):
+        executed = 0
+
+        self._record(
+            "turn.start",
+            turn=turn,
+            question=question,
+            max_tool_calls=self.max_tool_calls,
+        )
+
+        while True:
 
             #
             # Richiesta al modello:
@@ -60,6 +89,13 @@ class Agent:
 
             except Exception as exc:
 
+                self._record(
+                    "turn.error",
+                    turn=turn,
+                    stage="request_tool_call",
+                    error=str(exc),
+                )
+
                 return (
                     "Errore durante "
                     "la richiesta al modello: "
@@ -75,11 +111,18 @@ class Agent:
 
                 try:
 
-                    return self.llm.chat(
+                    answer = self.llm.chat(
                         messages
                     )
 
                 except Exception as exc:
+
+                    self._record(
+                        "turn.error",
+                        turn=turn,
+                        stage="final_answer",
+                        error=str(exc),
+                    )
 
                     return (
                         "Errore durante "
@@ -87,14 +130,78 @@ class Agent:
                         f"risposta finale: {exc}"
                     )
 
+                self._record(
+                    "turn.answer",
+                    turn=turn,
+                    answer=answer,
+                    tool_calls=executed,
+                )
+
+                return answer
+
+            #
+            # Protezione contro loop infiniti.
+            #
+
+            if executed >= self.max_tool_calls:
+
+                answer = (
+                    "Agent stopped after "
+                    f"{self.max_tool_calls} "
+                    "tool calls."
+                )
+
+                self._record(
+                    "turn.stop",
+                    turn=turn,
+                    tool_calls=executed,
+                    max_tool_calls=(
+                        self.max_tool_calls
+                    ),
+                )
+
+                return answer
+
             #
             # Esecuzione tool
             #
+
+            executed += 1
+
+            self._record(
+                "tool.call",
+                turn=turn,
+                index=executed,
+                tool=tool_call.tool,
+                arguments=tool_call.arguments,
+            )
+
+            started = time.perf_counter()
 
             tool_result = (
                 self._execute_tool(
                     tool_call
                 )
+            )
+
+            duration_ms = round(
+                (
+                    time.perf_counter()
+                    - started
+                )
+                * 1000,
+                2,
+            )
+
+            self._record(
+                "tool.result",
+                turn=turn,
+                index=executed,
+                tool=tool_call.tool,
+                success=tool_result.success,
+                duration_ms=duration_ms,
+                output=tool_result.output,
+                error=tool_result.error,
             )
 
             #
@@ -116,16 +223,22 @@ class Agent:
             )
 
             #
-            # Registrazione risultato
+            # Registrazione risultato.
+            #
+            # Il risultato è un turno "user": i backend remoti
+            # (Claude, Gemini) non accettano messaggi di sistema
+            # in mezzo al dialogo, e il modello lo legge come input.
             #
 
             if tool_result.success:
 
                 messages.append(
                     {
-                        "role": "system",
+                        "role": "user",
                         "content": (
-                            "Tool result:\n"
+                            "Tool result "
+                            f"({tool_result.tool_name}, "
+                            "success):\n"
                             f"{tool_result.output}"
                         ),
                     }
@@ -135,25 +248,15 @@ class Agent:
 
                 messages.append(
                     {
-                        "role": "system",
+                        "role": "user",
                         "content": (
-                            "Tool execution failed.\n"
+                            "Tool execution failed "
+                            f"({tool_result.tool_name}).\n"
                             f"Error:\n"
                             f"{tool_result.error}"
                         ),
                     }
                 )
-
-        #
-        # Protezione
-        # contro loop infiniti.
-        #
-
-        return (
-            "Agent stopped after "
-            f"{self.max_tool_calls} "
-            "tool calls."
-        )
 
     # ==================================================
     # Tool execution
@@ -187,4 +290,33 @@ class Agent:
                 success=False,
                 output="",
                 error=str(exc),
+            )
+
+    # ==================================================
+    # Audit
+    # ==================================================
+
+    def _record(
+        self,
+        event: str,
+        **fields: Any,
+    ) -> None:
+
+        if self.audit is None:
+            return
+
+        try:
+
+            self.audit.record(event, **fields)
+
+        except Exception as exc:
+
+            #
+            # Un audit log rotto non deve fermare l'agente,
+            # ma il guasto va visto.
+            #
+
+            print(
+                f"Audit log error: {exc}",
+                file=sys.stderr,
             )

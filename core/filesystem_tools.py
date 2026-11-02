@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+
+from dataclasses import asdict
+
 from .tool_definition import (
     ToolDefinition,
     ToolParameter,
@@ -172,6 +176,33 @@ class FileSystemToolProvider:
             )
         )
 
+        registry.register(
+            ToolDefinition(
+                name="filesystem.stat",
+                description=(
+                    "Return metadata for a path: "
+                    "type (file/directory), size in "
+                    "bytes, creation/modification/access "
+                    "timestamps and the effective sandbox "
+                    "permissions. A missing path returns "
+                    "exists=false."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description=(
+                            "Path to inspect, relative to "
+                            "the current sandbox directory "
+                            "(e.g. 'notes.txt')."
+                        ),
+                    )
+                ],
+                handler=self.stat,
+            )
+        )
+
     # ==========================================
     # Tool handlers
     # ==========================================
@@ -255,4 +286,21 @@ class FileSystemToolProvider:
 
         return str(
             self.fs.free_space()
+        )
+
+    def stat(
+        self,
+        path: str,
+    ) -> str:
+        """
+        Restituisce i metadati come JSON: il modello legge struttura e
+        unità senza doverle dedurre da una stringa libera.
+        """
+
+        return json.dumps(
+            asdict(
+                self.fs.stat(path)
+            ),
+            ensure_ascii=False,
+            indent=2,
         )

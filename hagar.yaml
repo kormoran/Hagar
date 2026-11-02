@@ -1,7 +1,16 @@
 model:
+  # provider: ollama | deepseek | claude | gemini
   provider: ollama
+  # host: usato solo da Ollama
   host: http://localhost:11434
-  name: qwen3:8b
+  name: llama3.1:latest
+  # max_tokens: 1024
+  # api_key_env: DEEPSEEK_API_KEY
+
+audit:
+  enabled: true
+  path: logs/audit.jsonl
+  max_field_chars: 2000
 
 vault:
   path: D:/Vault

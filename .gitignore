@@ -179,3 +179,12 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# Temporary directory used by the test runner / local tooling
+.tmp/
+
+# Scratch area of tools/bench_models.py
+.bench/
+
+# Audit logs produced by hagar.py
+logs/
