@@ -1,17 +1,34 @@
 # PROJECT_STATE.md
 
-# HAGAR
-## Harness Agentico Generale per AI Residenti
+# 0. HAGAR
+
+## 0.1 Harness Agentico Generale per AI Resilienti
 
 ---
 
 # 1. Visione del progetto
 
-Hagar è un harness per LLM sviluppato in Python e progettato per l'esecuzione locale.
+Hagar è un harness per LLM sviluppato in Python e progettato per l'esecuzione resiliente di LLM.
 
-L'obiettivo non è semplicemente fornire una chat con un modello linguistico, ma creare un ambiente operativo sicuro nel quale un LLM possa utilizzare strumenti, consultare una memoria persistente e interagire con sistemi esterni senza accedere direttamente alle risorse reali della macchina host.
+L'obiettivo non è semplicemente fornire una chat con un modello linguistico, ma creare un ambiente operativo ***sicuro*** nel quale un LLM possa utilizzare strumenti, consultare una memoria persistente e interagire con sistemi esterni senza accedere direttamente alle risorse reali della macchina host, e in cui si possano evitare o almeno mitigare gli errori più comuni.
 
-Hagar si basa su cinque principi fondamentali:
+A questo scopo vengono adottati principi e metodologie proprie della HMI/HCI (progettazione di interfacce utente dei macchinari industriale) e della Cognitive Ergonomics, applicandoli alla progettazione di un ambiente in cui l'LLM dovrà operare. Come prima iterazione del progetto, si definiscono qui **Le Quattro Leggi di HAGAR**:
+
+## 1.1 Prima legge di HAGAR
+**L'LLM non è attendibile per definizione.** Non perché cattivo o inutile: perché è probabilistico. Quindi ogni sua affermazione va verificata e ogni sua azione va limitata.
+
+## 1.2 Seconda legge di HAGAR
+**I tool sono più affidabili dell'LLM.** Se il filesystem dice che un file esiste, esiste. Se il tool restituisce una dimensione, quella dimensione è reale. L'LLM interpreta, ma i tool misurano.
+
+## 1.3 Terza legge di HAGAR
+**Lo stato deve esistere fuori dalla mente dell'LLM.** Introducendo ToolRegistry, MCP, FilesystemSandbox e (prossimamente) PermissionEvaluator spostiamo conoscenza e controllo fuori dal modello. È esattamente ciò che si fa nei sistemi safety-critical.
+
+## 1.4 Quarta legge di HAGAR
+**Ogni azione deve poter essere spiegata dopo.** L'audit log è fondamentale: quando qualcosa andrà storto, e prima o poi succederà, la domanda non sarà: "Perché l'LLM è impazzito?" ma: "Quale assunzione ha fatto?" "Quale tool ha usato?" "Quale dato era sbagliato?" In altre parole: investigazione incidenti. Come in aviazione.
+
+## 1.5 Architettura software
+
+Strutturalmente, HAGAR si basa su cinque principi fondamentali:
 
 - separazione tra modello e sistema operativo;
 - sicurezza per impostazione predefinita;
@@ -21,7 +38,7 @@ Hagar si basa su cinque principi fondamentali:
 
 ---
 
-# 2. Obiettivi architetturali
+# 2. Divieti assoluti
 
 Il modello non deve mai:
 
@@ -36,7 +53,7 @@ Tutte le operazioni passano esclusivamente attraverso tool registrati e controll
 
 # 3. Architettura attuale
 
-```text
+```
 Utente
   │
   ▼
@@ -57,7 +74,7 @@ Agent
 
 Flusso di esecuzione:
 
-```text
+```
 Utente
   ↓
 LLM
@@ -79,8 +96,6 @@ Risposta finale
 
 ## Config
 
-Completato.
-
 Funzionalità:
 
 - caricamento configurazione YAML;
@@ -92,8 +107,6 @@ Funzionalità:
 ---
 
 ## OllamaClient
-
-Completato.
 
 Funzionalità:
 
