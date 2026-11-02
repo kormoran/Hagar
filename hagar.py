@@ -1,34 +1,11 @@
-from core.config import Config
-
-from core.tool_registry import (
-    ToolRegistry,
-)
-
-from core.agent import (
-    Agent,
-)
-
-from core.mcp_client import (
-    MCPClient,
-)
-
-from core.filesystem import (
-    FileSystemSandbox,
-    DirectoryPermissions,
-)
-
-from tools.filesystem_tools import (
-    FileSystemToolProvider,
-)
-
-from llm.ollama_client import (
-    OllamaClient,
-)
-
-from memory.vault import (
-    Vault,
-)
-
+from core.config import ConfigLoader
+from core.tool_registry import ToolRegistry
+from core.agent import Agent
+from llm.mcp_client import MCPClient
+from core.filesystem import FileSystemSandbox, DirectoryPermissions
+from core.filesystem_tools import FileSystemToolProvider
+from llm.ollama_client import OllamaClient
+from memory.vault import Vault
 from pathlib import Path
 
 
@@ -38,7 +15,7 @@ def main():
     # Configuration
     # ==========================================
 
-    cfg = Config("config.yaml")
+    cfg = ConfigLoader.load("hagar.yaml")
 
     # ==========================================
     # Filesystem sandbox

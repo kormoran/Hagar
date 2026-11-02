@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .tool_call import ToolCall
-from .tool_result import ToolResult
+from core.tool_call import ToolCall
+from core.tool_result import ToolResult
 
 
 class Agent:

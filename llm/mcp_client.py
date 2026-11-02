@@ -4,11 +4,8 @@ import requests
 
 from typing import Any
 
-from .tool_definition import (
-    ToolDefinition,
-    ToolParameter,
-)
-from .tool_registry import ToolRegistry
+from core.tool_definition import ToolDefinition, ToolParameter
+from core.tool_registry import ToolRegistry
 
 
 class MCPClient:
