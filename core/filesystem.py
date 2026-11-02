@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import shutil
 
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(slots=True)
 class DirectoryPermissions:
-
     read: bool | None = None
     write: bool | None = None
     create: bool | None = None
+    rename: bool | None = None
+    delete: bool | None = None
+    execute: bool | None = None
 
 
 class FileSystemSandbox:
@@ -34,10 +36,10 @@ class FileSystemSandbox:
         )
 
     # ==================================================
-    # Internal helpers
+    # Path helpers
     # ==================================================
 
-    def _resolve_path(
+    def resolve_path(
         self,
         path: str | Path | None,
     ) -> Path:
@@ -47,20 +49,60 @@ class FileSystemSandbox:
 
         path = Path(path)
 
-        # percorso relativo → relativo alla current_directory
         if not path.is_absolute():
             path = self.current_directory / path
 
         return path.resolve()
 
-    def _effective_permissions(
+    def parent_path(
+        self,
+        path: str | Path,
+    ) -> Path:
+
+        return self.resolve_path(path).parent
+
+    def path_exists(
+        self,
+        path: str | Path,
+    ) -> bool:
+
+        return self.resolve_path(path).exists()
+
+    def contains_symlink(
+        self,
+        path: str | Path,
+    ) -> bool:
+
+        target = self.resolve_path(path)
+
+        current = Path(target.anchor)
+
+        for part in target.parts[1:]:
+
+            current /= part
+
+            try:
+                if current.is_symlink():
+                    return True
+            except OSError:
+                pass
+
+        return False
+
+    # ==================================================
+    # Permission helpers
+    # ==================================================
+
+    def effective_permissions(
         self,
         path: Path,
     ) -> DirectoryPermissions:
 
         path = path.resolve()
 
-        matches = []
+        matches: list[
+            tuple[Path, DirectoryPermissions]
+        ] = []
 
         for root, perms in self.roots.items():
 
@@ -74,6 +116,7 @@ class FileSystemSandbox:
                 pass
 
         if not matches:
+
             raise PermissionError(
                 f"Path outside sandbox: {path}"
             )
@@ -86,6 +129,8 @@ class FileSystemSandbox:
             read=True,
             write=False,
             create=False,
+            delete=False,
+            execute=False,
         )
 
         for _, perms in matches:
@@ -99,9 +144,15 @@ class FileSystemSandbox:
             if perms.create is not None:
                 effective.create = perms.create
 
+            if perms.delete is not None:
+                effective.delete = perms.delete
+
+            if perms.execute is not None:
+                effective.execute = perms.execute
+
         return effective
-    
-    def _find_root(
+
+    def find_root(
         self,
         path: Path,
     ) -> tuple[Path, DirectoryPermissions] | None:
@@ -118,7 +169,42 @@ class FileSystemSandbox:
         return None
 
     # ==================================================
-    # Guardian
+    # Disk helpers
+    # ==================================================
+
+    def check_disk_space(
+        self,
+        target: Path,
+        required_space: int,
+    ) -> str | None:
+
+        candidate = target.parent
+
+        while (
+            not candidate.exists()
+            and candidate != candidate.parent
+        ):
+            candidate = candidate.parent
+
+        free_space = shutil.disk_usage(
+            candidate
+        ).free
+
+        if free_space < required_space:
+
+            return (
+                f"Insufficient disk space. "
+                f"Required={required_space} bytes, "
+                f"Available={free_space} bytes."
+            )
+
+        return None
+
+    # ==================================================
+    # Legacy guardian
+    #
+    # Da rimuovere quando sarà introdotto
+    # PermissionEvaluator.
     # ==================================================
 
     def FS_Guardian(
@@ -129,23 +215,32 @@ class FileSystemSandbox:
     ) -> str:
 
         try:
-            permissions = self._effective_permissions(
-                target
+            permissions = (
+                self.effective_permissions(
+                    target
+                )
             )
 
         except PermissionError:
+
             return (
                 f"Access denied: "
                 f"{target} is outside "
                 f"allowed directories."
             )
-        permissions = self._effective_permissions(
-            target
-        )
-        
+
+        if self.contains_symlink(target):
+
+            return (
+                f"Access denied: "
+                f"path '{target}' "
+                f"contains a symbolic link."
+            )
+
         if operation == "read":
 
             if not permissions.read:
+
                 return (
                     f"Read access denied: "
                     f"{target}"
@@ -154,6 +249,7 @@ class FileSystemSandbox:
         elif operation == "write":
 
             if not permissions.write:
+
                 return (
                     f"Write access denied: "
                     f"{target}"
@@ -162,23 +258,28 @@ class FileSystemSandbox:
         elif operation == "create":
 
             if not permissions.create:
+
                 return (
                     f"Create access denied: "
                     f"{target}"
                 )
 
-        free_space = shutil.disk_usage(
-            target.parent
-        ).free
+        elif operation == "delete":
 
-        if free_space < required_space:
+            if not permissions.delete:
 
-            return (
-                f"Insufficient disk space. "
-                f"Required={required_space} "
-                f"bytes, "
-                f"Available={free_space} bytes."
-            )
+                return (
+                    f"Delete access denied: "
+                    f"{target}"
+                )
+
+        disk_error = self.check_disk_space(
+            target,
+            required_space,
+        )
+
+        if disk_error:
+            return disk_error
 
         return ""
 
@@ -191,7 +292,7 @@ class FileSystemSandbox:
         path: str | Path,
     ) -> None:
 
-        target = self._resolve_path(path)
+        target = self.resolve_path(path)
 
         error = self.FS_Guardian(
             "read",
@@ -202,9 +303,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.is_dir():
-            raise FileNotFoundError(
-                target
-            )
+            raise FileNotFoundError(target)
 
         self.current_directory = target
 
@@ -213,110 +312,11 @@ class FileSystemSandbox:
         path: str | Path,
     ) -> None:
 
-        target = self._resolve_path(path)
+        target = self.resolve_path(path)
 
         error = self.FS_Guardian(
             "create",
             target,
         )
 
-        if error:
-            raise PermissionError(error)
-
-        target.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-    # ==================================================
-    # File operations
-    # ==================================================
-
-    def read_file(
-        self,
-        path: str | Path,
-    ) -> str:
-
-        target = self._resolve_path(path)
-
-        error = self.FS_Guardian(
-            "read",
-            target,
-        )
-
-        if error:
-            raise PermissionError(error)
-
-        return target.read_text(
-            encoding="utf-8"
-        )
-
-    def write_file(
-        self,
-        path: str | Path,
-        content: str,
-    ) -> None:
-
-        target = self._resolve_path(path)
-
-        required_space = len(
-            content.encode("utf-8")
-        )
-
-        error = self.FS_Guardian(
-            "write",
-            target,
-            required_space,
-        )
-
-        if error:
-            raise PermissionError(error)
-
-        target.write_text(
-            content,
-            encoding="utf-8",
-        )
-
-    def create_file(
-        self,
-        path: str | Path,
-        content: str = "",
-    ) -> None:
-
-        target = self._resolve_path(path)
-
-        required_space = len(
-            content.encode("utf-8")
-        )
-
-        error = self.FS_Guardian(
-            "create",
-            target,
-            required_space,
-        )
-
-        if error:
-            raise PermissionError(error)
-
-        if target.exists():
-
-            raise FileExistsError(
-                target
-            )
-
-        target.write_text(
-            content,
-            encoding="utf-8",
-        )
-
-    # ==================================================
-    # Disk information
-    # ==================================================
-
-    def free_space(self) -> int:
-
-        usage = shutil.disk_usage(
-            self.current_directory
-        )
-
-        return usage.free
+       

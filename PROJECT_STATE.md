@@ -1,256 +1,394 @@
-# Project_state.md
+# PROJECT_STATE.md
 
-## 1. Hagar the Harness
-
-Il programma Hagar.py è un harness in Python per LLM che girano in locale (sulla stessa macchina del programma).
-
-Le sue caratteristiche fondamentali:
-
-- Struttura a plugin;
-- Usa Ollama come provider;
-- Mette a disposizione dei tool MCP al LLM;
-- Non scrive nessun file sul filesystem reale ma usa Obsidian come sistema di memoria persistente;
-- Il LLM non vede mai il filesystem locale del computer reale e non vi accede mai direttamente, ma solo tramite un filesystem virtuale emulato dall'harness, con un sistema di permessi simulato e un elenco di directory accessibili impostate nel file di configurazione;
-- Tutte le operazioni sul filesystem passano attraverso tool controllati e validati dall'harness;
-- Il modello deve essere sostituibile senza modifiche alla logica applicativa.
+# HAGAR
+## Harness Agentico Generale per AI Residenti
 
 ---
 
-## 2. Struttura su disco del progetto
+# 1. Visione del progetto
+
+Hagar è un harness per LLM sviluppato in Python e progettato per l'esecuzione locale.
+
+L'obiettivo non è semplicemente fornire una chat con un modello linguistico, ma creare un ambiente operativo sicuro nel quale un LLM possa utilizzare strumenti, consultare una memoria persistente e interagire con sistemi esterni senza accedere direttamente alle risorse reali della macchina host.
+
+Hagar si basa su cinque principi fondamentali:
+
+- separazione tra modello e sistema operativo;
+- sicurezza per impostazione predefinita;
+- architettura a plugin;
+- indipendenza dal provider LLM;
+- estendibilità tramite tool e protocollo MCP.
+
+---
+
+# 2. Obiettivi architetturali
+
+Il modello non deve mai:
+
+- accedere direttamente al filesystem host;
+- eseguire comandi sulla shell reale;
+- ottenere privilegi superiori a quelli definiti dalla configurazione;
+- conoscere l'organizzazione effettiva del sistema operativo.
+
+Tutte le operazioni passano esclusivamente attraverso tool registrati e controllati dall'harness.
+
+---
+
+# 3. Architettura attuale
 
 ```text
-Hagar/
-│
-├── Hagar.py
-├── Hagar.yaml
-│
-├── core/
-│   ├── agent.py
-│   ├── config.py
-│   ├── permissions.py
-│   ├── tool_registry.py
-│   └── models.py
-│
-├── llm/
-│   └── ollama_client.py
-│
-├── memory/
-│   ├── vault.py
-│   ├── embeddings.py
-│   └── vectorstore.py
-│
-├── tools/
-│   ├── filesystem.py
-│   ├── vault_search.py
-│   └── git_tools.py
-│
-├── data/
-│   └── chroma/
-│
-└── vault/
+Utente
+  │
+  ▼
+Agent
+  │
+  ├── OllamaClient
+  │
+  ├── ToolRegistry
+  │     ├── filesystem.*
+  │     └── mcp.*
+  │
+  ├── FileSystemSandbox
+  │
+  ├── MCPClient
+  │
+  └── Vault
 ```
 
----
-
-## 3. Principi architetturali
-
-### Sicurezza
-
-Il LLM non deve mai:
-
-- conoscere i percorsi reali della macchina host;
-- accedere direttamente al filesystem;
-- eseguire comandi arbitrari;
-- ottenere privilegi superiori a quelli stabiliti dalla configurazione.
-
-Tutte le operazioni avvengono tramite tool registrati nell'harness.
-
-### Namespace virtuali
-
-Il filesystem presentato al modello utilizza percorsi virtuali:
+Flusso di esecuzione:
 
 ```text
-vault://
-workspace://smac/
-workspace://archiver/
-workspace://docs/
-```
-
-L'harness traduce tali percorsi nei corrispondenti percorsi reali solo dopo aver verificato i permessi.
-
-### Memoria
-
-Obsidian rappresenta la memoria persistente del sistema.
-
-Le note del vault costituiscono:
-
-- memoria a lungo termine;
-- documentazione;
-- knowledge base;
-- archivio delle decisioni progettuali.
-
----
-
-## 4. Roadmap
-
-### Fase 1 - Fondamenta operative
-
-Obiettivo: ottenere un harness funzionante.
-
-Attività:
-
-- caricamento della configurazione YAML;
-- connessione a Ollama;
-- registry dei tool;
-- sistema di permessi;
-- filesystem virtuale minimale;
-- lettura file autorizzati;
-- scansione del vault Obsidian;
-- interfaccia a riga di comando.
-
-Risultato atteso:
-
-Hagar è in grado di dialogare con il modello e recuperare informazioni da file e note autorizzate.
-
----
-
-### Fase 2 - Integrazione RAG con Obsidian
-
-Obiettivo: usare il vault come memoria semantica.
-
-Attività:
-
-- chunking automatico dei documenti;
-- generazione degli embedding;
-- memorizzazione in ChromaDB;
-- ricerca semantica;
-- recupero automatico del contesto rilevante.
-
-Flusso:
-
-```text
-Domanda
-    ↓
-Embedding
-    ↓
-Ricerca vettoriale
-    ↓
-Recupero chunk rilevanti
-    ↓
-Prompt finale
-    ↓
+Utente
+  ↓
 LLM
+  ↓
+ToolCall
+  ↓
+ToolRegistry
+  ↓
+ToolResult
+  ↓
+LLM
+  ↓
+Risposta finale
 ```
-
-Risultato atteso:
-
-Hagar può rispondere sulla base delle informazioni presenti nel vault senza dover caricare l'intero archivio nel prompt.
 
 ---
 
-### Fase 3 - Tool Calling e MCP
+# 4. Componenti implementati
 
-Obiettivo: consentire al modello di utilizzare strumenti esterni.
+## Config
 
-Attività:
+Completato.
 
-- protocollo di chiamata tool in JSON;
-- esecuzione controllata dei tool;
+Funzionalità:
+
+- caricamento configurazione YAML;
+- validazione parametri;
+- gestione configurazione del modello;
+- gestione configurazione MCP;
+- gestione configurazione workspace.
+
+---
+
+## OllamaClient
+
+Completato.
+
+Funzionalità:
+
+- generate();
+- chat();
+- request_tool_call();
+- parsing robusto del JSON;
+- supporto multi-step agent.
+
+Il client è progettato per essere sostituito in futuro da altri backend senza modificare l'Agent.
+
+---
+
+## ToolRegistry
+
+Completato.
+
+Funzionalità:
+
+- registrazione tool;
+- ricerca tool;
+- esecuzione tool;
+- abilitazione/disabilitazione;
+- esportazione metadati verso il modello.
+
+---
+
+## ToolDefinition
+
+Completato.
+
+Ogni tool possiede:
+
+- nome;
+- descrizione;
+- categoria;
+- parametri;
+- handler;
+- flag di abilitazione.
+
+---
+
+## ToolCall
+
+Completato.
+
+Rappresenta una richiesta di esecuzione strumento generata dal modello.
+
+---
+
+## ToolResult
+
+Completato.
+
+Rappresenta il risultato strutturato di una chiamata tool.
+
+---
+
+## Agent
+
+Completato.
+
+Funzionalità:
+
+- orchestrazione completa LLM ↔ Tool;
 - gestione errori;
-- logging;
-- integrazione MCP;
-- plugin caricabili dinamicamente.
+- supporto multi-step;
+- limite configurabile alle chiamate tool;
+- generazione della risposta finale.
+
+---
+
+## FileSystemSandbox
+
+Completato.
+
+Funzionalità:
+
+- sandbox del filesystem;
+- percorsi relativi sicuri;
+- controllo dei limiti della sandbox;
+- supporto a permessi ereditabili;
+- protezione dai symlink;
+- gestione directory corrente;
+- controllo spazio disponibile.
+
+L'LLM non vede mai il filesystem reale.
+
+---
+
+## FileSystem Tools
+
+Completato.
+
+Tool esposti:
+
+```text
+filesystem.read_file
+filesystem.write_file
+filesystem.create_file
+filesystem.delete_file
+filesystem.mkdir
+filesystem.chdir
+filesystem.free_space
+```
+
+---
+
+## MCP Client
+
+Completato.
+
+Funzionalità:
+
+- protocollo MCP via HTTP;
+- inizializzazione;
+- discovery automatica dei tool;
+- registrazione automatica nel ToolRegistry;
+- namespace separati.
+
+Esempi:
+
+```text
+mcp.github.create_issue
+
+mcp.obsidian.search
+
+mcp.erp.customer_lookup
+```
+
+---
+
+## Vault
+
+Implementazione iniziale presente.
+
+L'integrazione avanzata con memoria semantica è rimandata alla v0.2 e successive.
+
+---
+
+# 5. Stato della Versione 0.1
+
+## Milestone raggiunta
+
+✅ Configurazione caricata
+
+✅ Connessione a Ollama
+
+✅ Agent operativo
+
+✅ Tool Registry
+
+✅ Tool Calling JSON
+
+✅ Parsing robusto delle risposte del modello
+
+✅ Supporto multi-step
+
+✅ FileSystem Sandbox
+
+✅ Tool del filesystem
+
+✅ Integrazione MCP
+
+✅ Utilizzo unificato di tool locali e remoti
+
+---
+
+# 6. Celebrazione della Versione 0.1
+
+🎉 HAGAR VERSIONE 0.1 COMPLETATA 🎉
+
+Questa è la prima versione realmente funzionante del progetto.
+
+Per la prima volta Hagar è in grado di:
+
+- dialogare con un LLM locale;
+- esporre strumenti al modello;
+- consentire al modello di scegliere autonomamente i tool;
+- utilizzare tool locali;
+- utilizzare tool MCP remoti;
+- operare su un filesystem sandboxato;
+- concatenare più operazioni in modo autonomo.
+
+Non è più una semplice interfaccia verso Ollama.
+
+È diventato un agente operativo.
+
+La v0.1 rappresenta il passaggio da "idea progettuale" a "sistema funzionante".
+
+---
+
+# 7. Roadmap Versione 0.2
+
+## Priorità 1 - Backend multipli per LLM
+
+Obiettivo:
+
+rendere il provider del modello completamente sostituibile.
+
+Provider previsti:
+
+- Ollama
+- Gemini
+- DeepSeek
+- OpenAI
+- Claude
+- backend futuri
+
+Nuova architettura:
+
+```text
+Agent
+  │
+  ▼
+LLM Interface
+  ├── OllamaClient
+  ├── GeminiClient
+  ├── DeepSeekClient
+  └── ...
+```
+
+---
+
+## Priorità 2 - AIsh
+
+Obiettivo:
+
+creare una shell dedicata agli LLM.
+
+AIsh sarà concettualmente simile a Bash ma non avrà alcun accesso alla shell reale del sistema.
+
+Caratteristiche:
+
+- nessuna esecuzione di comandi host;
+- utilizzo esclusivo di tool registrati;
+- integrazione con filesystem simulato;
+- integrazione con tool MCP;
+- supporto pipe e comandi virtuali;
+- ambiente completamente sicuro e controllabile.
 
 Esempio:
 
-```json
-{
-  "tool": "read_file",
-  "arguments":
-  {
-    "path": "workspace://smac/renderqueue.hpp"
-  }
-}
+```text
+ls workspace://
+cat workspace://project/readme.md
+find *.py
 ```
 
-Risultato atteso:
-
-Il modello può esplorare autonomamente la knowledge base e le directory autorizzate.
+Tutti i comandi verranno tradotti in chiamate ai tool dell'harness.
 
 ---
 
-### Fase 4 - Assistente personale persistente
+## Priorità 3 - Memoria conversazionale
 
-Obiettivo: trasformare Hagar in un vero agente locale.
+Obiettivo:
 
-Attività:
+permettere a Hagar di ricordare il contesto tra richieste successive.
 
-- memoria operativa persistente;
-- scratchpad permanente;
-- lista attività;
-- gestione progetti;
-- collegamenti automatici fra note;
-- osservazione del vault in tempo reale;
-- indicizzazione incrementale.
+Funzionalità previste:
 
-File previsti:
+- cronologia conversazioni;
+- memoria operativa;
+- recupero del contesto rilevante;
+- persistenza nel vault Obsidian.
+
+---
+
+# 8. Obiettivi successivi
+
+Dopo il completamento della v0.2:
+
+- PermissionEvaluator centralizzato;
+- memoria semantica;
+- ChromaDB;
+- RAG;
+- gestione attività;
+- scratchpad persistente;
+- osservazione del vault;
+- agente personale permanente.
+
+---
+
+# 9. Stato attuale
+
+Hagar è ufficialmente in fase:
 
 ```text
-vault://agent/context.md
-vault://agent/todo.md
-vault://agent/scratchpad.md
-vault://agent/decisions.md
+Versione 0.1
+STABILE
+PRONTA PER TEST REALI
 ```
 
-Risultato atteso:
+La priorità immediata non è aggiungere funzionalità.
 
-Hagar mantiene il contesto nel tempo e può supportare attività progettuali continuative.
+La priorità immediata è usare il sistema, romperlo, analizzarlo e capire quali problemi emergono durante l'utilizzo reale.
 
----
-
-## 5. Possibili estensioni future
-
-Funzionalità non necessarie per la prima versione ma compatibili con l'architettura:
-
-- supporto a provider multipli oltre Ollama;
-- accesso controllato a repository Git;
-- indicizzazione del codice sorgente;
-- memoria gerarchica a più livelli;
-- supporto multiutente;
-- interfaccia web;
-- integrazione con sistemi di ticketing;
-- pianificatore di attività automatiche;
-- supporto a più vault Obsidian.
-
----
-
-## 6. Quindi, ora
-
-Le prossime attività concrete sono:
-
-1. Creare la struttura delle directory del progetto.
-2. Implementare il caricamento della configurazione YAML.
-3. Implementare il PermissionManager.
-4. Implementare il filesystem virtuale minimale.
-5. Implementare il registry dei tool.
-6. Implementare il client Ollama.
-7. Collegare tutti i componenti in Hagar.py.
-8. Realizzare una prima CLI interattiva.
-9. Verificare che il modello possa:
-   - ricevere una domanda;
-   - leggere una nota del vault;
-   - leggere un file autorizzato;
-   - rispettare i vincoli di accesso.
-10. Solo dopo questa validazione iniziare il lavoro sugli embedding e sulla memoria vettoriale.
-
-### Definizione di "Versione 0.1"
-
-La Versione 0.1 è completata quando:
-
-- Hagar si avvia correttamente;
-- comunica con Ollama;
-- carica la configurazione;
-- accede al vault Obsidian;
-- espone almeno due tool funzionanti;
-- applica correttamente il sistema di permessi;
-- risponde a domande reali usando informazioni recuperate dal vault.
+Da questo momento l'esperienza pratica avrà più valore di qualunque speculazione architetturale.
