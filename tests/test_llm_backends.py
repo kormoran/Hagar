@@ -154,7 +154,30 @@ def test_deepseek_http_error(monkeypatch):
 
     client = DeepSeekClient(api_key="sk", model="m")
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(RuntimeError, match="HTTP 500"):
+        client.chat([user_message()])
+
+
+def test_deepseek_http_error_includes_api_message(monkeypatch):
+    payload = {
+        "error": {
+            "message": "Model Not Exist",
+            "type": "invalid_request_error",
+        }
+    }
+
+    monkeypatch.setattr(
+        requests,
+        "post",
+        lambda *args, **kwargs: FakeResponse(
+            payload,
+            400,
+        ),
+    )
+
+    client = DeepSeekClient(api_key="sk", model="m")
+
+    with pytest.raises(RuntimeError, match="Model Not Exist"):
         client.chat([user_message()])
 
 

@@ -212,6 +212,24 @@ def test_missing_api_key_is_reported(
         )
 
 
+def test_non_ascii_api_key_is_reported(monkeypatch):
+    monkeypatch.setenv(
+        "DEEPSEEK_API_KEY",
+        "\u2022",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="non-ASCII",
+    ):
+        create_llm(
+            ModelConfig(
+                provider="deepseek",
+                name="model",
+            )
+        )
+
+
 def test_api_key_env_can_be_overridden(monkeypatch):
     monkeypatch.setenv("MY_PROVIDER_KEY", "sk-custom")
 

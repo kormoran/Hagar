@@ -68,6 +68,41 @@ class DeepSeekClient(LLMClient):
                 "application/json",
         }
 
+    @staticmethod
+    def _error_detail(response) -> str:
+        """Estrae il messaggio d'errore dell'API, se presente."""
+
+        try:
+
+            data = response.json()
+
+        except Exception:
+
+            text = getattr(response, "text", "") or ""
+
+            return text.strip()[:500] or "no response body"
+
+        if isinstance(data, dict):
+
+            error = data.get("error")
+
+            if isinstance(error, dict):
+
+                message = (
+                    error.get("message")
+                    or error.get("type")
+                )
+
+                if message:
+                    return str(message)
+
+            message = data.get("message")
+
+            if isinstance(message, str):
+                return message
+
+        return str(data)[:500]
+
     def chat(
         self,
         messages: list[dict[str, str]],
@@ -83,6 +118,14 @@ class DeepSeekClient(LLMClient):
             headers=self._headers(),
             timeout=self.timeout,
         )
+
+        if response.status_code >= 400:
+
+            raise RuntimeError(
+                "DeepSeek HTTP "
+                f"{response.status_code}: "
+                f"{self._error_detail(response)}"
+            )
 
         response.raise_for_status()
 
@@ -108,11 +151,13 @@ class DeepSeekClient(LLMClient):
         registry,
     ) -> LLMReply:
 
+        names = self._native_tool_names(registry)
+
         tools = [
             {
                 "type": "function",
                 "function": {
-                    "name": tool.name,
+                    "name": names[tool.name],
                     "description": tool.description,
                     "parameters": self._parameters_schema(
                         tool
@@ -127,20 +172,35 @@ class DeepSeekClient(LLMClient):
             json={
                 "model": self.model,
                 "messages": self._to_native_messages(
-                    messages
+                    messages,
+                    names,
                 ),
                 "stream": False,
                 "tools": tools,
+                #
+                # Il modello può ragionare, ma per il calling nativo
+                # la modalità non-thinking è più rapida e diretta.
+                #
+                "thinking": {"type": "disabled"},
             },
             headers=self._headers(),
             timeout=self.timeout,
         )
 
+        detail = self._error_detail(response)
+
         if response.status_code in {400, 404, 422}:
 
             raise NativeToolsUnavailable(
                 "DeepSeek rejected native tools "
-                f"(HTTP {response.status_code})"
+                f"(HTTP {response.status_code}): {detail}"
+            )
+
+        if response.status_code >= 400:
+
+            raise RuntimeError(
+                "DeepSeek HTTP "
+                f"{response.status_code}: {detail}"
             )
 
         response.raise_for_status()
@@ -159,6 +219,11 @@ class DeepSeekClient(LLMClient):
 
         text = message.get("content") or ""
 
+        reverse = {
+            native: original
+            for original, native in names.items()
+        }
+
         calls: list[ToolCall] = []
 
         for index, raw in enumerate(
@@ -167,14 +232,17 @@ class DeepSeekClient(LLMClient):
 
             function = raw.get("function", {})
 
-            name = function.get("name")
+            native_name = function.get("name")
 
-            if not name:
+            if not native_name:
                 continue
 
             calls.append(
                 ToolCall(
-                    tool=name,
+                    tool=reverse.get(
+                        native_name,
+                        native_name,
+                    ),
                     arguments=self._parse_arguments(
                         function.get("arguments")
                     ),
@@ -196,6 +264,7 @@ class DeepSeekClient(LLMClient):
     @staticmethod
     def _to_native_messages(
         messages: list[dict[str, Any]],
+        names: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
 
         converted: list[dict[str, Any]] = []
@@ -236,7 +305,13 @@ class DeepSeekClient(LLMClient):
                                 "id": call["id"],
                                 "type": "function",
                                 "function": {
-                                    "name": call["name"],
+                                    "name": (
+                                        DeepSeekClient
+                                        ._mapped_tool_name(
+                                            call["name"],
+                                            names,
+                                        )
+                                    ),
                                     "arguments": json.dumps(
                                         call["arguments"],
                                         ensure_ascii=False,

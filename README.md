@@ -134,6 +134,12 @@ protocol for the session; set `model.native_tools: false` or pass
 | `claude`   | Anthropic Messages API       | `ANTHROPIC_API_KEY`    |
 | `gemini`   | Generative Language API      | `GEMINI_API_KEY`       |
 
+DeepSeek's current model names are `deepseek-flash` (default) and
+`deepseek-v4-pro`; the old `deepseek-chat` is no longer accepted. The live
+test uses `deepseek-flash` unless `HAGAR_LIVE_DEEPSEEK_MODEL` overrides it.
+`tools/diagnose_deepseek.py` checks DNS, key shape and endpoint without
+printing the key.
+
 Keys are read from the environment, never from the YAML file. If the
 default variable name does not suit you, set `model.api_key_env`.
 `model.host` is the base URL of any provider (with a per-provider

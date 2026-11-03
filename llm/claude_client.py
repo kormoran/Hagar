@@ -125,8 +125,13 @@ class ClaudeClient(LLMClient):
         registry,
     ) -> LLMReply:
 
+        names = self._native_tool_names(registry)
+
         system, converted = (
-            self._convert_native_messages(messages)
+            self._convert_native_messages(
+                messages,
+                names,
+            )
         )
 
         payload: dict[str, Any] = {
@@ -135,7 +140,7 @@ class ClaudeClient(LLMClient):
             "messages": converted,
             "tools": [
                 {
-                    "name": tool.name,
+                    "name": names[tool.name],
                     "description": tool.description,
                     "input_schema": (
                         self._parameters_schema(tool)
@@ -176,6 +181,11 @@ class ClaudeClient(LLMClient):
 
         texts: list[str] = []
 
+        reverse = {
+            native: original
+            for original, native in names.items()
+        }
+
         calls: list[ToolCall] = []
 
         for block in blocks:
@@ -188,14 +198,17 @@ class ClaudeClient(LLMClient):
 
             elif block_type == "tool_use":
 
-                name = block.get("name")
+                native_name = block.get("name")
 
-                if not name:
+                if not native_name:
                     continue
 
                 calls.append(
                     ToolCall(
-                        tool=name,
+                        tool=reverse.get(
+                            native_name,
+                            native_name,
+                        ),
                         arguments=block.get("input") or {},
                         id=(
                             block.get("id")
@@ -217,6 +230,7 @@ class ClaudeClient(LLMClient):
     @staticmethod
     def _convert_native_messages(
         messages: list[dict[str, Any]],
+        names: dict[str, str] | None = None,
     ) -> tuple[str, list[dict[str, Any]]]:
 
         system_parts: list[str] = []
@@ -266,7 +280,13 @@ class ClaudeClient(LLMClient):
                         {
                             "type": "tool_use",
                             "id": call["id"],
-                            "name": call["name"],
+                            "name": (
+                                ClaudeClient
+                                ._mapped_tool_name(
+                                    call["name"],
+                                    names,
+                                )
+                            ),
                             "input": call["arguments"],
                         }
                     )

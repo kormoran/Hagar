@@ -118,11 +118,13 @@ class OllamaClient(LLMClient):
         registry,
     ) -> LLMReply:
 
+        names = self._native_tool_names(registry)
+
         tools = [
             {
                 "type": "function",
                 "function": {
-                    "name": tool.name,
+                    "name": names[tool.name],
                     "description": tool.description,
                     "parameters": self._parameters_schema(
                         tool
@@ -135,7 +137,8 @@ class OllamaClient(LLMClient):
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": self._to_native_messages(
-                messages
+                messages,
+                names,
             ),
             "stream": False,
         }
@@ -164,6 +167,11 @@ class OllamaClient(LLMClient):
 
         text = message.get("content") or ""
 
+        reverse = {
+            native: original
+            for original, native in names.items()
+        }
+
         calls: list[ToolCall] = []
 
         for index, raw in enumerate(
@@ -172,14 +180,17 @@ class OllamaClient(LLMClient):
 
             function = raw.get("function", {})
 
-            name = function.get("name")
+            native_name = function.get("name")
 
-            if not name:
+            if not native_name:
                 continue
 
             calls.append(
                 ToolCall(
-                    tool=name,
+                    tool=reverse.get(
+                        native_name,
+                        native_name,
+                    ),
                     arguments=self._parse_arguments(
                         function.get("arguments")
                     ),
@@ -201,6 +212,7 @@ class OllamaClient(LLMClient):
     @staticmethod
     def _to_native_messages(
         messages: list[dict[str, Any]],
+        names: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
 
         converted: list[dict[str, Any]] = []
@@ -218,9 +230,11 @@ class OllamaClient(LLMClient):
                             "content",
                             "",
                         ),
-                        "tool_name": message.get(
-                            "name",
-                            "",
+                        "tool_name": (
+                            OllamaClient._mapped_tool_name(
+                                message.get("name", ""),
+                                names,
+                            )
                         ),
                     }
                 )
@@ -240,7 +254,12 @@ class OllamaClient(LLMClient):
                         "tool_calls": [
                             {
                                 "function": {
-                                    "name": call["name"],
+                                    "name": (
+                                        OllamaClient._mapped_tool_name(
+                                            call["name"],
+                                            names,
+                                        )
+                                    ),
                                     "arguments": (
                                         call["arguments"]
                                     ),

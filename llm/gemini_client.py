@@ -131,8 +131,13 @@ class GeminiClient(LLMClient):
         registry,
     ) -> LLMReply:
 
+        names = self._native_tool_names(registry)
+
         system, contents = (
-            self._convert_native_messages(messages)
+            self._convert_native_messages(
+                messages,
+                names,
+            )
         )
 
         payload: dict[str, Any] = {
@@ -141,7 +146,7 @@ class GeminiClient(LLMClient):
                 {
                     "functionDeclarations": [
                         {
-                            "name": tool.name,
+                            "name": names[tool.name],
                             "description": (
                                 tool.description
                             ),
@@ -211,6 +216,11 @@ class GeminiClient(LLMClient):
 
         texts: list[str] = []
 
+        reverse = {
+            native: original
+            for original, native in names.items()
+        }
+
         calls: list[ToolCall] = []
 
         for part in parts:
@@ -222,14 +232,17 @@ class GeminiClient(LLMClient):
 
             if isinstance(function_call, dict):
 
-                name = function_call.get("name")
+                native_name = function_call.get("name")
 
-                if not name:
+                if not native_name:
                     continue
 
                 calls.append(
                     ToolCall(
-                        tool=name,
+                        tool=reverse.get(
+                            native_name,
+                            native_name,
+                        ),
                         arguments=(
                             function_call.get("args")
                             or {}
@@ -251,6 +264,7 @@ class GeminiClient(LLMClient):
     @staticmethod
     def _convert_native_messages(
         messages: list[dict[str, Any]],
+        names: dict[str, str] | None = None,
     ) -> tuple[str, list[dict[str, Any]]]:
 
         system_parts: list[str] = []
@@ -273,9 +287,15 @@ class GeminiClient(LLMClient):
                 parts = [
                     {
                         "functionResponse": {
-                            "name": message.get(
-                                "name",
-                                "",
+                            "name": (
+                                GeminiClient
+                                ._mapped_tool_name(
+                                    message.get(
+                                        "name",
+                                        "",
+                                    ),
+                                    names,
+                                )
                             ),
                             "response": {
                                 "result": content,
@@ -301,7 +321,13 @@ class GeminiClient(LLMClient):
                     parts.append(
                         {
                             "functionCall": {
-                                "name": call["name"],
+                                "name": (
+                                    GeminiClient
+                                    ._mapped_tool_name(
+                                        call["name"],
+                                        names,
+                                    )
+                                ),
                                 "args": call["arguments"],
                             }
                         }

@@ -68,6 +68,14 @@ def resolve_api_key(
             f"environment variable"
         )
 
+    if not value.isascii():
+
+        raise ConfigError(
+            f"{env_name} contains non-ASCII "
+            "characters: the key was probably "
+            "not pasted correctly"
+        )
+
     return value
 
 

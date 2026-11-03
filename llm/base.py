@@ -121,6 +121,73 @@ class LLMClient(ABC):
         )
 
     @staticmethod
+    def _native_tool_name(
+        name: str,
+    ) -> str:
+        """
+        Nome del tool accettato dalle API di function calling.
+
+        OpenAI/DeepSeek e Claude ammettono solo lettere, cifre, ``_`` e
+        ``-``; i nostri nomi usano il punto (``filesystem.read_file``).
+        """
+
+        sanitized = re.sub(
+            r"[^A-Za-z0-9_-]+",
+            "__",
+            name,
+        )
+
+        return (sanitized or "tool")[:64]
+
+    @classmethod
+    def _native_tool_names(
+        cls,
+        registry: ToolRegistry,
+    ) -> dict[str, str]:
+        """Mappa nome interno -> nome nativo, senza collisioni."""
+
+        mapping: dict[str, str] = {}
+
+        used: set[str] = set()
+
+        for tool in registry.list_definitions():
+
+            base = cls._native_tool_name(tool.name)
+
+            candidate = base
+
+            index = 2
+
+            while candidate in used:
+
+                suffix = f"_{index}"
+
+                candidate = (
+                    base[: max(1, 64 - len(suffix))]
+                    + suffix
+                )
+
+                index += 1
+
+            used.add(candidate)
+
+            mapping[tool.name] = candidate
+
+        return mapping
+
+    @classmethod
+    def _mapped_tool_name(
+        cls,
+        name: str,
+        names: dict[str, str] | None,
+    ) -> str:
+
+        if names and name in names:
+            return names[name]
+
+        return cls._native_tool_name(name)
+
+    @staticmethod
     def _parameters_schema(
         tool: ToolDefinition,
     ) -> dict[str, Any]:

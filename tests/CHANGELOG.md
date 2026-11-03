@@ -5,10 +5,10 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 476 test superati, 1 skip (symlink non disponibili senza Developer
+- 479 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
-  che chiamano servizi reali (7 test).
+  che chiamano servizi reali (9 test).
 - Nessuna rete nella suite normale: Ollama, MCP e i provider remoti sono
   simulati.
 
@@ -32,6 +32,16 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-03 — DeepSeek live
+
+- modelli aggiornati a `deepseek-flash` / `deepseek-v4-pro`;
+- messaggi d'errore con il corpo dell'API e rifiuto delle chiavi
+  non-ASCII;
+- nomi tool normalizzati per le API senza punto (mappatura reversibile);
+- `tools/diagnose_deepseek.py`;
+- test live: chat, calling nativo ed end-to-end sul filesystem;
+- 479 test, 1 skip; 9 test live.
 
 ### 2026-11-03 — calling nativo
 

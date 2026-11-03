@@ -11,7 +11,10 @@ import pytest
 import requests
 
 from core.agent import Agent
-from core.tool_definition import ToolDefinition
+from core.tool_definition import (
+    ToolDefinition,
+    ToolParameter,
+)
 from core.tool_registry import ToolRegistry
 from llm.ollama_client import OllamaClient
 from memory.store import MemoryStore
@@ -104,6 +107,13 @@ def test_tool_selection_returns_registered_tool():
             description="Read a file from the sandbox.",
             category="filesystem",
             handler=lambda path: "contenuto",
+            parameters=[
+                ToolParameter(
+                    name="path",
+                    param_type="string",
+                    description="Path of the file to read.",
+                )
+            ],
         )
     )
 
@@ -140,6 +150,13 @@ def test_native_tool_calling():
             description="Read a file from the sandbox.",
             category="filesystem",
             handler=lambda path: "contenuto",
+            parameters=[
+                ToolParameter(
+                    name="path",
+                    param_type="string",
+                    description="Path of the file to read.",
+                )
+            ],
         )
     )
 
@@ -151,9 +168,8 @@ def test_native_tool_calling():
                     "role": "user",
                     "content": (
                         "Leggi il file nota.txt usando "
-                        "esattamente il tool "
-                        "filesystem.read_file con "
-                        "path nota.txt."
+                        "il tool disponibile per leggere "
+                        "i file, con path nota.txt."
                     ),
                 }
             ],

@@ -10,7 +10,18 @@ import os
 
 import pytest
 
+from core.agent import Agent
+from core.filesystem import (
+    DirectoryPermissions,
+    FileSystemSandbox,
+)
+from core.filesystem_tools import FileSystemToolProvider
 from core.models import ModelConfig
+from core.tool_definition import (
+    ToolDefinition,
+    ToolParameter,
+)
+from core.tool_registry import ToolRegistry
 from llm.factory import create_llm
 
 pytestmark = pytest.mark.live
@@ -19,7 +30,7 @@ PROVIDERS = {
     "deepseek": (
         "DEEPSEEK_API_KEY",
         "HAGAR_LIVE_DEEPSEEK_MODEL",
-        "deepseek-chat",
+        "deepseek-flash",
     ),
     "claude": (
         "ANTHROPIC_API_KEY",
@@ -66,3 +77,151 @@ def test_provider_chat(provider):
     )
 
     assert answer.strip()
+
+
+def test_deepseek_native_tool_calling():
+    if not os.environ.get(
+        "DEEPSEEK_API_KEY",
+        "",
+    ).strip():
+
+        pytest.skip("DEEPSEEK_API_KEY non impostata")
+
+    model = os.environ.get(
+        "HAGAR_LIVE_DEEPSEEK_MODEL",
+        "deepseek-flash",
+    )
+
+    client = create_llm(
+        ModelConfig(
+            provider="deepseek",
+            name=model,
+        )
+    )
+
+    registry = ToolRegistry()
+
+    registry.register(
+        ToolDefinition(
+            name="filesystem.read_file",
+            description="Read a file from the sandbox.",
+            category="filesystem",
+            handler=lambda path: "contenuto",
+            parameters=[
+                ToolParameter(
+                    name="path",
+                    param_type="string",
+                    description="Path of the file to read.",
+                )
+            ],
+        )
+    )
+
+    reply = client.native_step(
+        [
+            {
+                "role": "user",
+                "content": (
+                    "Leggi il file nota.txt usando "
+                    "il tool disponibile per leggere "
+                    "i file, con path nota.txt."
+                ),
+            }
+        ],
+        registry,
+    )
+
+    assert reply.tool_calls, (
+        "DeepSeek non ha scelto un tool; "
+        f"testo: {reply.text!r}"
+    )
+
+    call = reply.tool_calls[0]
+
+    assert call.tool == "filesystem.read_file"
+    assert call.arguments == {"path": "nota.txt"}
+
+
+def test_deepseek_agent_reads_a_file(tmp_path):
+    if not os.environ.get(
+        "DEEPSEEK_API_KEY",
+        "",
+    ).strip():
+
+        pytest.skip("DEEPSEEK_API_KEY non impostata")
+
+    model = os.environ.get(
+        "HAGAR_LIVE_DEEPSEEK_MODEL",
+        "deepseek-flash",
+    )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    (workspace / "nota.txt").write_text(
+        "Il numero segreto è 42.\n",
+        encoding="utf-8",
+    )
+
+    sandbox = FileSystemSandbox(
+        roots={
+            workspace: DirectoryPermissions(
+                read=True,
+                write=True,
+                create=True,
+                rename=True,
+                delete=True,
+                execute=True,
+            )
+        },
+        current_directory=workspace,
+    )
+
+    registry = ToolRegistry()
+
+    FileSystemToolProvider(
+        sandbox
+    ).register_tools(registry)
+
+    class Audit:
+        include_outputs = True
+
+        def __init__(self):
+            self.entries = []
+
+        def record(self, event, **fields):
+            self.entries.append(
+                {"event": event, **fields}
+            )
+
+    audit = Audit()
+
+    agent = Agent(
+        create_llm(
+            ModelConfig(
+                provider="deepseek",
+                name=model,
+            )
+        ),
+        registry,
+        vault=None,
+        audit=audit,
+        max_tool_calls=3,
+    )
+
+    answer = agent.ask(
+        "Leggi il file nota.txt e dimmi "
+        "quale numero contiene. Usa il tool "
+        "disponibile per leggere i file."
+    )
+
+    calls = [
+        entry
+        for entry in audit.entries
+        if entry["event"] == "tool.call"
+    ]
+
+    assert calls, "DeepSeek non ha eseguito tool"
+
+    assert calls[0]["tool"] == "filesystem.read_file"
+    assert "42" in answer

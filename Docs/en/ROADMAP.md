@@ -185,8 +185,9 @@ memory:
 **Stato:** implementato il 2026-11-03. `native_step()` per i quattro
 provider, schema dei parametri da `ToolDefinition`, messaggi canonici
 `tool`, più chiamate per turno, fallback automatico su HTTP 400/404/422
-e `--no-native-tools`. Resta da misurare col benchmark e da affinare per
-i modelli locali che ignorano i tool.
+e `--no-native-tools`. Verificato live su Ollama e DeepSeek; Claude e
+Gemini restano da provare. Resta da misurare col benchmark e da affinare
+per i modelli locali che ignorano i tool.
 
 ## 3.1 Obiettivo
 

@@ -130,6 +130,36 @@ def gemini() -> GeminiClient:
 # =====================================================
 
 
+def test_native_tool_names_are_safe_and_unique():
+    registry = ToolRegistry()
+
+    for name in ("a.b", "a__b"):
+
+        registry.register(
+            ToolDefinition(
+                name=name,
+                description="",
+                category="test",
+                handler=lambda: "",
+            )
+        )
+
+    names = OllamaClient._native_tool_names(registry)
+
+    assert names["a.b"] == "a__b"
+    assert names["a__b"] == "a__b_2"
+    assert len(set(names.values())) == 2
+
+    assert all(
+        all(
+            character.isalnum()
+            or character in "_-"
+            for character in native
+        )
+        for native in names.values()
+    )
+
+
 def test_parameters_schema_marks_required_fields():
     schema = OllamaClient._parameters_schema(
         make_registry().get("filesystem.read_file")
@@ -176,7 +206,9 @@ def test_ollama_native_sends_tools(monkeypatch):
                 "tool_calls": [
                     {
                         "function": {
-                            "name": "filesystem.read_file",
+                            "name": (
+                                "filesystem__read_file"
+                            ),
                             "arguments": {"path": "nota.txt"},
                         }
                     }
@@ -201,7 +233,7 @@ def test_ollama_native_sends_tools(monkeypatch):
     assert payload["tools"][0]["type"] == "function"
     assert (
         payload["tools"][0]["function"]["name"]
-        == "filesystem.read_file"
+        == "filesystem__read_file"
     )
     assert (
         payload["tools"][0]["function"]["parameters"][
@@ -290,10 +322,13 @@ def test_ollama_converts_prior_tool_messages():
     )
 
     assert converted[1]["tool_calls"][0]["function"] == {
-        "name": "filesystem.read_file",
+        "name": "filesystem__read_file",
         "arguments": {"path": "x"},
     }
     assert converted[2]["role"] == "tool"
+    assert converted[2]["tool_name"] == (
+        "filesystem__read_file"
+    )
     assert converted[2]["content"] == "contenuto"
 
 
@@ -316,7 +351,7 @@ def test_deepseek_native_parses_tool_calls(monkeypatch):
                                 "type": "function",
                                 "function": {
                                     "name": (
-                                        "filesystem.read_file"
+                                        "filesystem__read_file"
                                     ),
                                     "arguments": (
                                         '{"path": "x"}'
@@ -341,6 +376,10 @@ def test_deepseek_native_parses_tool_calls(monkeypatch):
     payload = http.calls[0]["payload"]
 
     assert payload["tools"][0]["type"] == "function"
+    assert (
+        payload["tools"][0]["function"]["name"]
+        == "filesystem__read_file"
+    )
     assert payload["messages"] == [
         {"role": "user", "content": "leggi"}
     ]
@@ -406,7 +445,7 @@ def test_claude_native_parses_tool_use(monkeypatch):
                 {
                     "type": "tool_use",
                     "id": "toolu_1",
-                    "name": "filesystem.read_file",
+                    "name": "filesystem__read_file",
                     "input": {"path": "x"},
                 },
             ]
@@ -427,6 +466,9 @@ def test_claude_native_parses_tool_use(monkeypatch):
     assert payload["tools"][0]["input_schema"][
         "required"
     ] == ["path"]
+    assert payload["tools"][0]["name"] == (
+        "filesystem__read_file"
+    )
     assert "parameters" not in payload["tools"][0]
 
 
@@ -462,7 +504,7 @@ def test_claude_native_converts_tool_cycle():
     assert converted[1]["content"][0] == {
         "type": "tool_use",
         "id": "toolu_1",
-        "name": "filesystem.read_file",
+        "name": "filesystem__read_file",
         "input": {"path": "x"},
     }
     assert converted[2]["content"][0] == {
@@ -499,7 +541,7 @@ def test_gemini_native_parses_function_call(monkeypatch):
                             {
                                 "functionCall": {
                                     "name": (
-                                        "filesystem.read_file"
+                                        "filesystem__read_file"
                                     ),
                                     "args": {"path": "x"},
                                 }
@@ -526,7 +568,9 @@ def test_gemini_native_parses_function_call(monkeypatch):
         "functionDeclarations"
     ][0]
 
-    assert declaration["name"] == "filesystem.read_file"
+    assert declaration["name"] == (
+        "filesystem__read_file"
+    )
     assert declaration["parameters"]["required"] == [
         "path"
     ]
@@ -561,13 +605,13 @@ def test_gemini_native_converts_tool_cycle():
     assert contents[1]["role"] == "model"
     assert contents[1]["parts"][0] == {
         "functionCall": {
-            "name": "filesystem.read_file",
+            "name": "filesystem__read_file",
             "args": {"path": "x"},
         }
     }
     assert contents[2]["parts"][0] == {
         "functionResponse": {
-            "name": "filesystem.read_file",
+            "name": "filesystem__read_file",
             "response": {"result": "contenuto"},
         }
     }

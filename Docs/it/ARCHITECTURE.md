@@ -152,6 +152,11 @@ Claude blocchi `tool_use`/`tool_result`, Gemini `functionCall`/
 `NativeToolsUnavailable`: l'Agent passa al protocollo testuale solo se non
 ha ancora eseguito tool.
 
+I nomi dei tool vengono normalizzati per le API che non ammettono il
+punto (`filesystem.read_file` → `filesystem__read_file`) e riportati al
+nome interno nella risposta: policy, audit e test vedono sempre il nome
+originale.
+
 Il testo resta il fallback per modelli che non supportano i tool nativi;
 `model.native_tools: false` lo forza (o `--no-native-tools` da CLI).
 
@@ -166,7 +171,8 @@ La chiave si legge solo dall'ambiente; `model.api_key_env` sovrascrive il
 nome predefinito. `model.host` è la base URL di tutti i provider (con un
 default per provider), `model.max_tokens` è usato solo da Claude.
 `llm/factory.py` costruisce il client e rifiuta provider sconosciuti o
-chiavi mancanti.
+chiavi mancanti. DeepSeek: i modelli correnti sono `deepseek-flash` e
+`deepseek-v4-pro`; `deepseek-chat` non è più accettato.
 
 Stato attuale: **calling nativo v1** con fallback testuale automatico
 (vedi ROADMAP).
@@ -471,10 +477,10 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 476 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 479 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
-- Test live: `.\tools\run_tests.ps1 --live` — 7 test in più (Ollama;
+- Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).
 - Confronto modelli: `python tools/bench_models.py` (README §3.5).
 - La suite normale non tocca la rete: Ollama e MCP sono simulati.

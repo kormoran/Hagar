@@ -7,6 +7,20 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## DeepSeek (live)
+
+- Modelli aggiornati: `deepseek-flash` (default) e `deepseek-v4-pro`;
+  `deepseek-chat` non è più valido.
+- Messaggi d'errore con il corpo della risposta API; chiavi non-ASCII
+  rifiutate con `ConfigError`.
+- Nomi dei tool normalizzati per le API che non ammettono il punto
+  (`filesystem.read_file` → `filesystem__read_file`), con ritorno al
+  nome interno.
+- `tools/diagnose_deepseek.py` per rete, forma della chiave ed endpoint,
+  senza stampare la chiave.
+- Test live: chat, calling nativo ed end-to-end sul filesystem.
+- 479 test superati, 1 skip; 9 test live con `--live`.
+
 ## Calling nativo (v1)
 
 - `LLMClient.native_step()` e `LLMReply`: calling nativo per Ollama,
