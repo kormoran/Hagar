@@ -388,6 +388,178 @@ def test_mcp_auth_is_validated(tmp_path, auth):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_mcp_oauth_is_parsed(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "oauth",
+                "oauth": {
+                    "authorization_server": (
+                        "https://auth.example.com"
+                    ),
+                    "client_id": "client-1",
+                    "client_secret_env": "MCP_CLIENT_SECRET",
+                    "scopes": ["read", "write"],
+                    "redirect_port": 9000,
+                    "token_cache": "cache/oauth.json",
+                    "timeout": 120,
+                },
+            },
+        }
+    ]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    auth = cfg.mcp_servers[0].auth
+
+    assert auth is not None
+    assert auth.type == "oauth"
+    assert auth.token_env is None
+
+    oauth = auth.oauth
+
+    assert oauth is not None
+    assert oauth.authorization_server == (
+        "https://auth.example.com"
+    )
+    assert oauth.client_id == "client-1"
+    assert oauth.client_secret_env == "MCP_CLIENT_SECRET"
+    assert oauth.scopes == ["read", "write"]
+    assert oauth.redirect_port == 9000
+    assert oauth.token_cache == (
+        tmp_path / "cache" / "oauth.json"
+    )
+    assert oauth.timeout == 120
+
+
+def test_mcp_oauth_defaults(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {"type": "oauth"},
+        }
+    ]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    oauth = cfg.mcp_servers[0].auth.oauth
+
+    assert oauth is not None
+    assert oauth.client_id is None
+    assert oauth.scopes == []
+    assert oauth.redirect_port == 8765
+    assert oauth.token_cache is None
+    assert oauth.timeout == 300
+
+
+def test_mcp_oauth_rejects_token_env(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "oauth",
+                "token_env": "TOKEN",
+            },
+        }
+    ]
+
+    with pytest.raises(ConfigError, match="token_env"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_mcp_oauth_rejects_oauth_block_for_bearer(
+    tmp_path,
+):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "bearer",
+                "token_env": "TOKEN",
+                "oauth": {},
+            },
+        }
+    ]
+
+    with pytest.raises(ConfigError, match="oauth"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+@pytest.mark.parametrize(
+    "oauth",
+    [
+        {"scopes": "read"},
+        {"scopes": [1]},
+        {"redirect_port": 70000},
+    ],
+)
+def test_mcp_oauth_is_validated(tmp_path, oauth):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "oauth",
+                "oauth": oauth,
+            },
+        }
+    ]
+
+    with pytest.raises(ConfigError, match="oauth"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_mcp_oauth_rejects_secret_without_client(
+    tmp_path,
+):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "oauth",
+                "oauth": {
+                    "client_secret_env": "SECRET",
+                },
+            },
+        }
+    ]
+
+    with pytest.raises(
+        ConfigError,
+        match="client_secret_env",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_mcp_oauth_must_be_mapping(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "https://mcp.example.com/mcp",
+            "namespace": "oauth",
+            "auth": {
+                "type": "oauth",
+                "oauth": [],
+            },
+        }
+    ]
+
+    with pytest.raises(ConfigError, match="oauth"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 # =====================================================
 # Percorsi
 # =====================================================

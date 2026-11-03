@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 504 test superati, 1 skip (symlink non disponibili senza Developer
+- 522 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
   che chiamano servizi reali (9 test).
@@ -32,6 +32,14 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-03 — MCP OAuth
+
+- PKCE, discovery, dynamic registration, callback loopback e cache token;
+- refresh automatico e retry 401 nel client MCP;
+- test del flusso interattivo con authorization server finto, config e
+  wiring del harness;
+- 522 test, 1 skip.
 
 ### 2026-11-03 — audit retention
 

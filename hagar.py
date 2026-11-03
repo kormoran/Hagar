@@ -35,6 +35,7 @@ from llm.mcp_client import (
     MCPClient,
     resolve_auth_headers,
 )
+from llm.mcp_oauth import OAuthProvider
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
@@ -363,9 +364,27 @@ def build_harness(
 
             if server_cfg.auth is not None:
 
-                kwargs["headers"] = resolve_auth_headers(
-                    server_cfg.auth
-                )
+                if server_cfg.auth.type == "oauth":
+
+                    if server_cfg.auth.oauth is None:
+
+                        raise ValueError(
+                            "OAuth configuration missing "
+                            f"for MCP namespace "
+                            f"'{server_cfg.namespace}'"
+                        )
+
+                    kwargs["token_provider"] = OAuthProvider(
+                        server_cfg.auth.oauth,
+                        resource_url=server_cfg.endpoint,
+                        server_name=server_cfg.namespace,
+                    )
+
+                else:
+
+                    kwargs["headers"] = resolve_auth_headers(
+                        server_cfg.auth
+                    )
 
             mcp = mcp_client_factory(**kwargs)
 

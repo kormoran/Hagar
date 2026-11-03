@@ -509,6 +509,72 @@ def test_mcp_auth_missing_token_is_isolated(
     assert "MCP_TOKEN" in output
 
 
+def test_mcp_oauth_provider_is_passed(
+    tmp_path,
+    monkeypatch,
+):
+    path, _ = write_config(
+        tmp_path,
+        mcp_servers=[
+            {
+                "endpoint": "https://mcp.example.com/mcp",
+                "namespace": "gh",
+                "auth": {
+                    "type": "oauth",
+                    "oauth": {
+                        "client_id": "client-1",
+                    },
+                },
+            }
+        ],
+    )
+
+    captured = {}
+
+    class FakeProvider:
+        def __init__(
+            self,
+            config,
+            resource_url,
+            server_name,
+        ):
+            self.config = config
+            self.resource_url = resource_url
+            self.server_name = server_name
+
+    class FakeMCP:
+        def __init__(
+            self,
+            endpoint,
+            namespace,
+            token_provider=None,
+        ):
+            captured["provider"] = token_provider
+            captured["endpoint"] = endpoint
+
+        def register_tools(self, registry):
+            pass
+
+    monkeypatch.setattr(
+        hagar,
+        "OAuthProvider",
+        FakeProvider,
+    )
+
+    hagar.build_harness(
+        ConfigLoader.load(path),
+        mcp_client_factory=FakeMCP,
+    )
+
+    provider = captured["provider"]
+
+    assert isinstance(provider, FakeProvider)
+    assert provider.server_name == "gh"
+    assert provider.resource_url == (
+        "https://mcp.example.com/mcp"
+    )
+
+
 def test_resolve_config_defaults_to_cwd(tmp_path, monkeypatch):
     monkeypatch.delenv("HAGAR_CONFIG", raising=False)
     monkeypatch.chdir(tmp_path)

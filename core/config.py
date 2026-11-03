@@ -18,6 +18,7 @@ from .models import (
     RagConfig,
     MCPServerConfig,
     MCPAuthConfig,
+    MCPOAuthConfig,
 )
 
 
@@ -197,6 +198,29 @@ class ConfigLoader:
                 path.resolve().parent
                 / config.policy.path
             )
+
+        #
+        # Il token cache OAuth, se relativo, segue la configurazione.
+        #
+
+        for server in config.mcp_servers:
+
+            oauth = (
+                server.auth.oauth
+                if server.auth is not None
+                else None
+            )
+
+            if (
+                oauth is not None
+                and oauth.token_cache is not None
+                and not oauth.token_cache.is_absolute()
+            ):
+
+                oauth.token_cache = (
+                    path.resolve().parent
+                    / oauth.token_cache
+                )
 
         return config
 
@@ -575,44 +599,192 @@ class ConfigLoader:
                 if auth_type not in {
                     "bearer",
                     "header",
+                    "oauth",
                 }:
 
                     raise ConfigError(
                         f"mcp_servers[{index}].auth.type "
-                        "must be 'bearer' or 'header'"
+                        "must be 'bearer', 'header' "
+                        "or 'oauth'"
                     )
 
-                token_env = _text(
-                    auth_data,
-                    "token_env",
-                    f"mcp_servers[{index}].auth.token_env",
-                )
+                token_env: str | None = None
 
                 header = "Authorization"
 
-                if auth_type == "header":
+                oauth: MCPOAuthConfig | None = None
 
-                    header = _text(
+                if auth_type == "oauth":
+
+                    if "token_env" in auth_data:
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "token_env is not valid "
+                            "with type 'oauth'"
+                        )
+
+                    if "header" in auth_data:
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "header is not valid "
+                            "with type 'oauth'"
+                        )
+
+                    oauth_data = auth_data.get(
+                        "oauth",
+                        {},
+                    )
+
+                    if oauth_data is None:
+                        oauth_data = {}
+
+                    if not isinstance(oauth_data, dict):
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "oauth must be a mapping"
+                        )
+
+                    raw_scopes = oauth_data.get(
+                        "scopes",
+                        [],
+                    )
+
+                    if raw_scopes is None:
+                        raw_scopes = []
+
+                    if not isinstance(raw_scopes, list) or any(
+                        not isinstance(scope, str)
+                        or not scope.strip()
+                        for scope in raw_scopes
+                    ):
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "oauth.scopes must be a list "
+                            "of strings"
+                        )
+
+                    scopes = [
+                        scope.strip()
+                        for scope in raw_scopes
+                    ]
+
+                    redirect_port = _non_negative_int(
+                        oauth_data,
+                        "redirect_port",
+                        f"mcp_servers[{index}].auth."
+                        "oauth.redirect_port",
+                        8765,
+                    )
+
+                    if redirect_port > 65535:
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "oauth.redirect_port must be "
+                            "between 0 and 65535"
+                        )
+
+                    token_cache_raw = _optional_text(
+                        oauth_data,
+                        "token_cache",
+                        f"mcp_servers[{index}].auth."
+                        "oauth.token_cache",
+                    )
+
+                    oauth = MCPOAuthConfig(
+                        authorization_server=_optional_text(
+                            oauth_data,
+                            "authorization_server",
+                            f"mcp_servers[{index}].auth."
+                            "oauth.authorization_server",
+                        ),
+                        client_id=_optional_text(
+                            oauth_data,
+                            "client_id",
+                            f"mcp_servers[{index}].auth."
+                            "oauth.client_id",
+                        ),
+                        client_secret_env=_optional_text(
+                            oauth_data,
+                            "client_secret_env",
+                            f"mcp_servers[{index}].auth."
+                            "oauth.client_secret_env",
+                        ),
+                        scopes=scopes,
+                        redirect_port=redirect_port,
+                        token_cache=(
+                            Path(
+                                token_cache_raw
+                            ).expanduser()
+                            if token_cache_raw
+                            else None
+                        ),
+                        timeout=_positive_int(
+                            oauth_data,
+                            "timeout",
+                            f"mcp_servers[{index}].auth."
+                            "oauth.timeout",
+                            300,
+                        ),
+                    )
+
+                    if (
+                        oauth.client_secret_env
+                        and not oauth.client_id
+                    ):
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "oauth.client_secret_env "
+                            "requires client_id"
+                        )
+
+                else:
+
+                    if "oauth" in auth_data:
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "oauth is valid only "
+                            "with type 'oauth'"
+                        )
+
+                    token_env = _text(
                         auth_data,
-                        "header",
-                        f"mcp_servers[{index}].auth.header",
+                        "token_env",
+                        f"mcp_servers[{index}].auth."
+                        "token_env",
                     )
 
-                if not re.fullmatch(
-                    r"[A-Za-z0-9-]+",
-                    header,
-                ):
+                    if auth_type == "header":
 
-                    raise ConfigError(
-                        f"mcp_servers[{index}].auth.header "
-                        "must contain only letters, "
-                        "digits and hyphens"
-                    )
+                        header = _text(
+                            auth_data,
+                            "header",
+                            f"mcp_servers[{index}].auth."
+                            "header",
+                        )
+
+                    if not re.fullmatch(
+                        r"[A-Za-z0-9-]+",
+                        header,
+                    ):
+
+                        raise ConfigError(
+                            f"mcp_servers[{index}].auth."
+                            "header must contain only "
+                            "letters, digits and hyphens"
+                        )
 
                 auth = MCPAuthConfig(
                     type=auth_type,
                     token_env=token_env,
                     header=header,
+                    oauth=oauth,
                 )
 
             mcp_servers.append(

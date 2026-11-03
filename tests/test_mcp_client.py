@@ -568,6 +568,52 @@ def test_resolve_auth_rejects_non_ascii(
         )
 
 
+class FakeTokenProvider:
+    def __init__(self):
+        self.value = "old"
+        self.refreshes = 0
+
+    def token(self):
+        return self.value
+
+    def refresh(self):
+        self.refreshes += 1
+        self.value = "new"
+
+
+def test_oauth_401_is_retried(monkeypatch):
+    http = install(
+        monkeypatch,
+        FakeResponse({}, status_code=401),
+        {"result": {}},
+        {},
+    )
+
+    provider = FakeTokenProvider()
+
+    client = MCPClient(
+        endpoint="http://localhost:8080/mcp",
+        namespace="gh",
+        token_provider=provider,
+    )
+
+    client.initialize()
+
+    assert provider.refreshes == 1
+
+    assert http.calls[0]["headers"][
+        "Authorization"
+    ] == "Bearer old"
+
+    assert http.calls[1]["headers"][
+        "Authorization"
+    ] == "Bearer new"
+
+    assert http.calls[2]["headers"][
+        "Authorization"
+    ] == "Bearer new"
+
+
 # =====================================================
 # Conversione in ToolDefinition
 # =====================================================

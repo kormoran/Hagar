@@ -124,7 +124,7 @@ Sezioni:
 | `filesystem` | sì | radici della sandbox (`allowed`) |
 | `permissions` | no | read, write, shell (default `true/false/false`) |
 | `rag` | no | `top_k` (default 8) |
-| `mcp_servers` | no | endpoint, namespace, auth (bearer/header, token_env) |
+| `mcp_servers` | no | endpoint, namespace, auth (bearer/header/oauth) |
 | `audit` | no | enabled, path, max_field_chars, max_bytes, max_files, include_outputs |
 | `policy` | no | path del file policy, subject |
 | `memory` | no | enabled, vault_subdir, context_turns, max_skill_chars |
@@ -289,6 +289,32 @@ mcp_servers:
 Il token si legge solo dall'ambiente e non compare nell'audit. Se manca,
 il server viene saltato con `mcp.failed` e il harness continua; gli altri
 server restano disponibili.
+
+### OAuth interattivo
+
+```yaml
+auth:
+  type: oauth
+  oauth:
+    authorization_server: https://auth.example.com
+    # client_id: ...          # senza, dynamic registration
+    # client_secret_env: MCP_CLIENT_SECRET
+    scopes: [mcp.read]
+    redirect_port: 8765       # 0 = porta casuale
+    token_cache: ~/.hagar/oauth/example.json
+    timeout: 300
+```
+
+Flusso authorization code + PKCE, con callback su `127.0.0.1` e apertura
+del browser. I metadata vengono scoperti da `.well-known` (RFC 9728 per la
+risorsa, RFC 8414 per l'authorization server); se `client_id` manca si usa
+la registrazione dinamica. I token sono in un file locale con permessi
+ristretti (`0600` dove il sistema li supporta), con refresh automatico e
+retry una volta su `401`.
+
+Limiti: niente device flow, DPoP, mTLS o client assertion; il browser deve
+poter raggiungere il callback locale. Se il callback non arriva, il
+terminale chiede di incollare l'URL di reindirizzamento.
 
 ## 3.8 Vault (`memory/vault.py`)
 
@@ -495,7 +521,7 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 504 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 522 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
@@ -514,7 +540,8 @@ la chiave API è presente).
 - Il calling nativo dipende dal modello: alcuni ignorano i tool o
   restituiscono più chiamate; il fallback testuale copre gli errori, non
   la qualità della scelta.
-- Il client MCP non gestisce ancora l'autenticazione.
+- Il client MCP supporta bearer/header e OAuth authorization code; non
+  gestisce device flow, DPoP, mTLS o client assertion.
 - La memoria semantica non ha un flusso di revisione: le skill restano
   `candidate` finché non vengono promosse a mano.
 - La ricerca nella memoria è per parola chiave, senza indice né

@@ -91,18 +91,38 @@ class MemoryConfig:
 
 
 @dataclass(slots=True)
+class MCPOAuthConfig:
+    """
+    Parametri del flusso OAuth interattivo per un server MCP.
+
+    Con ``client_id`` assente si tenta la registrazione dinamica presso
+    l'authorization server. Il token cache è un file locale con permessi
+    ristretti; se assente si usa ``~/.hagar/oauth/<namespace>.json``.
+    """
+
+    authorization_server: str | None = None
+    client_id: str | None = None
+    client_secret_env: str | None = None
+    scopes: list[str] = field(default_factory=list)
+    redirect_port: int = 8765
+    token_cache: Path | None = None
+    timeout: int = 300
+
+
+@dataclass(slots=True)
 class MCPAuthConfig:
     """
     Autenticazione verso un server MCP.
 
-    ``type`` è ``bearer`` (header ``Authorization: Bearer ...``) oppure
-    ``header`` (token grezzo nell'header indicato). Il token si legge solo
-    dalla variabile d'ambiente ``token_env``.
+    ``type`` è ``bearer``, ``header`` o ``oauth``. Per bearer/header il
+    token si legge dalla variabile d'ambiente ``token_env``; per oauth i
+    parametri stanno in ``oauth``.
     """
 
     type: str
-    token_env: str
+    token_env: str | None = None
     header: str = "Authorization"
+    oauth: MCPOAuthConfig | None = None
 
 
 @dataclass(slots=True)

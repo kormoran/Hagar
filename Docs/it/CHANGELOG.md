@@ -7,6 +7,20 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## MCP OAuth interattivo
+
+- Flusso authorization code + PKCE con callback su `127.0.0.1` e
+  apertura del browser; fallback manuale incollando l'URL.
+- Discovery RFC 9728 (protected resource) e RFC 8414 (authorization
+  server), con registrazione dinamica del client se `client_id` manca.
+- Cache token locale con permessi `0600`, refresh automatico e retry una
+  volta su `401`.
+- Config `auth.type: oauth` con `authorization_server`, `client_id`,
+  `client_secret_env`, `scopes`, `redirect_port`, `token_cache`,
+  `timeout`.
+- Limiti: niente device flow, DPoP, mTLS o client assertion.
+- 522 test superati, 1 skip.
+
 ## Audit retention
 
 - Rotazione in `<file>.<timestamp>` oltre `audit.max_bytes`.

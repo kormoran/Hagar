@@ -291,6 +291,8 @@ Fatta (2026-11-03):
   (blocchi `text`, `structuredContent`, errori `isError`).
 - **MCP auth**: bearer o header personalizzato, token solo da ambiente,
   server saltato con `mcp.failed` se il token manca.
+- **MCP OAuth**: flusso authorization code + PKCE con browser, discovery
+  RFC 9728/8414, dynamic registration, cache token, refresh e retry 401.
 - **Audit**: rotazione a `max_bytes`, catena di hash verificabile con
   `verify_chain`, redazione dell'output dei tool con
   `include_outputs: false`.
@@ -305,7 +307,7 @@ Fatta (2026-11-03):
 
 Restano:
 
-- OAuth interattivo per MCP (oggi bearer/header da variabile d'ambiente);
+- device flow / DPoP per MCP OAuth;
 - compattazione delle sessioni di audit;
 - conferme GUI per `ASK`;
 - allineamento continuo della documentazione.

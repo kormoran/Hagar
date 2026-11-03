@@ -24,6 +24,12 @@ def resolve_auth_headers(
     if auth is None:
         return {}
 
+    if not auth.token_env:
+
+        raise ValueError(
+            "MCP auth token_env is missing"
+        )
+
     token = os.environ.get(
         auth.token_env,
         "",
@@ -77,6 +83,7 @@ class MCPClient:
         namespace: str,
         timeout: int = 30,
         headers: dict[str, str] | None = None,
+        token_provider: Any = None,
     ) -> None:
 
         if not isinstance(
@@ -101,6 +108,8 @@ class MCPClient:
 
         if headers:
             self.headers.update(headers)
+
+        self.token_provider = token_provider
 
         self._request_id = 0
 
@@ -139,6 +148,20 @@ class MCPClient:
             headers=self._headers(),
             timeout=self.timeout,
         )
+
+        if (
+            response.status_code == 401
+            and self.token_provider is not None
+        ):
+
+            self.token_provider.refresh()
+
+            response = requests.post(
+                self.endpoint,
+                json=payload,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
 
         response.raise_for_status()
 
@@ -184,7 +207,16 @@ class MCPClient:
 
     def _headers(self) -> dict[str, str]:
 
-        return dict(self.headers)
+        headers = dict(self.headers)
+
+        if self.token_provider is not None:
+
+            headers["Authorization"] = (
+                "Bearer "
+                + self.token_provider.token()
+            )
+
+        return headers
 
     @staticmethod
     def _decode(
@@ -264,6 +296,20 @@ class MCPClient:
             headers=self._headers(),
             timeout=self.timeout,
         )
+
+        if (
+            response.status_code == 401
+            and self.token_provider is not None
+        ):
+
+            self.token_provider.refresh()
+
+            response = requests.post(
+                self.endpoint,
+                json=payload,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
 
         response.raise_for_status()
 

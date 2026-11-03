@@ -49,3 +49,15 @@ rag:
 #       type: bearer          # oppure "header"
 #       token_env: MCP_EXAMPLE_TOKEN
 #       # header: X-API-Key  # solo con type: header
+#   - endpoint: https://mcp.example.com/oauth
+#     namespace: oauth
+#     auth:
+#       type: oauth
+#       oauth:
+#         authorization_server: https://auth.example.com
+#         # client_id: ...    # senza, dynamic registration
+#         # client_secret_env: MCP_CLIENT_SECRET
+#         scopes: [mcp.read]
+#         redirect_port: 8765
+#         token_cache: ~/.hagar/oauth/example.json
+#         timeout: 300
