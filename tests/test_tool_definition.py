@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.permissions import Capability
 from core.tool_definition import (
     ToolDefinition,
     ToolParameter,
@@ -50,6 +51,7 @@ def test_definition_defaults():
     tool = make_definition()
 
     assert tool.parameters == []
+    assert tool.capabilities is Capability.NONE
     assert tool.origin == "local"
     assert tool.enabled is True
     assert tool.requires_confirmation is False

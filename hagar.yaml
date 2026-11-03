@@ -1,9 +1,11 @@
 model:
   # provider: ollama | deepseek | claude | gemini
   provider: ollama
-  # host: usato solo da Ollama
+  # host: base URL del provider (default per provider)
   host: http://localhost:11434
   name: llama3.1:latest
+  # native_tools: false per usare il protocollo JSON testuale
+  native_tools: true
   # max_tokens: 1024
   # api_key_env: DEEPSEEK_API_KEY
 
@@ -11,9 +13,21 @@ audit:
   enabled: true
   path: logs/audit.jsonl
   max_field_chars: 2000
+  max_bytes: 5000000
+  include_outputs: true
+
+policy:
+  path: policy.yaml
+  subject: assistant
 
 vault:
-  path: D:/Vault
+  path: I:/Vaults
+
+memory:
+  enabled: true
+  vault_subdir: Hagar
+  context_turns: 10
+  max_skill_chars: 4000
 
 filesystem:
   allowed:

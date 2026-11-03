@@ -7,9 +7,11 @@ class ModelConfig:
     """
     Configurazione del backend LLM.
 
-    ``host`` serve solo a Ollama (default localhost). Le chiavi API non
-    stanno nel file di configurazione: ``api_key_env`` indica quale
-    variabile d'ambiente leggere, se il nome predefinito non va bene.
+    ``host`` è la base URL del provider: per Ollama vale
+    ``http://localhost:11434``, per gli altri il default dell'API. Le
+    chiavi non stanno nel file di configurazione: ``api_key_env`` indica
+    quale variabile d'ambiente leggere, se il nome predefinito non va
+    bene.
     """
 
     provider: str
@@ -17,6 +19,7 @@ class ModelConfig:
     host: str | None = None
     max_tokens: int = 1024
     api_key_env: str | None = None
+    native_tools: bool = True
 
 
 @dataclass(slots=True)
@@ -53,6 +56,37 @@ class AuditConfig:
     enabled: bool = True
     path: Path = Path("logs/audit.jsonl")
     max_field_chars: int = 2000
+    max_bytes: int = 5_000_000
+    include_outputs: bool = True
+
+
+@dataclass(slots=True)
+class PolicyConfig:
+    """
+    File delle policy e soggetto usato dall'agente corrente.
+
+    ``path`` relativo viene risolto rispetto alla directory del file di
+    configurazione. Se il file non è leggibile, il harness degrada a
+    DENY totale.
+    """
+
+    path: Path = Path("policy.yaml")
+    subject: str = "assistant"
+
+
+@dataclass(slots=True)
+class MemoryConfig:
+    """
+    Memoria su vault Obsidian.
+
+    ``enabled`` richiede che ``vault.path`` esista: in caso contrario la
+    memoria viene disattivata con un avviso, senza fermare il harness.
+    """
+
+    enabled: bool = True
+    vault_subdir: str = "Hagar"
+    context_turns: int = 10
+    max_skill_chars: int = 4000
 
 
 @dataclass(slots=True)
@@ -75,14 +109,10 @@ class AppConfig:
         default_factory=AuditConfig
     )
 
+    policy: PolicyConfig = field(
+        default_factory=PolicyConfig
+    )
 
-@dataclass
-class PolicyRule:
-
-    subject: str
-
-    capability: str
-
-    resource: str
-
-    action: PolicyAction
+    memory: MemoryConfig = field(
+        default_factory=MemoryConfig
+    )

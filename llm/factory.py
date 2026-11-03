@@ -71,6 +71,17 @@ def resolve_api_key(
     return value
 
 
+def _with_native(
+    client: LLMClient,
+    config: ModelConfig,
+) -> LLMClient:
+    """Applica il flag di calling nativo al client."""
+
+    client.native_tools = config.native_tools
+
+    return client
+
+
 def create_llm(
     config: ModelConfig,
     audit: Any = None,
@@ -81,35 +92,59 @@ def create_llm(
 
     if provider == "ollama":
 
-        return OllamaClient(
-            model=config.name,
-            host=config.host,
-            audit=audit,
+        return _with_native(
+            OllamaClient(
+                model=config.name,
+                host=config.host,
+                audit=audit,
+            ),
+            config,
         )
 
     if provider == "deepseek":
 
-        return DeepSeekClient(
-            api_key=resolve_api_key(config),
-            model=config.name,
-            audit=audit,
+        return _with_native(
+            DeepSeekClient(
+                api_key=resolve_api_key(config),
+                model=config.name,
+                base_url=(
+                    config.host
+                    or DeepSeekClient.DEFAULT_BASE_URL
+                ),
+                audit=audit,
+            ),
+            config,
         )
 
     if provider == "claude":
 
-        return ClaudeClient(
-            api_key=resolve_api_key(config),
-            model=config.name,
-            max_tokens=config.max_tokens,
-            audit=audit,
+        return _with_native(
+            ClaudeClient(
+                api_key=resolve_api_key(config),
+                model=config.name,
+                max_tokens=config.max_tokens,
+                base_url=(
+                    config.host
+                    or ClaudeClient.DEFAULT_BASE_URL
+                ),
+                audit=audit,
+            ),
+            config,
         )
 
     if provider == "gemini":
 
-        return GeminiClient(
-            api_key=resolve_api_key(config),
-            model=config.name,
-            audit=audit,
+        return _with_native(
+            GeminiClient(
+                api_key=resolve_api_key(config),
+                model=config.name,
+                base_url=(
+                    config.host
+                    or GeminiClient.DEFAULT_BASE_URL
+                ),
+                audit=audit,
+            ),
+            config,
         )
 
     raise ConfigError(

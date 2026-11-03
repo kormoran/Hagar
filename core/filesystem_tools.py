@@ -10,6 +10,7 @@ from .tool_definition import (
 )
 from .tool_registry import ToolRegistry
 from .filesystem import FileSystemSandbox
+from .permissions import Capability
 
 
 class FileSystemToolProvider:
@@ -29,6 +30,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.read_file",
+                capabilities=Capability.FILESYSTEM_READ,
                 description=(
                     "Read a UTF-8 text file "
                     "from the sandbox."
@@ -51,6 +53,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.write_file",
+                capabilities=Capability.FILESYSTEM_WRITE,
                 description=(
                     "Write content to an "
                     "existing file."
@@ -77,6 +80,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.create_file",
+                capabilities=Capability.FILESYSTEM_CREATE,
                 description=(
                     "Create a new file."
                 ),
@@ -106,6 +110,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.mkdir",
+                capabilities=Capability.FILESYSTEM_CREATE,
                 description=(
                     "Create a directory."
                 ),
@@ -126,6 +131,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.chdir",
+                capabilities=Capability.FILESYSTEM_READ,
                 description=(
                     "Change current working "
                     "directory."
@@ -147,6 +153,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.delete_file",
+                capabilities=Capability.FILESYSTEM_DELETE,
                 description=(
                     "Delete a file."
                 ),
@@ -167,6 +174,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.free_space",
+                capabilities=Capability.FILESYSTEM_READ,
                 description=(
                     "Return free disk space."
                 ),
@@ -179,6 +187,7 @@ class FileSystemToolProvider:
         registry.register(
             ToolDefinition(
                 name="filesystem.stat",
+                capabilities=Capability.FILESYSTEM_READ,
                 description=(
                     "Return metadata for a path: "
                     "type (file/directory), size in "

@@ -357,6 +357,35 @@ def test_model_max_tokens_is_validated(tmp_path, value):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_model_native_tools_defaults_to_true(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.model.native_tools is True
+
+
+def test_model_native_tools_can_be_disabled(tmp_path):
+    data = base_config(tmp_path)
+    data["model"]["native_tools"] = False
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.model.native_tools is False
+
+
+@pytest.mark.parametrize("value", ["yes", 1, None])
+def test_model_native_tools_must_be_boolean(tmp_path, value):
+    data = base_config(tmp_path)
+    data["model"]["native_tools"] = value
+
+    with pytest.raises(
+        ConfigError,
+        match="model.native_tools",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 def test_api_key_env_is_optional(tmp_path):
     cfg = ConfigLoader.load(
         write_yaml(tmp_path, base_config(tmp_path))
@@ -483,5 +512,217 @@ def test_audit_max_field_chars_must_be_positive(
     with pytest.raises(
         ConfigError,
         match="audit.max_field_chars",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_audit_hardening_defaults(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.audit.max_bytes == 5_000_000
+    assert cfg.audit.include_outputs is True
+
+
+def test_audit_hardening_section(tmp_path):
+    data = base_config(tmp_path)
+    data["audit"] = {
+        "max_bytes": 1024,
+        "include_outputs": False,
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.audit.max_bytes == 1024
+    assert cfg.audit.include_outputs is False
+
+
+@pytest.mark.parametrize(
+    "value",
+    [-1, "1024", True],
+)
+def test_audit_max_bytes_is_validated(tmp_path, value):
+    data = base_config(tmp_path)
+    data["audit"] = {"max_bytes": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="audit.max_bytes",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_audit_include_outputs_must_be_boolean(tmp_path):
+    data = base_config(tmp_path)
+    data["audit"] = {"include_outputs": "no"}
+
+    with pytest.raises(
+        ConfigError,
+        match="audit.include_outputs",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+# =====================================================
+# Policy
+# =====================================================
+
+
+def test_policy_defaults(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.policy.path == tmp_path / "policy.yaml"
+    assert cfg.policy.subject == "assistant"
+
+
+def test_policy_section(tmp_path):
+    data = base_config(tmp_path)
+    data["policy"] = {
+        "path": "rules/policy.yaml",
+        "subject": "researcher",
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.policy.path == (
+        tmp_path / "rules" / "policy.yaml"
+    )
+    assert cfg.policy.subject == "researcher"
+
+
+def test_policy_absolute_path_is_kept(tmp_path):
+    target = tmp_path / "elsewhere" / "policy.yaml"
+
+    data = base_config(tmp_path)
+    data["policy"] = {"path": str(target)}
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.policy.path == target
+
+
+def test_policy_path_must_be_string(tmp_path):
+    data = base_config(tmp_path)
+    data["policy"] = {"path": 5}
+
+    with pytest.raises(
+        ConfigError,
+        match="policy.path",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_policy_subject_must_be_string(tmp_path):
+    data = base_config(tmp_path)
+    data["policy"] = {"subject": 5}
+
+    with pytest.raises(
+        ConfigError,
+        match="policy.subject",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+# =====================================================
+# Memory
+# =====================================================
+
+
+def test_memory_defaults(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.memory.enabled is True
+    assert cfg.memory.vault_subdir == "Hagar"
+    assert cfg.memory.context_turns == 10
+    assert cfg.memory.max_skill_chars == 4000
+
+
+def test_memory_section(tmp_path):
+    data = base_config(tmp_path)
+    data["memory"] = {
+        "enabled": False,
+        "vault_subdir": "Ai",
+        "context_turns": 3,
+        "max_skill_chars": 1200,
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.memory.enabled is False
+    assert cfg.memory.vault_subdir == "Ai"
+    assert cfg.memory.context_turns == 3
+    assert cfg.memory.max_skill_chars == 1200
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["yes", 1, None],
+)
+def test_memory_enabled_must_be_boolean(tmp_path, value):
+    data = base_config(tmp_path)
+    data["memory"] = {"enabled": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="memory.enabled",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "I:/fuori", "../fuori"],
+)
+def test_memory_subdir_must_stay_inside(tmp_path, value):
+    data = base_config(tmp_path)
+    data["memory"] = {"vault_subdir": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="memory.vault_subdir",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_memory_context_turns_can_be_zero(tmp_path):
+    data = base_config(tmp_path)
+    data["memory"] = {"context_turns": 0}
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.memory.context_turns == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [-1, "3", True],
+)
+def test_memory_context_turns_is_validated(tmp_path, value):
+    data = base_config(tmp_path)
+    data["memory"] = {"context_turns": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="memory.context_turns",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+@pytest.mark.parametrize("value", [0, -5, "4000"])
+def test_memory_max_skill_chars_is_validated(
+    tmp_path,
+    value,
+):
+    data = base_config(tmp_path)
+    data["memory"] = {"max_skill_chars": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="memory.max_skill_chars",
     ):
         ConfigLoader.load(write_yaml(tmp_path, data))

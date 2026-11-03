@@ -22,6 +22,44 @@ from core.filesystem import (  # noqa: E402
 )
 
 
+def pytest_addoption(
+    parser: pytest.Parser,
+) -> None:
+
+    parser.addoption(
+        "--live",
+        action="store_true",
+        default=False,
+        help=(
+            "esegue anche i test live che chiamano "
+            "servizi esterni reali"
+        ),
+    )
+
+
+def pytest_ignore_collect(
+    collection_path,
+    config: pytest.Config,
+):
+
+    if config.getoption("--live"):
+        return False
+
+    live_dir = (Path(__file__).parent / "live").resolve()
+
+    try:
+
+        Path(collection_path).resolve().relative_to(
+            live_dir
+        )
+
+    except ValueError:
+
+        return False
+
+    return True
+
+
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:
     """Radice scrivibile della sandbox."""

@@ -1,0 +1,56 @@
+# Policy di HAGAR
+#
+# Effetti: allow, ask, deny. Il default del soggetto è "deny".
+# Una regola può filtrare per:
+#   tools:      glob sul nome del tool ("filesystem.*")
+#   paths:      prefissi di percorso, relativi alla directory corrente
+#               della sandbox (es. "note", "note/2026")
+#   namespaces: prefissi di namespace (per i futuri tool di memoria)
+# Le regole più specifiche vincono; a parità vince l'effetto più
+# restrittivo (deny > ask > allow).
+#
+# Se questo file non è leggibile, il harness applica DENY a tutte le
+# policy e lo segnala in chat e nell'audit.
+
+version: 1
+
+subjects:
+  assistant:
+    default: deny
+
+    rules:
+      # Lettura e ispezione: sempre permesse.
+      - capabilities: [FILESYSTEM_READ]
+        effect: allow
+        tools: ["filesystem.*"]
+
+      # Scrittura e creazione: chiedono conferma in chat.
+      - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
+        effect: ask
+        tools: ["filesystem.*"]
+
+      # La cancellazione resta vietata per impostazione predefinita.
+      - capabilities: [FILESYSTEM_DELETE]
+        effect: deny
+        tools: ["filesystem.*"]
+
+      # Tool MCP: chiedono conferma.
+      - capabilities: [MCP_CALL]
+        effect: ask
+        tools: ["mcp.*"]
+
+      # Memoria: lettura libera, scrittura con conferma.
+      - capabilities: [MEMORY_READ]
+        effect: allow
+        tools: ["memory.*"]
+
+      - capabilities: [MEMORY_WRITE]
+        effect: ask
+        tools: ["memory.*"]
+
+      # Esempio di scope per percorso: permettere la scrittura solo
+      # sotto "note/" senza chiedere conferma.
+      # - capabilities: [FILESYSTEM_WRITE]
+      #   effect: allow
+      #   tools: ["filesystem.*"]
+      #   paths: ["note"]

@@ -1,104 +1,68 @@
-# Athena Changelog
-2026-10-26
+# Hagar — Changelog della suite di test
 
-## 1. Riparazione repository
-Corretti tre difetti che impedivano il caricamento corretto del sistema:
+Questo file riguarda solo `tests/`. La storia del progetto è in
+`Docs/it/CHANGELOG.md` e `Docs/en/CHANGELOG.md`.
 
-- payload mancanti in events.py;
-- metodi PromptManager fuori classe;
-- errori gravi in mcp_agent.py.
+## Stato
 
-## 2. Multi-LLM
-Implementato:
+- 476 test superati, 1 skip (symlink non disponibili senza Developer
+  Mode).
+- Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
+  che chiamano servizi reali (7 test).
+- Nessuna rete nella suite normale: Ollama, MCP e i provider remoti sono
+  simulati.
 
-- [[llm.instances]]
-- routing per purpose
-- PromptAgent multipli
-- LLMFactory per istanza
-- telemetria per istanza
-Compatibilità mantenuta con configurazioni esistenti.
+## Copertura
 
-## 3. Estrazione
-Introdotti:
+| area | file |
+|---|---|
+| configurazione | `test_config.py` |
+| packaging e CLI | `test_packaging.py`, `test_hagar.py` |
+| sandbox filesystem | `test_filesystem.py` |
+| tool filesystem | `test_filesystem_tools.py` |
+| registry e definizioni | `test_tool_definition.py`, `test_tool_registry.py` |
+| agent e audit | `test_agent.py`, `test_audit.py` |
+| calling nativo | `test_native_tools.py`, `test_agent_native.py` |
+| backend LLM | `test_ollama_client.py`, `test_llm_backends.py`, `test_factory.py` |
+| MCP | `test_mcp_client.py` |
+| permessi e policy | `test_permissions.py`, `test_policy.py`, `test_registry_permissions.py` |
+| memoria | `test_memory_store.py`, `test_memory_tools.py`, `test_agent_memory.py` |
+| vault | `test_vault.py` |
+| cablaggio harness | `test_hagar.py` |
+| live (opt-in) | `tests/live/` |
 
-- schema Extraction
-- validazione rigida
-- DeterministicExtractor
-- LLMExtractor
-- parsing JSON robusto
+## Storia
 
-## 4. Architettura:
+### 2026-11-03 — calling nativo
 
-extract → orchestrator → respond
+- `native_step()` per i quattro provider, con schema dei parametri e
+  messaggi canonici `tool`;
+- più chiamate per turno e fallback automatico al protocollo testuale;
+- `test_native_tools.py` (payload/parsing) e `test_agent_native.py`
+  (ciclo, limite, fallback);
+- 476 test, 1 skip; 7 test live.
 
-### 4.1 Orchestrator
+### 2026-11-03 — igiene
 
-Creato Orchestrator minimale.
+- packaging e CLI (`hagar`, `--config`, `--model`, `--no-memory`);
+- test live esclusi di default (`--live`);
+- MCP con SSE, notifica `initialized` e risultati normalizzati;
+- audit con catena di hash, rotazione e redazione;
+- base URL per tutti i provider, legacy rimosso;
+- 442 test, 1 skip.
 
-Supporta:
-- respond
-- abort
-- clarify
+### 2026-11-03 — memoria
 
-Predisposto per il ciclo di correzione A–F.
+- store episodico e semantico, tool `memory.*` e iniezione del contesto;
+- integrazione con l'Agent, policy per namespace e fallback senza vault;
+- 407 test, 1 skip.
 
-### 4.2 Archiver
-Corretta incompatibilità tra: **chat** e **respond**. Gli episodi vengono nuovamente salvati correttamente.
+### 2026-11-03 — permessi
 
-## 5. Testing
-Suite portata a:
+- evaluator, policy loader e integrazione nel registry;
+- conferma ASK rifiutata e accettata, audit delle decisioni.
 
-- 576 test verdi
+### 2026-11-03 — debug e suite
 
-## 6. Sessioni recenti
-
-### 6.1 - 2026-10-23
-
-Architettura a tre stadi
-Decisione approvata: estrazione → logica → generazione
-
-#### 6.1.1 Auto-verifica
-
-Creato il concetto di: Caso F: errore individuato internamente da Athena.
-
-#### 6.1.2 Ciclo di correzione
-
-Definita la tassonomia:
-
-A Chat
-B MCP
-C System
-D Logic
-E Altro
-F Auto-verifica
-
-#### 6.1.3 Multi-LLM
-Approvata l'architettura:
-
-- N PromptAgent
-- uno per istanza
-
-### 6.2 - 2026-10-19
-
-Persistenza: completata migrazione a ID interi progressivi.
-Identità: introdotto ATHENA_IDENTITY_ID = 1 protetto da modifiche e cancellazioni.
-Relazioni: Implementato supporto per:
-- source_type
-- target_type
-Cancellazione esplicita delle relazioni.
-
-### 6.3 - 2026-10-14
-Configurazione: migrazione completa verso **athena.toml** e **Athenaconf.py** come loader.
-Sessioni future: aggiungere una sezione per ogni giornata di lavoro.
-
-Formato consigliato:
-
-YYYY-MM-DD
-Implementato
-...
-Modificato
-...
-Decisioni prese
-...
-Test
-...
+- prima suite completa (config, sandbox, tool, agent, LLM, MCP, vault);
+- 259 test, runner `tools/run_tests.ps1` con shim per la sandbox Windows.

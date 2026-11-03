@@ -1,0 +1,1 @@
+"""Componenti core di Hagar."""

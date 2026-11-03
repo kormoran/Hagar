@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import requests
 
 from typing import Any
 
 from core.tool_definition import ToolDefinition, ToolParameter
 from core.tool_registry import ToolRegistry
+from core.permissions import Capability
 
 
 class MCPClient:
@@ -61,9 +63,11 @@ class MCPClient:
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
 
+        request_id = self._next_id()
+
         payload = {
             "jsonrpc": "2.0",
-            "id": self._next_id(),
+            "id": request_id,
             "method": method,
         }
 
@@ -73,17 +77,16 @@ class MCPClient:
         response = requests.post(
             self.endpoint,
             json=payload,
-            headers={
-                "Accept":
-                    "application/json, "
-                    "text/event-stream"
-            },
+            headers=self._headers(),
             timeout=self.timeout,
         )
 
         response.raise_for_status()
 
-        body = response.json()
+        body = self._decode(
+            response,
+            request_id,
+        )
 
         if not isinstance(body, dict):
 
@@ -120,6 +123,95 @@ class MCPClient:
 
         return result
 
+    @staticmethod
+    def _headers() -> dict[str, str]:
+
+        return {
+            "Accept":
+                "application/json, text/event-stream",
+        }
+
+    @staticmethod
+    def _decode(
+        response,
+        request_id: int,
+    ) -> Any:
+        """
+        Legge la risposta JSON-RPC, anche quando arriva in SSE.
+
+        Il transport MCP "streamable HTTP" può rispondere con
+        ``text/event-stream``: in quel caso si cerca l'evento con
+        l'id della richiesta.
+        """
+
+        content_type = ""
+
+        if getattr(response, "headers", None):
+
+            content_type = response.headers.get(
+                "Content-Type",
+                "",
+            )
+
+        if "text/event-stream" not in content_type:
+
+            return response.json()
+
+        for line in response.text.splitlines():
+
+            line = line.strip()
+
+            if not line.startswith("data:"):
+                continue
+
+            payload = line[len("data:"):].strip()
+
+            if not payload:
+                continue
+
+            try:
+
+                message = json.loads(payload)
+
+            except json.JSONDecodeError:
+
+                continue
+
+            if (
+                isinstance(message, dict)
+                and message.get("id") == request_id
+            ):
+
+                return message
+
+        raise RuntimeError(
+            "MCP: nessuna risposta JSON-RPC "
+            "nello stream SSE"
+        )
+
+    def _notify(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+    ) -> None:
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": method,
+        }
+
+        if params is not None:
+            payload["params"] = params
+
+        response = requests.post(
+            self.endpoint,
+            json=payload,
+            headers=self._headers(),
+            timeout=self.timeout,
+        )
+
+        response.raise_for_status()
+
     # ==================================================
     # MCP lifecycle
     # ==================================================
@@ -142,6 +234,12 @@ class MCPClient:
                 },
             },
         )
+
+        #
+        # Notifica richiesta dal protocollo prima di usare i tool.
+        #
+
+        self._notify("notifications/initialized")
 
         self._initialized = True
 
@@ -191,7 +289,7 @@ class MCPClient:
         self,
         tool_name: str,
         arguments: dict[str, Any],
-    ) -> Any:
+    ) -> str:
 
         self.ensure_initialized()
 
@@ -203,7 +301,62 @@ class MCPClient:
             },
         )
 
-        return result
+        return self._normalize_result(result)
+
+    @staticmethod
+    def _normalize_result(
+        result: dict[str, Any],
+    ) -> str:
+        """
+        Riduce il risultato MCP a testo, come i tool locali.
+
+        Preferisce i blocchi ``text``; usa ``structuredContent`` o
+        l'intero oggetto JSON come fallback. Un risultato con
+        ``isError`` diventa un errore del tool.
+        """
+
+        texts: list[str] = []
+
+        content = result.get("content")
+
+        if isinstance(content, list):
+
+            for item in content:
+
+                if (
+                    isinstance(item, dict)
+                    and item.get("type") == "text"
+                    and isinstance(item.get("text"), str)
+                ):
+
+                    texts.append(item["text"])
+
+        message = "\n".join(texts)
+
+        if result.get("isError"):
+
+            raise RuntimeError(
+                message or "MCP tool returned an error"
+            )
+
+        if message:
+            return message
+
+        structured = result.get(
+            "structuredContent"
+        )
+
+        if structured is not None:
+
+            return json.dumps(
+                structured,
+                ensure_ascii=False,
+            )
+
+        return json.dumps(
+            result,
+            ensure_ascii=False,
+        )
 
     # ==================================================
     # Tool conversion
@@ -276,6 +429,7 @@ class MCPClient:
             ),
             category="mcp",
             parameters=parameters,
+            capabilities=Capability.MCP_CALL,
             origin=f"mcp.{self.namespace}",
             handler=self._build_handler(
                 remote_name

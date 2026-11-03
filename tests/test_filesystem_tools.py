@@ -7,6 +7,7 @@ import json
 import pytest
 
 from core.filesystem_tools import FileSystemToolProvider
+from core.permissions import Capability
 from core.tool_registry import ToolRegistry
 
 EXPECTED_TOOLS = {
@@ -41,6 +42,23 @@ def test_tools_are_enabled_and_categorized(registry):
     ) == len(EXPECTED_TOOLS)
 
     assert registry.get("filesystem.read_file").origin == "local"
+
+
+def test_tool_capabilities(registry):
+    expected = {
+        "filesystem.read_file": Capability.FILESYSTEM_READ,
+        "filesystem.write_file": Capability.FILESYSTEM_WRITE,
+        "filesystem.create_file": Capability.FILESYSTEM_CREATE,
+        "filesystem.mkdir": Capability.FILESYSTEM_CREATE,
+        "filesystem.chdir": Capability.FILESYSTEM_READ,
+        "filesystem.delete_file": Capability.FILESYSTEM_DELETE,
+        "filesystem.free_space": Capability.FILESYSTEM_READ,
+        "filesystem.stat": Capability.FILESYSTEM_READ,
+    }
+
+    for name, capability in expected.items():
+
+        assert registry.get(name).capabilities == capability
 
 
 def test_read_write_roundtrip_via_registry(

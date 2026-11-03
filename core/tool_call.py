@@ -10,3 +10,5 @@ class ToolCall:
     tool: str | None
 
     arguments: dict[str, Any]
+
+    id: str | None = None

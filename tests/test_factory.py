@@ -48,6 +48,88 @@ def test_ollama_uses_configured_host():
     assert llm.host == "http://gpu-box:11434"
 
 
+def test_deepseek_uses_configured_base_url(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk")
+
+    llm = create_llm(
+        ModelConfig(
+            provider="deepseek",
+            name="deepseek-chat",
+            host="http://proxy:1234",
+        )
+    )
+
+    assert llm.base_url == "http://proxy:1234"
+
+
+def test_claude_uses_configured_base_url(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk")
+
+    llm = create_llm(
+        ModelConfig(
+            provider="claude",
+            name="claude-model",
+            host="http://proxy:1234",
+        )
+    )
+
+    assert llm.base_url == "http://proxy:1234"
+
+
+def test_gemini_uses_configured_base_url(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "sk")
+
+    llm = create_llm(
+        ModelConfig(
+            provider="gemini",
+            name="gemini-2.0-flash",
+            host="http://proxy:1234",
+        )
+    )
+
+    assert llm.base_url == "http://proxy:1234"
+
+
+def test_remote_providers_keep_default_base_url(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk")
+    monkeypatch.setenv("GEMINI_API_KEY", "sk")
+
+    deepseek = create_llm(
+        ModelConfig(provider="deepseek", name="deepseek-chat")
+    )
+    claude = create_llm(
+        ModelConfig(provider="claude", name="claude-model")
+    )
+    gemini = create_llm(
+        ModelConfig(provider="gemini", name="gemini-2.0-flash")
+    )
+
+    assert deepseek.base_url == DeepSeekClient.DEFAULT_BASE_URL
+    assert claude.base_url == ClaudeClient.DEFAULT_BASE_URL
+    assert gemini.base_url == GeminiClient.DEFAULT_BASE_URL
+
+
+def test_factory_enables_native_tools_by_default():
+    llm = create_llm(
+        ModelConfig(provider="ollama", name="m")
+    )
+
+    assert llm.native_tools is True
+
+
+def test_factory_can_disable_native_tools():
+    llm = create_llm(
+        ModelConfig(
+            provider="ollama",
+            name="m",
+            native_tools=False,
+        )
+    )
+
+    assert llm.native_tools is False
+
+
 def test_provider_is_case_insensitive():
     llm = create_llm(
         ModelConfig(provider="OLLAMA", name="m")

@@ -8,7 +8,9 @@ import yaml
 from .models import (
     AppConfig,
     AuditConfig,
+    MemoryConfig,
     ModelConfig,
+    PolicyConfig,
     VaultConfig,
     FileSystemConfig,
     PermissionConfig,
@@ -99,6 +101,33 @@ def _positive_int(
     return value
 
 
+def _non_negative_int(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+    default: int,
+) -> int:
+
+    value = section.get(key, default)
+
+    if isinstance(value, bool) or not isinstance(
+        value,
+        int,
+    ):
+
+        raise ConfigError(
+            f"{name} must be an integer"
+        )
+
+    if value < 0:
+
+        raise ConfigError(
+            f"{name} must be zero or greater"
+        )
+
+    return value
+
+
 class ConfigLoader:
 
     @staticmethod
@@ -155,6 +184,18 @@ class ConfigLoader:
                 / config.audit.path
             )
 
+        #
+        # Anche le policy sono relative al file di configurazione: il
+        # harness deve trovarle anche se avviato da un'altra directory.
+        #
+
+        if not config.policy.path.is_absolute():
+
+            config.policy.path = (
+                path.resolve().parent
+                / config.policy.path
+            )
+
         return config
 
     @staticmethod
@@ -174,6 +215,17 @@ class ConfigLoader:
             data.get("model"),
             "model",
         )
+
+        native_tools = model_data.get(
+            "native_tools",
+            True,
+        )
+
+        if not isinstance(native_tools, bool):
+
+            raise ConfigError(
+                "model.native_tools must be a boolean"
+            )
 
         model = ModelConfig(
             provider=_text(
@@ -202,6 +254,7 @@ class ConfigLoader:
                 "api_key_env",
                 "model.api_key_env",
             ),
+            native_tools=native_tools,
         )
 
         # -------------------------
@@ -345,6 +398,17 @@ class ConfigLoader:
                 "audit.path must be a non-empty string"
             )
 
+        audit_include_outputs = audit_data.get(
+            "include_outputs",
+            True,
+        )
+
+        if not isinstance(audit_include_outputs, bool):
+
+            raise ConfigError(
+                "audit.include_outputs must be a boolean"
+            )
+
         audit = AuditConfig(
             enabled=audit_enabled,
             path=Path(audit_path).expanduser(),
@@ -353,6 +417,106 @@ class ConfigLoader:
                 "max_field_chars",
                 "audit.max_field_chars",
                 2000,
+            ),
+            max_bytes=_non_negative_int(
+                audit_data,
+                "max_bytes",
+                "audit.max_bytes",
+                5_000_000,
+            ),
+            include_outputs=audit_include_outputs,
+        )
+
+        # -------------------------
+        # Policy (optional)
+        # -------------------------
+
+        policy_data = _mapping(
+            data.get("policy", {}),
+            "policy",
+        )
+
+        policy_path = policy_data.get(
+            "path",
+            "policy.yaml",
+        )
+
+        if not isinstance(policy_path, str) or not policy_path.strip():
+
+            raise ConfigError(
+                "policy.path must be a non-empty string"
+            )
+
+        policy_subject = policy_data.get(
+            "subject",
+            "assistant",
+        )
+
+        if not isinstance(policy_subject, str) or not policy_subject.strip():
+
+            raise ConfigError(
+                "policy.subject must be a non-empty string"
+            )
+
+        policy = PolicyConfig(
+            path=Path(policy_path).expanduser(),
+            subject=policy_subject,
+        )
+
+        # -------------------------
+        # Memory (optional)
+        # -------------------------
+
+        memory_data = _mapping(
+            data.get("memory", {}),
+            "memory",
+        )
+
+        memory_enabled = memory_data.get(
+            "enabled",
+            True,
+        )
+
+        if not isinstance(memory_enabled, bool):
+
+            raise ConfigError(
+                "memory.enabled must be a boolean"
+            )
+
+        memory_subdir = memory_data.get(
+            "vault_subdir",
+            "Hagar",
+        )
+
+        if not isinstance(memory_subdir, str) or not memory_subdir.strip():
+
+            raise ConfigError(
+                "memory.vault_subdir must be a "
+                "non-empty string"
+            )
+
+        subdir_path = Path(memory_subdir)
+
+        if subdir_path.is_absolute() or ".." in subdir_path.parts:
+
+            raise ConfigError(
+                "memory.vault_subdir must stay inside the vault"
+            )
+
+        memory = MemoryConfig(
+            enabled=memory_enabled,
+            vault_subdir=memory_subdir.strip(),
+            context_turns=_non_negative_int(
+                memory_data,
+                "context_turns",
+                "memory.context_turns",
+                10,
+            ),
+            max_skill_chars=_positive_int(
+                memory_data,
+                "max_skill_chars",
+                "memory.max_skill_chars",
+                4000,
             ),
         )
 
@@ -404,4 +568,6 @@ class ConfigLoader:
             rag=rag,
             mcp_servers=mcp_servers,
             audit=audit,
+            policy=policy,
+            memory=memory,
         )

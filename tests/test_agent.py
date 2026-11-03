@@ -427,3 +427,33 @@ def test_broken_audit_does_not_stop_the_agent(capsys):
 
     assert answer == "risposta finale"
     assert "Audit log error" in capsys.readouterr().err
+
+
+def test_tool_output_can_be_redacted():
+    class RedactingAudit(FakeAudit):
+        include_outputs = False
+
+    audit = RedactingAudit()
+
+    Agent(
+        FakeLLM(
+            calls=[
+                ToolCall(
+                    tool="demo.echo",
+                    arguments={"text": "x"},
+                )
+            ]
+        ),
+        make_registry()[0],
+        vault=None,
+        audit=audit,
+    ).ask("ciao")
+
+    result = [
+        entry
+        for entry in audit.entries
+        if entry["event"] == "tool.result"
+    ][0]
+
+    assert result["output"].startswith("<redacted: ")
+    assert "output del tool" not in result["output"]

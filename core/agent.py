@@ -10,6 +10,7 @@ from typing import Any
 
 from core.tool_call import ToolCall
 from core.tool_result import ToolResult
+from llm.base import NativeToolsUnavailable
 
 
 class Agent:
@@ -21,6 +22,7 @@ class Agent:
         vault,
         max_tool_calls: int = 10,
         audit: Any = None,
+        memory: Any = None,
     ) -> None:
 
         self.llm = llm
@@ -32,6 +34,7 @@ class Agent:
         )
 
         self.audit = audit
+        self.memory = memory
 
     # ==================================================
     # Public API
@@ -62,14 +65,87 @@ class Agent:
             }
         ]
 
-        executed = 0
+        if self.memory is not None:
+
+            context = self._memory_context(turn)
+
+            if context:
+
+                messages.insert(
+                    0,
+                    {
+                        "role": "system",
+                        "content": context,
+                    },
+                )
+
+        native = bool(
+            getattr(
+                self.llm,
+                "supports_native_tools",
+                False,
+            )
+            and getattr(
+                self.llm,
+                "native_tools",
+                False,
+            )
+        )
 
         self._record(
             "turn.start",
             turn=turn,
             question=question,
             max_tool_calls=self.max_tool_calls,
+            native=native,
         )
+
+        try:
+
+            if native:
+
+                try:
+
+                    return self._run_native(
+                        turn,
+                        messages,
+                        question,
+                    )
+
+                except NativeToolsUnavailable as exc:
+
+                    #
+                    # Fallback: il modello non accetta i tool nativi.
+                    # Si riparte dal protocollo testuale, ma solo se
+                    # non è già stato eseguito alcun tool.
+                    #
+
+                    self._record(
+                        "llm.native_fallback",
+                        turn=turn,
+                        error=str(exc),
+                    )
+
+                    self.llm.native_tools = False
+
+            return self._run(
+                turn,
+                messages,
+                question,
+            )
+
+        finally:
+
+            self._memory_end()
+
+    def _run(
+        self,
+        turn: str,
+        messages: list[dict[str, Any]],
+        question: str,
+    ) -> str:
+
+        executed = 0
 
         while True:
 
@@ -137,6 +213,12 @@ class Agent:
                     tool_calls=executed,
                 )
 
+                self._remember(
+                    turn,
+                    question,
+                    answer,
+                )
+
                 return answer
 
             #
@@ -168,40 +250,10 @@ class Agent:
 
             executed += 1
 
-            self._record(
-                "tool.call",
-                turn=turn,
-                index=executed,
-                tool=tool_call.tool,
-                arguments=tool_call.arguments,
-            )
-
-            started = time.perf_counter()
-
-            tool_result = (
-                self._execute_tool(
-                    tool_call
-                )
-            )
-
-            duration_ms = round(
-                (
-                    time.perf_counter()
-                    - started
-                )
-                * 1000,
-                2,
-            )
-
-            self._record(
-                "tool.result",
-                turn=turn,
-                index=executed,
-                tool=tool_call.tool,
-                success=tool_result.success,
-                duration_ms=duration_ms,
-                output=tool_result.output,
-                error=tool_result.error,
+            tool_result = self._execute_and_record(
+                turn,
+                executed,
+                tool_call,
             )
 
             #
@@ -258,9 +310,243 @@ class Agent:
                     }
                 )
 
+    def _run_native(
+        self,
+        turn: str,
+        messages: list[dict[str, Any]],
+        question: str,
+    ) -> str:
+        """
+        Ciclo agentico con tool calling nativo del provider.
+
+        Il modello può restituire più chiamate nello stesso turno; i
+        risultati tornano come messaggi ``tool`` con l'id della chiamata.
+        """
+
+        executed = 0
+
+        while True:
+
+            try:
+
+                reply = self.llm.native_step(
+                    messages,
+                    self.tools,
+                )
+
+            except NativeToolsUnavailable:
+
+                if executed == 0:
+                    raise
+
+                self._record(
+                    "turn.error",
+                    turn=turn,
+                    stage="native_step",
+                    error="native tools unavailable",
+                )
+
+                return (
+                    "Errore durante la richiesta "
+                    "al modello: native tools "
+                    "non più disponibili."
+                )
+
+            except Exception as exc:
+
+                self._record(
+                    "turn.error",
+                    turn=turn,
+                    stage="native_step",
+                    error=str(exc),
+                )
+
+                return (
+                    "Errore durante "
+                    "la richiesta al modello: "
+                    f"{exc}"
+                )
+
+            #
+            # Nessuna chiamata: è la risposta finale.
+            #
+
+            if not reply.tool_calls:
+
+                answer = reply.text
+
+                self._record(
+                    "turn.answer",
+                    turn=turn,
+                    answer=answer,
+                    tool_calls=executed,
+                )
+
+                self._remember(
+                    turn,
+                    question,
+                    answer,
+                )
+
+                return answer
+
+            #
+            # Protezione contro loop infiniti: il limite vale per
+            # l'intero turno, non per singola richiesta.
+            #
+
+            if (
+                executed + len(reply.tool_calls)
+                > self.max_tool_calls
+            ):
+
+                answer = (
+                    "Agent stopped after "
+                    f"{self.max_tool_calls} "
+                    "tool calls."
+                )
+
+                self._record(
+                    "turn.stop",
+                    turn=turn,
+                    tool_calls=executed,
+                    max_tool_calls=(
+                        self.max_tool_calls
+                    ),
+                )
+
+                return answer
+
+            for index, call in enumerate(
+                reply.tool_calls
+            ):
+
+                if not call.id:
+
+                    call.id = (
+                        f"call-{executed + index + 1}"
+                    )
+
+            assistant_message = (
+                reply.assistant_message
+                or self._assistant_message(
+                    reply.text,
+                    reply.tool_calls,
+                )
+            )
+
+            messages.append(assistant_message)
+
+            for call in reply.tool_calls:
+
+                executed += 1
+
+                tool_result = (
+                    self._execute_and_record(
+                        turn,
+                        executed,
+                        call,
+                    )
+                )
+
+                if tool_result.success:
+
+                    content = tool_result.output
+
+                else:
+
+                    content = (
+                        "Error: "
+                        f"{tool_result.error}"
+                    )
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "name": call.tool,
+                        "content": content,
+                    }
+                )
+
+    @staticmethod
+    def _assistant_message(
+        text: str,
+        calls: list[ToolCall],
+    ) -> dict[str, Any]:
+
+        return {
+            "role": "assistant",
+            "content": text,
+            "tool_calls": [
+                {
+                    "id": call.id,
+                    "name": call.tool,
+                    "arguments": call.arguments,
+                }
+                for call in calls
+            ],
+        }
+
     # ==================================================
     # Tool execution
     # ==================================================
+
+    def _execute_and_record(
+        self,
+        turn: str,
+        index: int,
+        tool_call: ToolCall,
+    ) -> ToolResult:
+
+        self._record(
+            "tool.call",
+            turn=turn,
+            index=index,
+            tool=tool_call.tool,
+            arguments=tool_call.arguments,
+        )
+
+        started = time.perf_counter()
+
+        tool_result = self._execute_tool(
+            tool_call
+        )
+
+        duration_ms = round(
+            (
+                time.perf_counter()
+                - started
+            )
+            * 1000,
+            2,
+        )
+
+        output = tool_result.output
+
+        if not getattr(
+            self.audit,
+            "include_outputs",
+            True,
+        ):
+
+            output = (
+                f"<redacted: "
+                f"{len(tool_result.output)} chars>"
+            )
+
+        self._record(
+            "tool.result",
+            turn=turn,
+            index=index,
+            tool=tool_call.tool,
+            success=tool_result.success,
+            duration_ms=duration_ms,
+            output=output,
+            error=tool_result.error,
+        )
+
+        return tool_result
 
     def _execute_tool(
         self,
@@ -289,6 +575,95 @@ class Agent:
                 tool_name=tool_call.tool,
                 success=False,
                 output="",
+                error=str(exc),
+            )
+
+    # ==================================================
+    # Memory
+    # ==================================================
+
+    def _memory_context(
+        self,
+        turn: str,
+    ) -> str | None:
+
+        try:
+
+            self.memory.begin_turn(turn)
+
+            context, count = (
+                self.memory.context_text()
+            )
+
+        except Exception as exc:
+
+            self._record(
+                "memory.failed",
+                turn=turn,
+                stage="context",
+                error=str(exc),
+            )
+
+            return None
+
+        if context:
+
+            self._record(
+                "memory.context",
+                turn=turn,
+                turns=count,
+            )
+
+        return context
+
+    def _remember(
+        self,
+        turn: str,
+        question: str,
+        answer: str,
+    ) -> None:
+
+        if self.memory is None:
+            return
+
+        try:
+
+            self.memory.append_turn(
+                turn,
+                question,
+                answer,
+            )
+
+        except Exception as exc:
+
+            self._record(
+                "memory.failed",
+                turn=turn,
+                stage="append",
+                error=str(exc),
+            )
+
+        else:
+
+            self._record(
+                "memory.turn",
+                turn=turn,
+            )
+
+    def _memory_end(self) -> None:
+
+        if self.memory is None:
+            return
+
+        try:
+
+            self.memory.end_turn()
+
+        except Exception as exc:
+
+            self._record(
+                "memory.failed",
+                stage="end",
                 error=str(exc),
             )
 

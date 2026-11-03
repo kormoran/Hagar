@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import os
 import sys
 
 from dataclasses import dataclass
@@ -16,13 +18,104 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from core.models import AppConfig
+from core.permissions import (
+    ConfirmationProvider,
+    ConsoleConfirmation,
+    DenyAllConfirmation,
+    PermissionEvaluator,
+    PolicyError,
+    PolicySet,
+    capabilities_from_permissions,
+    load_policies,
+)
 from core.tool_registry import ToolRegistry
 from llm.base import LLMClient
 from llm.factory import create_llm
 from llm.mcp_client import MCPClient
+from memory.store import MemoryError, MemoryStore
+from memory.tools import MemoryToolProvider
 from memory.vault import Vault
 
-CONFIG_PATH = Path(__file__).with_name("hagar.yaml")
+__version__ = "0.2.0"
+
+DEFAULT_CONFIG_NAME = "hagar.yaml"
+
+
+def resolve_config(
+    explicit: str | None = None,
+) -> Path:
+    """
+    Ordine di ricerca della configurazione:
+
+        1. --config
+        2. variabile HAGAR_CONFIG
+        3. ./hagar.yaml nella directory corrente
+    """
+
+    if explicit:
+        return Path(explicit).expanduser()
+
+    from_env = os.environ.get(
+        "HAGAR_CONFIG",
+        "",
+    ).strip()
+
+    if from_env:
+        return Path(from_env).expanduser()
+
+    return Path.cwd() / DEFAULT_CONFIG_NAME
+
+
+def build_parser() -> argparse.ArgumentParser:
+
+    parser = argparse.ArgumentParser(
+        prog="hagar",
+        description=(
+            "Harness agentico generale "
+            "per AI resilienti."
+        ),
+    )
+
+    parser.add_argument(
+        "--config",
+        metavar="PATH",
+        help=(
+            "file di configurazione "
+            "(default: ./hagar.yaml)"
+        ),
+    )
+
+    parser.add_argument(
+        "--model",
+        metavar="NAME",
+        help="sovrascrive model.name",
+    )
+
+    parser.add_argument(
+        "--no-memory",
+        action="store_true",
+        help=(
+            "disattiva la memoria "
+            "per questa sessione"
+        ),
+    )
+
+    parser.add_argument(
+        "--no-native-tools",
+        action="store_true",
+        help=(
+            "usa il protocollo JSON testuale "
+            "invece del calling nativo"
+        ),
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"hagar {__version__}",
+    )
+
+    return parser
 
 
 @dataclass(slots=True)
@@ -38,11 +131,16 @@ class Harness:
     vault: Vault
     agent: Agent
     audit: AuditLog
+    policy: PolicySet
+    policy_error: str | None = None
+    memory: MemoryStore | None = None
+    memory_error: str | None = None
 
 
 def build_harness(
     config: AppConfig,
     mcp_client_factory: Callable[..., Any] = MCPClient,
+    confirmation: ConfirmationProvider | None = None,
 ) -> Harness:
     """
     Costruisce il harness a partire dalla configurazione.
@@ -63,7 +161,123 @@ def build_harness(
         path=config.audit.path,
         max_field_chars=config.audit.max_field_chars,
         enabled=config.audit.enabled,
+        max_bytes=config.audit.max_bytes,
+        include_outputs=config.audit.include_outputs,
     )
+
+    # ==========================================
+    # Policy
+    #
+    # Le policy si leggono prima di costruire qualunque LLM. Un errore
+    # non ferma il harness: si degrada a DENY totale (fail closed) e si
+    # registra il motivo.
+    # ==========================================
+
+    policy_error: str | None = None
+
+    try:
+
+        policies = load_policies(
+            config.policy.path
+        )
+
+        audit.record(
+            "policy.loaded",
+            path=str(config.policy.path),
+            subjects=sorted(policies.subjects),
+        )
+
+    except PolicyError as exc:
+
+        policies = PolicySet.deny_all()
+        policy_error = str(exc)
+
+        audit.record(
+            "policy.failed",
+            path=str(config.policy.path),
+            error=policy_error,
+            fallback="deny-all",
+        )
+
+    if (
+        policy_error is None
+        and config.policy.subject not in policies.subjects
+    ):
+
+        policy_error = (
+            f"subject '{config.policy.subject}' "
+            f"not found in {config.policy.path}"
+        )
+
+        audit.record(
+            "policy.subject_missing",
+            path=str(config.policy.path),
+            subject=config.policy.subject,
+        )
+
+    subject = policies.get(
+        config.policy.subject
+    )
+
+    evaluator = PermissionEvaluator(
+        ceiling=capabilities_from_permissions(
+            read=config.permissions.read,
+            write=config.permissions.write,
+            shell=config.permissions.shell,
+        )
+    )
+
+    # ==========================================
+    # Vault e memoria
+    #
+    # Prima del registry: i tool di memoria vengono registrati insieme a
+    # quelli del filesystem. Un vault assente o non scrivibile non ferma
+    # il harness, disattiva solo la memoria.
+    # ==========================================
+
+    vault = Vault(config.vault.path)
+
+    memory: MemoryStore | None = None
+    memory_error: str | None = None
+
+    if config.memory.enabled:
+
+        try:
+
+            if not vault.exists():
+
+                raise MemoryError(
+                    f"Vault not found: {config.vault.path}"
+                )
+
+            memory = MemoryStore(
+                vault,
+                session_id=audit.session_id,
+                subdir=config.memory.vault_subdir,
+                context_turns=config.memory.context_turns,
+                max_skill_chars=config.memory.max_skill_chars,
+                model=config.model.name,
+            )
+
+            memory.ensure()
+
+            audit.record(
+                "memory.enabled",
+                root=str(config.vault.path),
+                subdir=config.memory.vault_subdir,
+                context_turns=config.memory.context_turns,
+            )
+
+        except Exception as exc:
+
+            memory = None
+            memory_error = str(exc)
+
+            audit.record(
+                "memory.disabled",
+                root=str(config.vault.path),
+                error=memory_error,
+            )
 
     # ==========================================
     # Filesystem sandbox
@@ -92,7 +306,15 @@ def build_harness(
     # Registry
     # ==========================================
 
-    registry = ToolRegistry()
+    registry = ToolRegistry(
+        evaluator=evaluator,
+        subject=subject,
+        confirmation=(
+            confirmation
+            or DenyAllConfirmation()
+        ),
+        audit=audit,
+    )
 
     # ==========================================
     # Local filesystem tools
@@ -103,6 +325,18 @@ def build_harness(
     )
 
     fs_provider.register_tools(registry)
+
+    # ==========================================
+    # Memory tools
+    # ==========================================
+
+    if memory is not None:
+
+        memory_provider = MemoryToolProvider(
+            memory
+        )
+
+        memory_provider.register_tools(registry)
 
     # ==========================================
     # MCP servers
@@ -186,14 +420,6 @@ def build_harness(
         raise
 
     # ==========================================
-    # Vault
-    # ==========================================
-
-    vault = Vault(
-        config.vault.path
-    )
-
-    # ==========================================
     # Agent
     # ==========================================
 
@@ -202,6 +428,7 @@ def build_harness(
         tool_registry=registry,
         vault=vault,
         audit=audit,
+        memory=memory,
     )
 
     # ==========================================
@@ -228,6 +455,17 @@ def build_harness(
         mcp_servers=mcp_status,
         vault=str(config.vault.path),
         audit_path=str(config.audit.path),
+        policy={
+            "path": str(config.policy.path),
+            "subject": config.policy.subject,
+            "error": policy_error,
+        },
+        memory={
+            "enabled": memory is not None,
+            "root": str(config.vault.path),
+            "subdir": config.memory.vault_subdir,
+            "error": memory_error,
+        },
     )
 
     return Harness(
@@ -238,16 +476,38 @@ def build_harness(
         vault=vault,
         agent=agent,
         audit=audit,
+        policy=policies,
+        policy_error=policy_error,
+        memory=memory,
+        memory_error=memory_error,
     )
 
 
-def main() -> None:
+def main(
+    argv: list[str] | None = None,
+) -> None:
+
+    args = build_parser().parse_args(argv)
+
+    config_path = resolve_config(args.config)
 
     try:
 
-        config = ConfigLoader.load(CONFIG_PATH)
+        config = ConfigLoader.load(config_path)
 
-        harness = build_harness(config)
+        if args.model:
+            config.model.name = args.model
+
+        if args.no_memory:
+            config.memory.enabled = False
+
+        if args.no_native_tools:
+            config.model.native_tools = False
+
+        harness = build_harness(
+            config,
+            confirmation=ConsoleConfirmation(),
+        )
 
     except ConfigError as exc:
 
@@ -280,6 +540,42 @@ def main() -> None:
     else:
 
         print("Audit log: disabled")
+
+    if harness.policy_error:
+
+        print("Policy: DENY ALL")
+        print(
+            "ATTENZIONE: policy non valida:",
+            harness.policy_error,
+        )
+        print(
+            "Nessun tool verra' eseguito "
+            "finche' le policy non sono valide."
+        )
+
+    else:
+
+        print(
+            "Policy:",
+            config.policy.path,
+            f"(subject: {config.policy.subject})",
+        )
+
+    if harness.memory is not None:
+
+        print(
+            "Memory:",
+            config.vault.path,
+            f"(contesto {config.memory.context_turns} turni)",
+        )
+
+    elif config.memory.enabled and harness.memory_error:
+
+        print("Memory: disabled —", harness.memory_error)
+
+    else:
+
+        print("Memory: disabled")
 
     print()
     print("Available tools:")

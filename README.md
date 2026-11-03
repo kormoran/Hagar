@@ -50,17 +50,52 @@ All operations must take place exclusively through tools that are registered and
 
 # 3. Development
 
+## 3.0 Install and CLI
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -e .
+```
+
+`pip install -e .` declares the `core`, `llm` and `memory` packages and
+installs the `hagar` command:
+
+```powershell
+hagar --config hagar.yaml
+hagar --model qwen3:8b
+hagar --no-memory
+hagar --no-native-tools
+hagar --version
+```
+
+The configuration is searched as `--config`, then the `HAGAR_CONFIG`
+environment variable, then `./hagar.yaml`. `python -m hagar` also works
+from a source checkout.
+
 ## 3.1 Test suite
 
 The suite runs offline and covers configuration, the filesystem sandbox,
 the tool registry, the agent loop, the audit log, every LLM backend,
-Ollama response parsing, the MCP client, the vault and the harness wiring.
+Ollama response parsing, the MCP client, memory, the vault and the
+harness wiring.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
 .\tools\run_tests.ps1
 ```
+
+Live tests call real services and are excluded by default:
+
+```powershell
+.\tools\run_tests.ps1 --live
+```
+
+They need a running Ollama server; the remote-provider checks run only
+when the corresponding API key is set (`DEEPSEEK_API_KEY`,
+`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). Model overrides:
+`HAGAR_LIVE_OLLAMA_MODEL`, `HAGAR_LIVE_DEEPSEEK_MODEL`,
+`HAGAR_LIVE_CLAUDE_MODEL`, `HAGAR_LIVE_GEMINI_MODEL`.
 
 `tools/run_tests.ps1` puts `tools/pytest_shim` on `PYTHONPATH`. The shim is
 needed when the tests run under a restricted token (for example the DSH
@@ -83,9 +118,14 @@ tools/              development helpers (test runner, sandbox shim, model benchm
 
 ## 3.3 LLM backends
 
-`model.provider` selects the backend. The agent loop, tool selection and
-JSON parsing are shared (`llm/base.py`), so switching provider does not
-change the harness.
+`model.provider` selects the backend. Tool schemas, message conversion and
+the native/fallback paths are shared in `llm/base.py`, so switching
+provider does not change the harness.
+
+Native tool calling is the default for all four providers. If a model
+rejects it (HTTP 400/404/422), the agent falls back to the text JSON
+protocol for the session; set `model.native_tools: false` or pass
+`--no-native-tools` to force the text protocol.
 
 | provider   | transport                    | API key                |
 |------------|------------------------------|------------------------|
@@ -96,8 +136,9 @@ change the harness.
 
 Keys are read from the environment, never from the YAML file. If the
 default variable name does not suit you, set `model.api_key_env`.
-`model.host` is only used by Ollama (default `http://localhost:11434`) and
-`model.max_tokens` only by Claude (default 1024).
+`model.host` is the base URL of any provider (with a per-provider
+default; Ollama uses `http://localhost:11434`) and `model.max_tokens` only
+applies to Claude (default 1024).
 
 ```yaml
 model:
@@ -152,12 +193,65 @@ repairs, elapsed time and the final answer.
 It needs a running Ollama server and already pulled models; the scratch
 area is `.bench/` (gitignored).
 
+## 3.6 Permissions and `policy.yaml`
+
+Every tool call is authorized before execution. A tool declares its
+**capabilities** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
+`FILESYSTEM_CREATE`, `FILESYSTEM_DELETE`, `MEMORY_READ`,
+`MEMORY_WRITE`, `MCP_CALL`, ...); a **subject** (the agent) declares
+rules mapping capabilities to `allow`, `ask` or `deny`, optionally
+scoped by tool name, path prefix or namespace.
+
+```yaml
+version: 1
+subjects:
+  assistant:
+    default: deny
+    rules:
+      - capabilities: [FILESYSTEM_READ]
+        effect: allow
+        tools: ["filesystem.*"]
+      - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
+        effect: ask
+        paths: ["note"]
+```
+
+`ask` prompts on the console with `lo faccio? (y/N)` (default N); the
+`ConfirmationProvider` protocol leaves room for a GUI modal dialog. The
+policy file is read before the LLM is created: if it is missing or
+invalid, every policy becomes `DENY`, the failure is written to the
+audit log (`policy.failed`) and shown in chat, and the harness keeps
+running.
+
+## 3.7 Memory
+
+The harness keeps an episodic memory of the conversation in the
+Obsidian vault (`<vault>/Hagar/chat/`) and injects the last
+`memory.context_turns` turns into every prompt. The model can save
+durable memories with `memory.create_skill` (stored as `candidate` with
+provenance), list them with `memory.list_skills`, and search past turns
+with `memory.get_context`.
+
+```yaml
+memory:
+  enabled: true
+  vault_subdir: Hagar
+  context_turns: 10
+  max_skill_chars: 4000
+```
+
+If the vault is missing or unwritable, memory is disabled with a warning
+and the harness keeps running. Memory writes go through the policy
+engine (`MEMORY_READ`/`MEMORY_WRITE`; by default writes ask for
+confirmation). See ARCHITECTURE §3.11 for the vault layout.
+
 ---
 
 # 4. Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — how the harness works today:
-  components, security model, known limits.
-- [ROADMAP.md](ROADMAP.md) — planned work, decisions already taken and
-  open questions.
-- [CHANGELOG.md](CHANGELOG.md) — version history.
+- [ARCHITECTURE.md](Docs/en/ARCHITECTURE.md) — how the harness works
+  today: components, security model, known limits.
+- [ROADMAP.md](Docs/en/ROADMAP.md) — planned work, decisions already
+  taken and open questions.
+- [CHANGELOG.md](Docs/en/CHANGELOG.md) — version history.
+- Italian copies live in `Docs/it/`.

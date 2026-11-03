@@ -7,6 +7,72 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## Calling nativo (v1)
+
+- `LLMClient.native_step()` e `LLMReply`: calling nativo per Ollama,
+  DeepSeek, Claude e Gemini; schema dei parametri da `ToolDefinition`.
+- Messaggi canonici `assistant` con `tool_calls` e `tool` con
+  `tool_call_id`; ogni backend li traduce (`tool_calls`, `tool_use`/
+  `tool_result`, `functionCall`/`functionResponse`).
+- L'Agent esegue più chiamate per turno, nel limite `max_tool_calls`.
+- Fallback automatico al protocollo testuale su HTTP 400/404/422 al primo
+  passo, con evento `llm.native_fallback`; `model.native_tools: false` e
+  `--no-native-tools` lo forzano.
+- Audit: `turn.start` con `native`, `llm.tool_choice` con `mode=native`.
+- 476 test superati, 1 skip; 7 test live con `--live`.
+
+## Igiene (v1)
+
+- **Packaging**: `pyproject.toml` completo (metadati, dipendenze,
+  setuptools), entry point `hagar`, versione unica (`hagar.__version__`);
+  `pip install -e .` verificato.
+- **CLI**: `--config`, `--model`, `--no-memory`, `--version`;
+  configurazione cercata in `--config` → `HAGAR_CONFIG` →
+  `./hagar.yaml`.
+- **Test live**: marker `live`, esclusi dalla suite normale, `--live`
+  per Ollama e provider remoti (skippati senza chiave).
+- **MCP**: risposte `text/event-stream`, notifica
+  `notifications/initialized`, normalizzazione dei risultati a testo.
+- **Audit**: catena di hash (`prev`/`hash`, `verify_chain`), rotazione a
+  `max_bytes`, redazione dell'output dei tool con `include_outputs`.
+- **URL base**: `model.host` usato da tutti i provider.
+- **Legacy**: rimossi `tools/filesystem.py` e `llm/tool_result.py`.
+- 442 test superati, 1 skip; 6 test live con `--live`.
+
+## Memoria (v1)
+
+- `memory/store.py`: memoria episodica (una nota per sessione in
+  `<vault>/Hagar/chat/`) e semantica
+  (`<vault>/Hagar/skills/<slug>.md`);
+- iniezione automatica degli ultimi `memory.context_turns` turni nel
+  prompt, con troncamento; un errore di memoria non fa fallire il turno;
+- tool `memory.create_skill` (provenance e stato `candidate`),
+  `memory.list_skills`, `memory.get_context` (ricerca per parola chiave);
+- capability `MEMORY_READ`/`MEMORY_WRITE`, namespace `chat`/`skills` per
+  le policy;
+- configurazione `memory.*` e disattivazione con avviso se il vault
+  manca;
+- eventi audit `memory.enabled`, `memory.disabled`, `memory.context`,
+  `memory.turn`, `memory.failed`;
+
+## Permessi (PermissionEvaluator v1)
+
+- nuovo `core/permissions.py`: `Capability` (IntFlag), `Effect`
+  (`ALLOW` / `ASK` / `DENY`, con deny-overrides), `Rule` con scope per
+  tool, path e namespace, `Subject`, `Resource`, `Decision` ed
+  evaluator puro;
+- `policy.yaml` separato, letto prima di costruire il LLM: in caso di
+  errore tutte le policy diventano `DENY`, con evento `policy.failed` e
+  warning in chat;
+- tetto di sistema derivato da `permissions.read/write/shell`;
+- `ASK` con conferma da console (`lo faccio? (y/N)`, default N) e
+  `ConfirmationProvider` per le future GUI;
+- `ToolRegistry.execute` applica la policy e registra
+  `permission.decision` e `permission.confirmation`;
+- `ToolDefinition.capabilities` per tutti i tool (filesystem e MCP);
+- `requires_confirmation` ora applicato come pavimento di ASK;
+- rimosso lo stub incompleto `PolicyRule` da `core/models.py`;
+
 ## Documentazione
 
 - `PROJECT_STATE.md` diviso in `ARCHITECTURE.md` (com'è il sistema),

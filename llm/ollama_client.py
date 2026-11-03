@@ -6,13 +6,20 @@ import requests
 
 from typing import Any
 
-from llm.base import LLMClient
+from llm.base import (
+    LLMClient,
+    LLMReply,
+    NativeToolsUnavailable,
+)
+from core.tool_call import ToolCall
 
 
 class OllamaClient(LLMClient):
     """Backend Ollama (API nativa /api/chat e /api/generate)."""
 
     provider = "ollama"
+
+    supports_native_tools = True
 
     DEFAULT_HOST = "http://localhost:11434"
 
@@ -100,3 +107,162 @@ class OllamaClient(LLMClient):
         )
 
         return response["message"]["content"]
+
+    # ==================================================
+    # Native tool calling
+    # ==================================================
+
+    def _native_request(
+        self,
+        messages: list[dict[str, Any]],
+        registry,
+    ) -> LLMReply:
+
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": self._parameters_schema(
+                        tool
+                    ),
+                },
+            }
+            for tool in registry.list_definitions()
+        ]
+
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": self._to_native_messages(
+                messages
+            ),
+            "stream": False,
+        }
+
+        if tools:
+            payload["tools"] = tools
+
+        response = requests.post(
+            f"{self.host}/api/chat",
+            json=payload,
+            timeout=self.timeout,
+        )
+
+        if response.status_code in {400, 404, 422}:
+
+            raise NativeToolsUnavailable(
+                "Ollama rejected native tools "
+                f"(HTTP {response.status_code})"
+            )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        message = data.get("message", {})
+
+        text = message.get("content") or ""
+
+        calls: list[ToolCall] = []
+
+        for index, raw in enumerate(
+            message.get("tool_calls") or []
+        ):
+
+            function = raw.get("function", {})
+
+            name = function.get("name")
+
+            if not name:
+                continue
+
+            calls.append(
+                ToolCall(
+                    tool=name,
+                    arguments=self._parse_arguments(
+                        function.get("arguments")
+                    ),
+                    id=(
+                        raw.get("id")
+                        or f"ollama-{index}"
+                    ),
+                )
+            )
+
+        return LLMReply(
+            text=text,
+            tool_calls=calls,
+            assistant_message=(
+                self._assistant_message(text, calls)
+            ),
+        )
+
+    @staticmethod
+    def _to_native_messages(
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+
+        converted: list[dict[str, Any]] = []
+
+        for message in messages:
+
+            role = message.get("role")
+
+            if role == "tool":
+
+                converted.append(
+                    {
+                        "role": "tool",
+                        "content": message.get(
+                            "content",
+                            "",
+                        ),
+                        "tool_name": message.get(
+                            "name",
+                            "",
+                        ),
+                    }
+                )
+
+            elif (
+                role == "assistant"
+                and message.get("tool_calls")
+            ):
+
+                converted.append(
+                    {
+                        "role": "assistant",
+                        "content": message.get(
+                            "content",
+                            "",
+                        ),
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": call["name"],
+                                    "arguments": (
+                                        call["arguments"]
+                                    ),
+                                }
+                            }
+                            for call in message[
+                                "tool_calls"
+                            ]
+                        ],
+                    }
+                )
+
+            else:
+
+                converted.append(
+                    {
+                        "role": role,
+                        "content": message.get(
+                            "content",
+                            "",
+                        ),
+                    }
+                )
+
+        return converted

@@ -2,17 +2,30 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 import requests
 
+from core.permissions import Capability
 from core.tool_registry import ToolRegistry
 from llm.mcp_client import MCPClient
 
 
 class FakeResponse:
-    def __init__(self, payload, status_code=200):
+    def __init__(
+        self,
+        payload,
+        status_code=200,
+        headers=None,
+        text="",
+    ):
         self.payload = payload
         self.status_code = status_code
+        self.headers = headers or {
+            "Content-Type": "application/json",
+        }
+        self.text = text
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -52,7 +65,12 @@ class FakeHTTP:
                 "richiesta HTTP inattesa"
             )
 
-        return FakeResponse(self.responses.pop(0))
+        item = self.responses.pop(0)
+
+        if isinstance(item, FakeResponse):
+            return item
+
+        return FakeResponse(item)
 
 
 @pytest.fixture
@@ -71,6 +89,16 @@ def install(
     http = FakeHTTP(*responses)
     monkeypatch.setattr(requests, "post", http)
     return http
+
+
+def initialized(*responses):
+    """Risposte per initialize + notifica, seguite da ``responses``."""
+
+    return (
+        {"result": {}},
+        {},
+        *responses,
+    )
 
 
 # =====================================================
@@ -99,6 +127,7 @@ def test_initialize(client, monkeypatch):
     http = install(
         monkeypatch,
         {"result": {"protocolVersion": "2025-03-26"}},
+        {},
     )
 
     result = client.initialize()
@@ -114,38 +143,105 @@ def test_initialize(client, monkeypatch):
     assert payload["params"]["protocolVersion"] == "2025-03-26"
 
 
-def test_ensure_initialized_runs_once(client, monkeypatch):
+def test_initialize_sends_initialized_notification(
+    client,
+    monkeypatch,
+):
     http = install(
         monkeypatch,
         {"result": {}},
-        {"result": {"tools": []}},
+        {},
+    )
+
+    client.initialize()
+
+    notification = http.calls[1]["payload"]
+
+    assert notification["method"] == (
+        "notifications/initialized"
+    )
+    assert notification["jsonrpc"] == "2.0"
+    assert "id" not in notification
+
+
+def test_ensure_initialized_runs_once(client, monkeypatch):
+    http = install(
+        monkeypatch,
+        *initialized({"result": {"tools": []}}),
     )
 
     client.ensure_initialized()
     client.ensure_initialized()
 
-    assert len(http.calls) == 1
+    assert len(http.calls) == 2
 
     client.list_tools()
 
-    assert len(http.calls) == 2
+    assert len(http.calls) == 3
 
 
 def test_request_ids_increment(client, monkeypatch):
     http = install(
         monkeypatch,
-        {"result": {}},
-        {"result": {"tools": []}},
-        {"result": {"tools": []}},
+        *initialized(
+            {"result": {"tools": []}},
+            {"result": {"tools": []}},
+        ),
     )
 
     client.list_tools()
     client.list_tools()
 
     assert [
-        call["payload"]["id"]
+        call["payload"].get("id")
         for call in http.calls
-    ] == [1, 2, 3]
+    ] == [1, None, 2, 3]
+
+
+def test_sse_response_is_decoded(client, monkeypatch):
+    event = (
+        "event: message\n"
+        'data: {"jsonrpc": "2.0", "id": 1, '
+        '"result": {"protocolVersion": "sse"}}\n\n'
+    )
+
+    install(
+        monkeypatch,
+        FakeResponse(
+            {},
+            headers={
+                "Content-Type": "text/event-stream",
+            },
+            text=event,
+        ),
+        {},
+    )
+
+    assert client.initialize()["protocolVersion"] == "sse"
+
+
+def test_sse_without_matching_id_raises(
+    client,
+    monkeypatch,
+):
+    event = (
+        'data: {"jsonrpc": "2.0", "id": 99, '
+        '"result": {}}\n\n'
+    )
+
+    install(
+        monkeypatch,
+        FakeResponse(
+            {},
+            headers={
+                "Content-Type": "text/event-stream",
+            },
+            text=event,
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="SSE"):
+        client.initialize()
 
 
 # =====================================================
@@ -158,8 +254,7 @@ def test_list_tools(client, monkeypatch):
 
     install(
         monkeypatch,
-        {"result": {}},
-        {"result": {"tools": tools}},
+        *initialized({"result": {"tools": tools}}),
     )
 
     assert client.list_tools() == tools
@@ -171,8 +266,9 @@ def test_list_tools_rejects_invalid_payload(
 ):
     install(
         monkeypatch,
-        {"result": {}},
-        {"result": {"tools": {"name": "ping"}}},
+        *initialized(
+            {"result": {"tools": {"name": "ping"}}}
+        ),
     )
 
     with pytest.raises(RuntimeError, match="must be a list"):
@@ -182,8 +278,15 @@ def test_list_tools_rejects_invalid_payload(
 def test_call_tool(client, monkeypatch):
     http = install(
         monkeypatch,
-        {"result": {}},
-        {"result": {"content": "pong"}},
+        *initialized(
+            {
+                "result": {
+                    "content": [
+                        {"type": "text", "text": "pong"}
+                    ]
+                }
+            }
+        ),
     )
 
     result = client.call_tool(
@@ -191,7 +294,7 @@ def test_call_tool(client, monkeypatch):
         {"message": "ciao"},
     )
 
-    assert result == {"content": "pong"}
+    assert result == "pong"
 
     payload = http.calls[-1]["payload"]
 
@@ -200,6 +303,81 @@ def test_call_tool(client, monkeypatch):
         "name": "ping",
         "arguments": {"message": "ciao"},
     }
+
+
+def test_text_blocks_are_joined(client, monkeypatch):
+    install(
+        monkeypatch,
+        *initialized(
+            {
+                "result": {
+                    "content": [
+                        {"type": "text", "text": "A"},
+                        {"type": "image", "data": "x"},
+                        {"type": "text", "text": "B"},
+                    ]
+                }
+            }
+        ),
+    )
+
+    assert client.call_tool("ping", {}) == "A\nB"
+
+
+def test_error_result_is_raised(client, monkeypatch):
+    install(
+        monkeypatch,
+        *initialized(
+            {
+                "result": {
+                    "isError": True,
+                    "content": [
+                        {"type": "text", "text": "boom"}
+                    ],
+                }
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        client.call_tool("ping", {})
+
+
+def test_structured_content_is_json(client, monkeypatch):
+    install(
+        monkeypatch,
+        *initialized(
+            {
+                "result": {
+                    "structuredContent": {"a": 1}
+                }
+            }
+        ),
+    )
+
+    payload = client.call_tool("ping", {})
+
+    assert json.loads(payload) == {"a": 1}
+
+
+def test_result_without_text_is_json(client, monkeypatch):
+    install(
+        monkeypatch,
+        *initialized(
+            {
+                "result": {
+                    "content": [{"type": "image"}],
+                    "meta": {"n": 1},
+                }
+            }
+        ),
+    )
+
+    payload = client.call_tool("ping", {})
+
+    decoded = json.loads(payload)
+
+    assert decoded["meta"] == {"n": 1}
 
 
 def test_jsonrpc_error_is_raised(client, monkeypatch):
@@ -239,12 +417,9 @@ def test_result_must_be_object(client, monkeypatch):
 
 
 def test_http_error_is_raised(client, monkeypatch):
-    http = FakeHTTP()
-    http.responses.append({"result": {}})
     http_error = FakeResponse({}, status_code=500)
 
     def fake_post(url, json=None, headers=None, timeout=None):
-        http.calls.append({"payload": json})
         return http_error
 
     monkeypatch.setattr(requests, "post", fake_post)
@@ -254,7 +429,11 @@ def test_http_error_is_raised(client, monkeypatch):
 
 
 def test_headers_and_timeout(client, monkeypatch):
-    http = install(monkeypatch, {"result": {}})
+    http = install(
+        monkeypatch,
+        {"result": {}},
+        {},
+    )
 
     client.initialize()
 
@@ -292,6 +471,7 @@ def test_convert_tool(client):
     assert tool.name == "mcp.gh.create_issue"
     assert tool.category == "mcp"
     assert tool.origin == "mcp.gh"
+    assert tool.capabilities == Capability.MCP_CALL
     assert tool.description == "Crea una issue."
 
     assert [p.name for p in tool.parameters] == [
@@ -315,13 +495,20 @@ def test_convert_tool_without_schema(client):
 def test_convert_tool_handler_calls_remote(client, monkeypatch):
     http = install(
         monkeypatch,
-        {"result": {}},
-        {"result": {"content": "ok"}},
+        *initialized(
+            {
+                "result": {
+                    "content": [
+                        {"type": "text", "text": "ok"}
+                    ]
+                }
+            }
+        ),
     )
 
     tool = client.convert_tool({"name": "ping"})
 
-    assert tool.handler(message="ciao") == {"content": "ok"}
+    assert tool.handler(message="ciao") == "ok"
 
     call = http.calls[-1]["payload"]
 
@@ -335,15 +522,16 @@ def test_convert_tool_handler_calls_remote(client, monkeypatch):
 def test_register_tools(client, monkeypatch):
     install(
         monkeypatch,
-        {"result": {}},
-        {
-            "result": {
-                "tools": [
-                    {"name": "ping"},
-                    {"name": "echo"},
-                ]
+        *initialized(
+            {
+                "result": {
+                    "tools": [
+                        {"name": "ping"},
+                        {"name": "echo"},
+                    ]
+                }
             }
-        },
+        ),
     )
 
     registry = ToolRegistry()

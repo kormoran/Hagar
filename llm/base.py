@@ -6,6 +6,7 @@ import json
 import re
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 
 from core.tool_call import ToolCall
@@ -14,6 +15,27 @@ from core.tool_definition import (
     ToolParameter,
 )
 from core.tool_registry import ToolRegistry
+
+
+class NativeToolsUnavailable(RuntimeError):
+    """Il provider o il modello non supporta il calling nativo."""
+
+
+@dataclass(slots=True)
+class LLMReply:
+    """
+    Risposta di un passo nativo: testo e/o chiamate tool.
+
+    ``assistant_message`` è il messaggio canonico da riaccodare alla
+    conversazione (ruolo assistant con ``tool_calls``), che ogni backend
+    traduce nel proprio formato.
+    """
+
+    text: str = ""
+    tool_calls: list[ToolCall] = field(
+        default_factory=list
+    )
+    assistant_message: dict[str, Any] | None = None
 
 
 class LLMClient(ABC):
@@ -31,6 +53,8 @@ class LLMClient(ABC):
 
     provider = "base"
 
+    supports_native_tools = False
+
     def __init__(
         self,
         model: str,
@@ -46,6 +70,133 @@ class LLMClient(ABC):
         self.model = model
 
         self.audit = audit
+
+        #
+        # Può essere spento dalla configurazione o dal fallback automatico.
+        #
+
+        self.native_tools = True
+
+    # ==================================================
+    # Native tool calling
+    # ==================================================
+
+    def native_step(
+        self,
+        messages: list[dict[str, Any]],
+        registry: ToolRegistry,
+    ) -> LLMReply:
+
+        if not self.supports_native_tools:
+
+            raise NativeToolsUnavailable(
+                f"{self.provider} does not support native tools"
+            )
+
+        reply = self._native_request(
+            messages,
+            registry,
+        )
+
+        for call in reply.tool_calls:
+
+            self._record(
+                "llm.tool_choice",
+                tool=call.tool,
+                arguments=call.arguments,
+                mode="native",
+            )
+
+        return reply
+
+    def _native_request(
+        self,
+        messages: list[dict[str, Any]],
+        registry: ToolRegistry,
+    ) -> LLMReply:
+
+        raise NativeToolsUnavailable(
+            f"{self.provider} does not implement "
+            f"native tool calling"
+        )
+
+    @staticmethod
+    def _parameters_schema(
+        tool: ToolDefinition,
+    ) -> dict[str, Any]:
+
+        properties: dict[str, Any] = {}
+
+        required: list[str] = []
+
+        for parameter in tool.parameters:
+
+            properties[parameter.name] = {
+                "type": parameter.param_type,
+                "description": parameter.description,
+            }
+
+            if parameter.required:
+                required.append(parameter.name)
+
+        schema: dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+        }
+
+        if required:
+            schema["required"] = required
+
+        return schema
+
+    @staticmethod
+    def _assistant_message(
+        text: str,
+        calls: list[ToolCall],
+    ) -> dict[str, Any]:
+
+        return {
+            "role": "assistant",
+            "content": text,
+            "tool_calls": [
+                {
+                    "id": call.id,
+                    "name": call.tool,
+                    "arguments": call.arguments,
+                }
+                for call in calls
+            ],
+        }
+
+    @staticmethod
+    def _parse_arguments(
+        value: Any,
+    ) -> dict[str, Any]:
+
+        if value is None:
+            return {}
+
+        if isinstance(value, dict):
+            return value
+
+        if isinstance(value, str):
+
+            try:
+
+                parsed = json.loads(value)
+
+            except json.JSONDecodeError as exc:
+
+                raise RuntimeError(
+                    "tool arguments are not valid JSON"
+                ) from exc
+
+            if isinstance(parsed, dict):
+                return parsed
+
+        raise RuntimeError(
+            "tool arguments must be a JSON object"
+        )
 
     # ==================================================
     # Backend API

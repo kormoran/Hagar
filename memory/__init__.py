@@ -1,0 +1,1 @@
+"""Memoria su vault Obsidian."""

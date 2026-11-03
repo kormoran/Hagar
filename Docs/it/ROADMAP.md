@@ -19,12 +19,26 @@ Ordine deciso:
 
 1. memoria su Vault;
 2. calling nativo per i provider che lo supportano;
-3. PermissionEvaluator;
+3. PermissionEvaluator — **v1 fatta** (policy.yaml, ASK, audit);
 4. igiene (audit, MCP, packaging, test live).
 
 ---
 
 # 2. Priorità 1 — Memoria su Vault
+
+## 2.0 Stato: v1 implementata (2026-11-03)
+
+Realizzato:
+
+- episodica scritta dall'harness, una nota per sessione;
+- iniezione automatica degli ultimi `context_turns` turni;
+- tool `memory.create_skill`, `memory.list_skills`, `memory.get_context`;
+- provenance (`source_session`, `source_turn`, `model`), stato
+  `candidate`, deduplicazione per slug;
+- policy `MEMORY_READ`/`MEMORY_WRITE` e namespace `chat` / `skills`;
+- vault assente → memoria disattivata con avviso, harness attivo.
+
+Restano: revisione delle skill, retention, ricerca semantica, GUI.
 
 ## 2.1 Decisioni prese
 
@@ -42,7 +56,7 @@ Ordine deciso:
 
 ## 2.2 Tool previsti
 
-Nomi provvisori; vedi "punti aperti" per la convenzione.
+Nomi implementati nel namespace `memory.*`:
 
 | tool | chi lo chiama | cosa fa |
 |---|---|---|
@@ -50,17 +64,17 @@ Nomi provvisori; vedi "punti aperti" per la convenzione.
 | `memory.list_skills` | LLM | elenca le memorie disponibili |
 | `memory.get_context` | LLM | recupera turni di chat passati |
 
-Firme proposte:
+Firme implementate:
 
 ```text
-memory.create_skill(title, content, kind="procedure", tags=[])
-    -> {id, path, status, duplicate?}
+memory.create_skill(title, content, kind="procedure", tags=None)
+    -> {id, title, kind, status, tags, created_at, source_*, path, duplicate}
 
 memory.list_skills(kind=None, status=None, limit=20)
-    -> [{id, title, kind, status, updated_at}]
+    -> [{id, title, kind, status, tags, created_at, source_*}]
 
-memory.get_context(limit=10, session=None, query=None)
-    -> [{turn, timestamp, question, answer}]
+memory.get_context(limit=5, query=None, session=None)
+    -> [{session, turn, timestamp, question, answer}]
 ```
 
 Comportamenti:
@@ -71,9 +85,9 @@ Comportamenti:
   uno slug uguale restituisce l'id esistente invece di duplicare.
 - `list_skills`: legge solo il frontmatter, non i corpi; filtrabile per
   `kind` (`fact` / `procedure`) e `status`.
-- `get_context`: senza `session` usa quella corrente; con `query` cerca
-  per parole chiave nelle sessioni passate; `limit` obbligatorio per non
-  riversare tutto il Vault nel contesto.
+- `get_context`: senza `session` cerca in tutte le sessioni; con `query`
+  cerca per parole chiave nei turni passati; `limit` viene limitato a
+  1..50 per non riversare tutto il Vault nel contesto.
 
 ## 2.3 Struttura nel Vault
 
@@ -83,17 +97,18 @@ Comportamenti:
   skills/<slug>.md                  # una nota per memoria
 ```
 
-Episodica (una nota per sessione, `turni` aggiunti in coda):
+Episodica (una nota per sessione, turni aggiunti in coda):
 
 ```markdown
 ---
 session: a1b2c3d4
-date: 2026-11-03
-model: llama3.1:latest
-turns: 12
+type: chat
+created: 2026-11-03T00:12:44+01:00
 ---
 
-## 2026-11-03T00:12:44+01:00 — turno 7f3a
+# Chat 2026-11-03
+
+## 2026-11-03T00:12:44+01:00 · 7f3a
 
 **Utente:** ...
 **Hagar:** ...
@@ -137,24 +152,23 @@ memory:
 - All'inizio del turno: inietta gli ultimi `context_turns` turni nel
   prompt, senza aspettare che il modello chiami `get_context`.
 - Ogni scrittura di memoria produce un evento di audit
-  (`memory.write`, `memory.failed`); un Vault mancante o non scrivibile
-  non ferma il harness.
+  (`memory.enabled`, `memory.disabled`, `memory.context`, `memory.turn`,
+  `memory.failed`); un Vault mancante o non scrivibile non ferma il
+  harness.
 - La memoria episodica è separata dall'audit: l'audit resta forense e
   contiene anche i dati dei tool.
 
 ## 2.6 Punti aperti
 
-- **Nomi**: `memory.create_skill` / `memory.list_skills` /
-  `memory.get_context` (coerenti con `filesystem.*`) oppure i nomi
-  proposti in origine `skill_maker` / `skill_dir` / `get_context`.
-- **Percorso del Vault**: `D:/Vault` non esiste su questa macchina; serve
-  il percorso reale prima di implementare.
-- **Iniezione automatica**: confermata l'idea, da decidere se sempre o
-  solo quando il Vault è raggiungibile.
-- **`kind`**: `fact` / `procedure` (proposta) oppure solo "skill".
 - **Retention**: quante sessioni conservare, se riassumere le vecchie.
 - **Revisione**: chi promuove una skill da `candidate` a `confirmed`
   (utente via comando, o un passo di consolidamento).
+- **Ricerca**: indice (SQLite FTS) o embedding quando i volumi
+  cresceranno; oggi è per parola chiave.
+- **GUI**: conferma ASK con dialog modale anche per le scritture di
+  memoria.
+- **Selezione del contesto**: oggi vengono iniettati gli ultimi turni
+  globali, senza rilevanza semantica.
 
 ## 2.7 Non obiettivi (per ora)
 
@@ -166,7 +180,13 @@ memory:
 
 ---
 
-# 3. Priorità 2 — Calling nativo
+# 3. Priorità 2 — Calling nativo (v1, fatta)
+
+**Stato:** implementato il 2026-11-03. `native_step()` per i quattro
+provider, schema dei parametri da `ToolDefinition`, messaggi canonici
+`tool`, più chiamate per turno, fallback automatico su HTTP 400/404/422
+e `--no-native-tools`. Resta da misurare col benchmark e da affinare per
+i modelli locali che ignorano i tool.
 
 ## 3.1 Obiettivo
 
@@ -200,27 +220,41 @@ strutturati.
   il fallback automatico.
 - Cambia il plumbing dei messaggi: test per provider e per il percorso di
   fallback sono obbligatori.
-- Alcuni provider accettano una sola chiamata per turno: l'Agent deve
-  continuare a eseguire un tool alla volta.
+- Alcuni modelli restituiscono più chiamate nello stesso turno: l'Agent
+  le esegue tutte, nel limite del turno.
 
 ---
 
 # 4. Priorità 3 — PermissionEvaluator
 
-## 4.1 Obiettivo
+## 4.1 Stato: v1 implementata
 
-Un unico punto di decisione per i permessi, che assorba `FS_Guardian` e
-copra anche i tool di memoria.
+Realizzato:
 
-## 4.2 Contenuto
+- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` e
+  `PermissionEvaluator` in `core/permissions.py`;
+- `policy.yaml` letto **prima** del LLM, con fallback a `DENY` totale e
+  warning su audit e chat;
+- tetto di sistema derivato da `permissions.read/write/shell`;
+- scope per `tools` (glob), `paths` e `namespaces` (prefissi);
+- `ASK` con `ConsoleConfirmation` (`lo faccio? (y/N)`, default N);
+- applicazione in `ToolRegistry.execute` e audit di
+  `permission.decision` / `permission.confirmation`;
+- `ToolDefinition.capabilities` per tutti i tool (filesystem e MCP);
+- `requires_confirmation` applicato come pavimento di ASK;
+- 347 test raccolti, 1 skip.
 
-- policy per tool e per radice (non solo un flag globale `write`);
-- applicazione di `requires_confirmation`, oggi presente in
-  `ToolDefinition` ma non usata: o si implementa, o si rimuove;
-- conferma esplicita per operazioni distruttive (`delete_file`,
-  sovrascritture) e limite per turno;
-- audit della decisione (permesso concesso/negato, motivo);
-- test unitari della matrice tool × radice × permesso.
+## 4.2 Restano da fare
+
+- `ConfirmationProvider` per la GUI (dialog modale) e per l'esecuzione
+  non interattiva (deny di default);
+- policy dinamiche per task/ruolo, con sola riduzione a runtime (un
+  agente può ridursi i permessi, mai allargarli da solo);
+- capability dei tool MCP assegnate dalla configurazione, non
+  dichiarate dal server;
+- più soggetti in esecuzione contemporanea (più agenti con policy
+  diverse);
+- oggetti-risorsa per memoria e percorsi, non solo tool.
 
 ---
 
@@ -248,21 +282,27 @@ assoluti della sandbox.
 
 # 6. Igiene e robustezza
 
-- **MCP**: supporto SSE, notifica `notifications/initialized`,
-  normalizzazione dei risultati in `ToolResult`, timeout e
-  autenticazione.
-- **Audit**: rotazione per dimensione, catena di hash per l'integrità,
-  opzione di redazione dell'output dei tool, retention.
-- **Test live**: marker `live` per Ollama e provider remoti, skippati di
-  default, così la suite resta veloce ma verificabile.
-- **Packaging**: entry point `hagar`, `--config` e `--model` da riga di
-  comando, versione unica.
-- **URL base**: collegare `model.host` come base URL anche ai provider
-  remoti (proxy o endpoint self-hosted).
-- **Legacy**: rimuovere o integrare `core/permissions.py` e
-  `tools/filesystem.py`.
-- **Documentazione**: mantenere ARCHITECTURE / ROADMAP / CHANGELOG
-  allineati a ogni cambio di comportamento.
+Fatta (2026-11-03):
+
+- **MCP**: risposte `text/event-stream`, notifica
+  `notifications/initialized`, normalizzazione dei risultati a testo
+  (blocchi `text`, `structuredContent`, errori `isError`).
+- **Audit**: rotazione a `max_bytes`, catena di hash verificabile con
+  `verify_chain`, redazione dell'output dei tool con
+  `include_outputs: false`.
+- **Test live**: marker `live`, esclusi di default, `--live` per Ollama
+  e provider remoti (questi ultimi skippati senza chiave).
+- **Packaging**: metadati completi, entry point `hagar`, `--config`,
+  `--model`, `--no-memory`, `--version`, versione unica.
+- **URL base**: `model.host` vale per tutti i provider.
+- **Legacy**: rimossi `tools/filesystem.py` e `llm/tool_result.py`.
+
+Restano:
+
+- autenticazione MCP;
+- retention e compattazione delle sessioni di audit;
+- conferme GUI per `ASK`;
+- allineamento continuo della documentazione.
 
 ---
 
@@ -280,7 +320,9 @@ assoluti della sandbox.
 
 # 8. Ordine di lavoro
 
-1. Memoria v0: episodica + tool semantici + audit delle memorie.
-2. Calling nativo con fallback, misurato con il benchmark.
-3. PermissionEvaluator e conferme.
-4. Igiene: audit, MCP, packaging, test live.
+1. Memoria v1: fatta; restano revisione, retention e ricerca.
+2. PermissionEvaluator: v1 fatta; restano conferme GUI e policy
+   dinamiche.
+3. Igiene: fatta (packaging, test live, MCP, audit, base URL, legacy);
+   restano autenticazione MCP e retention dell'audit.
+4. Calling nativo: v1 fatta; resta la misura col benchmark.

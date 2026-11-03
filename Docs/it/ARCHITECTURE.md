@@ -119,13 +119,15 @@ Sezioni:
 
 | sezione | obbligatoria | contenuto |
 |---|---|---|
-| `model` | sì | provider, nome, host, max_tokens, api_key_env |
+| `model` | sì | provider, nome, host, max_tokens, api_key_env, native_tools |
 | `vault` | sì | percorso del vault Obsidian |
 | `filesystem` | sì | radici della sandbox (`allowed`) |
 | `permissions` | no | read, write, shell (default `true/false/false`) |
 | `rag` | no | `top_k` (default 8) |
 | `mcp_servers` | no | lista di `endpoint` + `namespace` |
-| `audit` | no | enabled, path, max_field_chars |
+| `audit` | no | enabled, path, max_field_chars, max_bytes, include_outputs |
+| `policy` | no | path del file policy, subject |
+| `memory` | no | enabled, vault_subdir, context_turns, max_skill_chars |
 
 Errori di validazione producono sempre `ConfigError`, con un messaggio che
 indica il campo. Il percorso dell'audit, se relativo, viene risolto
@@ -133,22 +135,25 @@ rispetto al file di configurazione.
 
 ## 3.2 Interfaccia LLM e backend (`llm/`)
 
-`llm/base.py` definisce `LLMClient`: un backend concreto implementa solo
-`chat()`. Sono condivisi:
+`LLMClient` ha due percorsi:
 
-- il prompt di selezione dei tool;
-- il rendering dei metadati dei tool;
-- il parsing robusto del JSON (JSON puro, blocco markdown, primo oggetto
-  JSON nel testo);
-- l'alias `parameters` → `arguments` (alcuni modelli usano la chiave
-  sbagliata);
-- la riparazione: se la risposta non è JSON valido, un solo tentativo
-  guidato, poi errore esplicito con entrambe le risposte.
+- **calling nativo** (predefinito): `native_step()` invia gli schemi dei
+  tool nel formato del provider e legge le chiamate dalla risposta;
+- **protocollo JSON testuale** (fallback): `request_tool_call()` chiede un
+  JSON con `tool`/`arguments`, con parsing robusto e un tentativo di
+  riparazione.
 
-La conversazione interna usa solo i ruoli `user` e `assistant`; ogni
-client traduce nel proprio formato. I risultati dei tool sono turni
-`user`, non `system`, perché i backend remoti non accettano messaggi di
-sistema in mezzo al dialogo.
+Lo schema dei parametri è costruito da `ToolDefinition`:
+OpenAI/Ollama usano `tools[].function`, Claude `tools[].input_schema`,
+Gemini `functionDeclarations`. La conversazione canonica usa i ruoli
+`user`/`assistant`/`tool`; ogni client la traduce (OpenAI `tool_calls`,
+Claude blocchi `tool_use`/`tool_result`, Gemini `functionCall`/
+`functionResponse`). Un rifiuto HTTP 400/404/422 produce
+`NativeToolsUnavailable`: l'Agent passa al protocollo testuale solo se non
+ha ancora eseguito tool.
+
+Il testo resta il fallback per modelli che non supportano i tool nativi;
+`model.native_tools: false` lo forza (o `--no-native-tools` da CLI).
 
 | provider | API | chiave | note |
 |---|---|---|---|
@@ -158,21 +163,22 @@ sistema in mezzo al dialogo.
 | `gemini` | `models/{model}:generateContent` | `GEMINI_API_KEY` | `systemInstruction`, ruolo `model` |
 
 La chiave si legge solo dall'ambiente; `model.api_key_env` sovrascrive il
-nome predefinito. `model.host` è usato solo da Ollama, `model.max_tokens`
-solo da Claude. `llm/factory.py` costruisce il client e rifiuta provider
-sconosciuti o chiavi mancanti.
+nome predefinito. `model.host` è la base URL di tutti i provider (con un
+default per provider), `model.max_tokens` è usato solo da Claude.
+`llm/factory.py` costruisce il client e rifiuta provider sconosciuti o
+chiavi mancanti.
 
-Stato attuale del protocollo: **JSON testuale**, non function calling
-nativo (vedi ROADMAP).
+Stato attuale: **calling nativo v1** con fallback testuale automatico
+(vedi ROADMAP).
 
 ## 3.3 Modello dei tool (`core/tool_*.py`)
 
 `ToolDefinition` descrive nome, descrizione, categoria, parametri,
-handler, `origin` (`local` oppure `mcp.<namespace>`), stato di
-abilitazione e `requires_confirmation` (campo presente ma non ancora
-applicato dall'Agent).
+handler, `origin` (`local` oppure `mcp.<namespace>`), le `capabilities`
+dichiarate, lo stato di abilitazione e `requires_confirmation`
+(pavimento di ASK applicato dal registry).
 
-`ToolCall` è la richiesta del modello (`tool`, `arguments`);
+`ToolCall` è la richiesta del modello (`tool`, `arguments`, `id`);
 `ToolResult` è l'esito strutturato (`tool_name`, `success`, `output`,
 `error`).
 
@@ -181,14 +187,27 @@ espone i metadati al modello ed è l'unico punto di esecuzione.
 
 ## 3.4 Agent (`core/agent.py`)
 
-Ciclo agentico multi-step:
+Ciclo agentico multi-step, con due percorsi:
 
-1. chiede al modello se serve un tool;
-2. se non serve, genera la risposta finale e chiude il turno;
-3. se serve, esegue il tool e rimanda il risultato al modello;
-4. il modello può chiedere al massimo `max_tool_calls` esecuzioni; dopo
-   l'ultima ha comunque una richiesta finale. Se insiste, il turno si
-   chiude con `Agent stopped after N tool calls` (protezione dai loop).
+- **nativo**: una risposta può contenere più chiamate; l'Agent riaccoda
+  il messaggio `assistant` e un messaggio `tool` con l'id per ogni
+  risultato;
+- **testuale**: una chiamata per volta, con il risultato inviato come
+  turno `user`.
+
+In entrambi:
+
+1. il modello decide se serve un tool;
+2. se non serve, la risposta finale chiude il turno;
+3. se serve, il tool viene eseguito e il risultato torna al modello;
+4. il limite `max_tool_calls` vale per l'intero turno. Se il modello
+   insiste, il turno si chiude con `Agent stopped after N tool calls`
+   (protezione dai loop).
+
+Se il primo passo nativo fallisce con `NativeToolsUnavailable`, l'Agent
+passa al protocollo testuale (`llm.native_fallback`); un errore dopo che
+un tool è stato eseguito chiude il turno con `turn.error`, senza
+fallback.
 
 Ogni passo è registrato nell'audit: domanda, scelta del tool, argomenti,
 esito, durata e risposta finale. Un audit rotto non ferma l'agente: il
@@ -243,14 +262,18 @@ Client MCP via HTTP/JSON-RPC: `initialize`, `tools/list`, `tools/call`,
 conversione automatica dei tool in `ToolDefinition` e registrazione con
 namespace `mcp.<namespace>`.
 
-Limiti noti: nessun supporto SSE, nessuna notifica
-`notifications/initialized`, risultati normalizzati solo parzialmente.
+Supporta anche risposte `text/event-stream` (streamable HTTP) e invia
+la notifica `notifications/initialized` dopo l'handshake. I risultati
+dei tool vengono normalizzati a testo: blocchi `text`, altrimenti
+`structuredContent` o JSON; un risultato con `isError` diventa un
+errore del tool.
 
 ## 3.8 Vault (`memory/vault.py`)
 
-Accesso minimale al vault Obsidian: elenco ricorsivo dei file Markdown e
-lettura del testo. L'integrazione con la memoria dell'agente è
-pianificata (vedi ROADMAP).
+Accesso al vault Obsidian con percorsi relativi alla radice e
+protezione dall'uscita dal vault. Offre lettura, scrittura, append,
+elenco dei file e `load_all` per la lettura ricorsiva. La semantica
+della memoria vive in `memory/store.py` (§3.11).
 
 ## 3.9 Audit log (`core/audit.py`)
 
@@ -259,8 +282,9 @@ File JSON Lines append-only. Ogni riga ha timestamp UTC, `session` ed
 
 ```text
 harness.start      provider, modello, radici, permessi, tool, vault
-turn.start         domanda, limite tool
-llm.tool_choice    scelta del modello, con argomenti
+turn.start         domanda, limite tool, modalità nativa
+llm.tool_choice    scelta del modello, argomenti, mode=native
+llm.native_fallback provider senza tool nativi, passaggio al testo
 llm.protocol_error risposta non conforme (testo integrale, troncato)
 llm.repaired       riparazione riuscita
 llm.repair_failed  riparazione fallita
@@ -273,6 +297,11 @@ mcp.loaded         namespace e tool importati
 mcp.failed         namespace ed errore
 llm.failed         provider non costruibile (es. chiave mancante)
 harness.stop       uscita pulita (se manca, il processo è stato ucciso)
+memory.enabled     radice, subdir, turni di contesto
+memory.disabled    motivo della disattivazione
+memory.context     turni iniettati nel prompt
+memory.turn        turno salvato nel vault
+memory.failed      fase ed errore
 ```
 
 Proprietà:
@@ -280,10 +309,149 @@ Proprietà:
 - scrittura best effort: un errore di I/O non ferma il harness e viene
   segnalato una sola volta su stderr;
 - troncamento configurabile (`audit.max_field_chars`, default 2000);
+- catena di hash (`prev`/`hash`) verificabile con `verify_chain`;
+- rotazione in `<file>.1` oltre `audit.max_bytes` (0 disattiva);
+- con `audit.include_outputs: false` l'output dei tool viene registrato
+  solo come dimensione;
 - valori non JSON resi serializzabili;
 - nessuna chiave API nel log;
 - il log contiene anche l'output dei tool (quindi contenuti di file):
   va protetto come il workspace.
+
+## 3.10 Permessi (`core/permissions.py`)
+
+Il modello è una matrice soggetto × oggetto:
+
+- **Capability** (`IntFlag`): cosa un'operazione può fare
+  (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`, `FILESYSTEM_CREATE`,
+  `FILESYSTEM_DELETE`, `FILESYSTEM_EXEC`, `MEMORY_READ`,
+  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`). Si combinano con `|`; la
+  verifica è sempre di sottoinsieme.
+- **Effect** (`IntEnum`): `ALLOW`, `ASK`, `DENY`. In caso di conflitto
+  vince il valore più alto (`DENY > ASK > ALLOW`).
+- **Rule**: capability + effetto + filtri opzionali `tools` (glob),
+  `paths` e `namespaces` (prefissi) + `reason`.
+- **Subject**: chi chiede (agente, utente, sistema), con regole e
+  default (`DENY` se non specificato).
+- **Resource**: l'oggetto della decisione (per ora un tool con le sue
+  capability; in futuro anche note e percorsi).
+- **Decision**: effetto, motivo e regola applicata.
+
+`PermissionEvaluator.evaluate(subject, resource, scope)`:
+
+1. la risorsa deve offrire le capability richieste;
+2. il **tetto di sistema** (derivato da `permissions.read/write/shell`)
+   deve concederle;
+3. per ogni capability si applicano le regole del soggetto: vince la
+   più specifica (numero di filtri, poi lunghezza del prefisso), a
+   parità l'effetto più restrittivo; senza regole vale il default;
+4. con più capability richieste vale l'AND: l'effetto peggiore vince.
+
+`ASK` non è una decisione: è una domanda a un umano. Il
+`ConfirmationProvider` la pone — `ConsoleConfirmation` chiede
+`lo faccio? (y/N)` con default N — e senza canale di conferma vale
+`DENY`. Una GUI potrà implementare lo stesso protocollo con un dialog
+modale.
+
+```yaml
+version: 1
+subjects:
+  assistant:
+    default: deny
+    rules:
+      - capabilities: [FILESYSTEM_READ]
+        effect: allow
+        tools: ["filesystem.*"]
+      - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
+        effect: ask
+        paths: ["note"]
+```
+
+`policy.yaml` viene letto **prima** di costruire il LLM. Se non è
+leggibile o non è valido, il harness applica `DENY` a tutte le policy,
+lo registra nell'audit (`policy.failed`) e lo segnala in chat; il resto
+del harness continua a funzionare. Anche un soggetto assente degrada a
+`DENY`.
+
+Il controllo avviene in `ToolRegistry.execute`, unico punto di
+esecuzione, e produce gli eventi `permission.decision` e
+`permission.confirmation`.
+
+Lo scope `paths` confronta il percorso **scritto dal modello**
+(normalizzato), non quello risolto dalla sandbox: un percorso assoluto o
+un `chdir` possono non corrispondere a un prefisso relativo, e il
+risultato resta `DENY` (fail closed).
+
+## 3.11 Memoria (`memory/store.py`, `memory/tools.py`)
+
+**Episodica.** L'harness accoda ogni turno concluso in una nota per
+sessione:
+
+```text
+<vault>/Hagar/chat/YYYY-MM-DD-<session>.md
+```
+
+Frontmatter con `session`, `type: chat`, `created`; corpo con una
+sezione per turno (`## <timestamp> · <turn>`), domanda e risposta. Non
+vengono salvati gli output dei tool: quelli restano nell'audit.
+
+All'inizio di ogni turno l'Agent inietta nel prompt gli ultimi
+`memory.context_turns` turni (0 disattiva l'iniezione), troncando
+domanda e risposta. Un errore di memoria non ferma il turno: viene
+registrato `memory.failed`.
+
+**Semantica.** Il modello può proporre una memoria con tre tool:
+
+| tool | capability | namespace |
+|---|---|---|
+| `memory.create_skill` | `MEMORY_WRITE` | `skills` |
+| `memory.list_skills` | `MEMORY_READ` | `skills` |
+| `memory.get_context` | `MEMORY_READ` | `chat` |
+
+`create_skill` scrive `<vault>/Hagar/skills/<slug>.md` con frontmatter
+`id`, `title`, `kind` (`fact`/`procedure`), `status: candidate`, `tags`,
+`source_session`, `source_turn`, `model`, `created_at`. Lo slug è
+sicuro (solo ASCII, nessun percorso); un titolo già esistente non viene
+sovrascritto e restituisce `duplicate: true`.
+
+`get_context` restituisce gli ultimi turni o cerca per parola chiave
+nelle sessioni passate; `list_skills` filtra per `kind` e `status`.
+
+**Configurazione**:
+
+```yaml
+memory:
+  enabled: true
+  vault_subdir: Hagar
+  context_turns: 10
+  max_skill_chars: 4000
+```
+
+Se `vault.path` non esiste o non è scrivibile, la memoria viene
+disattivata con un avviso in chat e `memory.disabled` nell'audit; gli
+altri componenti continuano a funzionare. Le scritture di memoria sono
+soggette alle policy (`MEMORY_READ`/`MEMORY_WRITE`).
+
+## 3.12 Avvio e packaging
+
+Il progetto si installa con `pip install -e .` e dichiara i package in
+`pyproject.toml`. L'entry point è `hagar = "hagar:main"`.
+
+```text
+hagar --config PATH       file di configurazione
+hagar --model NAME        sovrascrive model.name
+hagar --no-memory         disattiva la memoria per la sessione
+hagar --no-native-tools   usa il protocollo JSON testuale
+hagar --version
+```
+
+La configurazione si cerca in quest'ordine: `--config`, variabile
+`HAGAR_CONFIG`, `./hagar.yaml`. `python -m hagar` funziona dalla
+directory del progetto.
+
+I test live sono esclusi dalla suite normale e si abilitano con
+`--live`: verificano Ollama e i provider remoti (questi ultimi solo se
+la chiave API è presente).
 
 ---
 
@@ -292,8 +460,9 @@ Proprietà:
 - L'agente non vede il filesystem reale: solo percorsi risolti dentro la
   sandbox.
 - Le operazioni passano solo dal `ToolRegistry`; nessuna shell host.
-- I permessi sono dichiarati in configurazione e applicati dalla sandbox;
-  le radici annidate possono restringere o allargare i permessi.
+- I permessi sono dichiarati in configurazione e nelle policy, e sono
+  applicati da sandbox e `PermissionEvaluator`; le radici annidate
+  possono restringere i permessi.
 - Gli errori sono dati: un rifiuto viene restituito al modello come
   risultato del tool, non nascosto.
 - Ogni azione lascia una traccia nell'audit, con sessione e turno.
@@ -302,30 +471,34 @@ Proprietà:
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 259 test, 1 skip (symlink non
-  disponibili senza Developer Mode). Dettagli e motivazione dello shim in
-  README §3.1.
+- Suite: `.\tools\run_tests.ps1` — 476 test superati, 1 skip (symlink
+  non disponibili senza Developer Mode). Dettagli e motivazione dello
+  shim in README §3.1.
+- Test live: `.\tools\run_tests.ps1 --live` — 7 test in più (Ollama;
+  provider remoti se le chiavi sono presenti).
 - Confronto modelli: `python tools/bench_models.py` (README §3.5).
-- La suite non tocca la rete: Ollama e MCP sono simulati.
+- La suite normale non tocca la rete: Ollama e MCP sono simulati.
 
 ---
 
 # 6. Limiti noti e debito tecnico
 
-- `PermissionEvaluator` non esiste: `FS_Guardian` è locale alla sandbox e
-  `requires_confirmation` non è applicato.
-- Il protocollo dei tool è JSON testuale: robusto grazie alla
-  riparazione, ma fragile con modelli piccoli.
-- Il client MCP non gestisce SSE, `notifications/initialized` né
-  normalizza del tutto i risultati.
-- Gli URL base dei provider remoti sono fissi (`model.host` è solo per
-  Ollama).
-- `Agent` non usa il `Vault`; non esiste ancora memoria.
-- `core/permissions.py` e `tools/filesystem.py` sono implementazioni
-  legacy non usate.
-- `chdir` espone il percorso assoluto della sandbox; da valutare percorsi
-  virtuali (vedi AIsh in ROADMAP).
-- L'audit non ha rotazione né integrità crittografica.
+- `PermissionEvaluator` copre la v1: restano i soggetti dinamici, le
+  conferme GUI e le capability MCP assegnate dalla configurazione.
+- Il calling nativo dipende dal modello: alcuni ignorano i tool o
+  restituiscono più chiamate; il fallback testuale copre gli errori, non
+  la qualità della scelta.
+- Il client MCP non gestisce ancora l'autenticazione.
+- La memoria semantica non ha un flusso di revisione: le skill restano
+  `candidate` finché non vengono promosse a mano.
+- La ricerca nella memoria è per parola chiave, senza indice né
+  embedding.
+- Il contesto iniettato usa gli ultimi turni globali, senza selezione
+  semantica.
+- L'audit non ha retention delle sessioni né compattazione; la catena
+  di hash rende il log tamper-evident ma non sostituisce un backup.
+- `chdir` espone il percorso assoluto della sandbox; da valutare
+  percorsi virtuali (vedi AIsh in ROADMAP).
 
 ---
 

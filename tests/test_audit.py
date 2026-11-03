@@ -10,6 +10,7 @@ from core.audit import (
     AuditLog,
     read_entries,
     utc_now,
+    verify_chain,
 )
 
 
@@ -167,3 +168,122 @@ def test_utf8_is_preserved(tmp_path):
     raw = path.read_text(encoding="utf-8")
 
     assert "città àèìòù" in raw
+
+
+# =====================================================
+# Catena di hash
+# =====================================================
+
+
+def test_entries_form_a_hash_chain(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    log = AuditLog(path)
+
+    log.record("a")
+    log.record("b")
+
+    entries = read_entries(path)
+
+    assert entries[0]["prev"] is None
+    assert entries[1]["prev"] == entries[0]["hash"]
+    assert verify_chain(entries) is True
+
+
+def test_chain_continues_across_instances(tmp_path):
+    path = tmp_path / "audit.jsonl"
+
+    AuditLog(path).record("a")
+    AuditLog(path).record("b")
+
+    entries = read_entries(path)
+
+    assert entries[1]["prev"] == entries[0]["hash"]
+    assert verify_chain(entries) is True
+
+
+def test_verify_chain_detects_tampering(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    log = AuditLog(path)
+
+    log.record("a")
+    log.record("b")
+
+    entries = read_entries(path)
+    entries[0]["event"] = "altro"
+
+    assert verify_chain(entries) is False
+
+
+def test_verify_chain_detects_broken_link(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    log = AuditLog(path)
+
+    log.record("a")
+    log.record("b")
+
+    entries = read_entries(path)
+    entries[1]["prev"] = "falso"
+
+    assert verify_chain(entries) is False
+
+
+def test_disabled_log_entries_still_chain(tmp_path):
+    log = AuditLog(
+        tmp_path / "audit.jsonl",
+        enabled=False,
+    )
+
+    first = log.record("a")
+    second = log.record("b")
+
+    assert first["hash"] != second["hash"]
+    assert second["prev"] == first["hash"]
+
+
+# =====================================================
+# Rotazione e redazione
+# =====================================================
+
+
+def test_rotation_creates_single_backup(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    backup = path.with_name(path.name + ".1")
+
+    log = AuditLog(path, max_bytes=1)
+
+    log.record("a")
+    log.record("b")
+
+    assert backup.exists()
+
+    current = read_entries(path)
+    previous = read_entries(backup)
+
+    assert [entry["event"] for entry in current] == ["b"]
+    assert [entry["event"] for entry in previous] == ["a"]
+
+    assert current[0]["prev"] == previous[-1]["hash"]
+    assert verify_chain(previous) is True
+    assert verify_chain(current) is True
+
+
+def test_rotation_can_be_disabled(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    backup = path.with_name(path.name + ".1")
+
+    log = AuditLog(path, max_bytes=0)
+
+    log.record("a")
+    log.record("b")
+
+    assert not backup.exists()
+    assert len(read_entries(path)) == 2
+
+
+def test_include_outputs_flag(tmp_path):
+    log = AuditLog(
+        tmp_path / "audit.jsonl",
+        include_outputs=False,
+    )
+
+    assert log.include_outputs is False

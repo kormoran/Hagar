@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from typing import Any
 from typing import Callable
 
+from core.permissions import Capability
+
 
 @dataclass(slots=True)
 class ToolParameter:
@@ -30,6 +32,10 @@ class ToolDefinition:
     ``origin`` distingue i tool locali da quelli remoti (es. ``mcp.github``)
     e serve per l'audit log: la Quarta Legge di HAGAR richiede che ogni azione
     sia riconducibile alla sua sorgente.
+
+    ``capabilities`` dichiara cosa il tool può fare. Un tool senza
+    capability è un errore in un registry con policy attive (fail
+    closed): la registrazione lo rifiuta.
     """
 
     name: str
@@ -43,6 +49,10 @@ class ToolDefinition:
     parameters: list[ToolParameter] = field(
         default_factory=list
     )
+
+    capabilities: Capability = Capability.NONE
+
+    policy_namespace: str | None = None
 
     origin: str = "local"
 
