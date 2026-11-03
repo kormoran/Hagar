@@ -470,6 +470,8 @@ la chiave API è presente).
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).
 - Confronto modelli: `python tools/bench_models.py` (README §3.5).
+- Confronto protocolli: `python tools/bench_native.py --provider ollama`
+  (README §3.5).
 - La suite normale non tocca la rete: Ollama e MCP sono simulati.
 
 ---

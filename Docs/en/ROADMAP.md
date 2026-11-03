@@ -186,8 +186,9 @@ memory:
 provider, schema dei parametri da `ToolDefinition`, messaggi canonici
 `tool`, più chiamate per turno, fallback automatico su HTTP 400/404/422
 e `--no-native-tools`. Verificato live su Ollama e DeepSeek; Claude e
-Gemini restano da provare. Resta da misurare col benchmark e da affinare
-per i modelli locali che ignorano i tool.
+Gemini restano da provare. Misurato con `tools/bench_native.py`: nessun
+protocollo vince su tutti i modelli (nativo più veloce, testo a volte più
+preciso). Resta da affinare per i modelli locali che ignorano i tool.
 
 ## 3.1 Obiettivo
 

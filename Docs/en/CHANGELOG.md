@@ -7,6 +7,17 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## Benchmark nativo vs testo
+
+- `tools/bench_native.py`: 9 task filesystem sullo stesso registry,
+  confronto tra `native_step()` e `request_tool_call()`, con accuratezza,
+  latenza e riparazioni.
+- Prime misure: `llama3.1` 4/5 vs 5/5, `qwen3:8b` 4/5 vs 5/5,
+  `hermes3:8b` 4/5 vs 3/5, `deepseek-flash` 8/9 vs 9/9 (subset Ollama,
+  suite completa DeepSeek).
+- Nessun vincitore universale: il default resta nativo, con opt-out per
+  modello tramite `model.native_tools` o `--no-native-tools`.
+
 ## DeepSeek (live)
 
 - Modelli aggiornati: `deepseek-flash` (default) e `deepseek-v4-pro`;

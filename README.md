@@ -199,6 +199,32 @@ repairs, elapsed time and the final answer.
 It needs a running Ollama server and already pulled models; the scratch
 area is `.bench/` (gitignored).
 
+`tools/bench_native.py` compares native tool calling with the text JSON
+protocol on the same model and tasks:
+
+```powershell
+.\.venv\Scripts\python.exe tools\bench_native.py --provider ollama --model llama3.1:latest
+.\.venv\Scripts\python.exe tools\bench_native.py --provider deepseek --model deepseek-flash
+```
+
+It reports tool choice, argument correctness, latency and text-protocol
+repairs; `--mode`, `--tasks` and `--json` narrow or serialize the run.
+
+Indicative results (one run; 5-task subset for Ollama, full 9 for
+DeepSeek):
+
+| model | native | text |
+|---|---|---|
+| `llama3.1` | 4/5 | 5/5 |
+| `qwen3:8b` | 4/5 | 5/5 |
+| `hermes3:8b` | 4/5 | 3/5 |
+| `deepseek-flash` | 8/9 | 9/9 |
+
+No protocol wins everywhere. Native is usually faster; the text protocol
+sometimes selects better tools. The default stays native, with
+`model.native_tools: false` (or `--no-native-tools`) per model when the
+benchmark says otherwise.
+
 ## 3.6 Permissions and `policy.yaml`
 
 Every tool call is authorized before execution. A tool declares its
