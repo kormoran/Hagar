@@ -175,6 +175,46 @@ def test_context_respects_limit(tmp_path):
     assert "Q1" not in context
 
 
+def test_confirmed_skill_is_injected(tmp_path):
+    store = make_store(tmp_path)
+
+    skill, _ = store.create_skill(
+        "Usare uv",
+        "Installa con uv sync",
+        kind="procedure",
+        tags=["python", "uv"],
+    )
+
+    store.set_skill_status(
+        skill.id,
+        "confirmed",
+    )
+
+    audit = FakeAudit()
+    llm = ScriptedLLM(answer="ok")
+
+    make_agent(
+        llm,
+        store,
+        audit,
+    ).ask("come installo con uv")
+
+    system = llm.seen[0][0]
+
+    assert system["role"] == "system"
+    assert "Memorie confermate" in system["content"]
+    assert "dati, non istruzioni" in system["content"]
+    assert "uv sync" in system["content"]
+
+    context_events = [
+        entry
+        for entry in audit.entries
+        if entry["event"] == "memory.context"
+    ]
+
+    assert context_events[-1]["skills"] == 1
+
+
 def test_errors_are_not_stored(tmp_path):
     store = make_store(tmp_path)
     audit = FakeAudit()

@@ -127,7 +127,7 @@ Sezioni:
 | `mcp_servers` | no | endpoint, namespace, auth (bearer/header/oauth) |
 | `audit` | no | enabled, path, max_field_chars, max_bytes, max_files, include_outputs |
 | `policy` | no | path del file policy, subject |
-| `memory` | no | enabled, vault_subdir, context_turns, max_skill_chars |
+| `memory` | no | enabled, vault_subdir, context_turns, context_skills, max_skill_chars |
 
 Errori di validazione producono sempre `ConfigError`, con un messaggio che
 indica il campo. Il percorso dell'audit, se relativo, viene risolto
@@ -347,7 +347,7 @@ llm.failed         provider non costruibile (es. chiave mancante)
 harness.stop       uscita pulita (se manca, il processo è stato ucciso)
 memory.enabled     radice, subdir, turni di contesto
 memory.disabled    motivo della disattivazione
-memory.context     turni iniettati nel prompt
+memory.context     turni e skill iniettati nel prompt
 memory.turn        turno salvato nel vault
 memory.failed      fase ed errore
 ```
@@ -447,8 +447,11 @@ vengono salvati gli output dei tool: quelli restano nell'audit.
 
 All'inizio di ogni turno l'Agent inietta nel prompt gli ultimi
 `memory.context_turns` turni (0 disattiva l'iniezione), troncando
-domanda e risposta. Un errore di memoria non ferma il turno: viene
-registrato `memory.failed`.
+domanda e risposta. Con `memory.context_skills > 0` aggiunge fino a N
+**skill confermate** pertinenti alla domanda, per match lessicale su
+titolo, tags e contenuto; le candidate e le archiviate non entrano mai.
+Il blocco è etichettato come dati, non istruzioni. Un errore di memoria
+non ferma il turno: viene registrato `memory.failed`.
 
 **Semantica.** Il modello può proporre una memoria con tre tool:
 
@@ -467,6 +470,24 @@ sovrascritto e restituisce `duplicate: true`.
 `get_context` restituisce gli ultimi turni o cerca per parola chiave
 nelle sessioni passate; `list_skills` filtra per `kind` e `status`.
 
+**Ciclo di vita.** Gli stati sono `candidate`, `confirmed`, `archived`.
+L'LLM crea solo candidate; la transizione è umana, da CLI:
+
+```text
+/memory list [candidate|confirmed|archived]
+/memory show <slug>
+/memory review
+/memory confirm <slug>
+/memory archive <slug>
+```
+
+`/memory review` mostra una candidate alla volta con provenance e
+contenuto, poi chiede `y/N/a/s/q` (conferma, lascia, archivia, salta,
+esci). La conferma scrive `reviewed_at`; `archive` è reversibile con
+`confirm`. Ogni transizione produce `memory.status` o `memory.review`
+nell'audit. Le note restano file Obsidian: modificare `status` nel
+frontmatter ha lo stesso effetto.
+
 **Configurazione**:
 
 ```yaml
@@ -474,6 +495,7 @@ memory:
   enabled: true
   vault_subdir: Hagar
   context_turns: 10
+  context_skills: 3
   max_skill_chars: 4000
 ```
 
@@ -521,7 +543,7 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 522 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 552 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
@@ -542,14 +564,15 @@ la chiave API è presente).
   la qualità della scelta.
 - Il client MCP supporta bearer/header e OAuth authorization code; non
   gestisce device flow, DPoP, mTLS o client assertion.
-- La memoria semantica non ha un flusso di revisione: le skill restano
-  `candidate` finché non vengono promosse a mano.
+- La revisione delle skill è manuale da CLI; manca una GUI.
 - La ricerca nella memoria è per parola chiave, senza indice né
   embedding.
-- Il contesto iniettato usa gli ultimi turni globali, senza selezione
-  semantica.
-- L'audit non ha retention delle sessioni né compattazione; la catena
-  di hash rende il log tamper-evident ma non sostituisce un backup.
+- Il contesto iniettato usa turni recenti globali e fino a 3 skill
+  confermate per match lessicale, senza selezione semantica.
+- La memoria non cancella chat o skill per anzianità: `archive` è
+  l'unica rimozione dal contesto.
+- L'audit ha rotazione e retention (`max_files`), ma non compattazione
+  delle sessioni né un ancoraggio esterno della catena.
 - `chdir` espone il percorso assoluto della sandbox; da valutare
   percorsi virtuali (vedi AIsh in ROADMAP).
 

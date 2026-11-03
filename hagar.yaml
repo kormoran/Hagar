@@ -28,6 +28,7 @@ memory:
   enabled: true
   vault_subdir: Hagar
   context_turns: 10
+  context_skills: 3
   max_skill_chars: 4000
 
 filesystem:

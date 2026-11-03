@@ -87,6 +87,7 @@ class MemoryConfig:
     enabled: bool = True
     vault_subdir: str = "Hagar"
     context_turns: int = 10
+    context_skills: int = 3
     max_skill_chars: int = 4000
 
 

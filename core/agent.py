@@ -67,7 +67,10 @@ class Agent:
 
         if self.memory is not None:
 
-            context = self._memory_context(turn)
+            context = self._memory_context(
+                turn,
+                question,
+            )
 
             if context:
 
@@ -585,15 +588,32 @@ class Agent:
     def _memory_context(
         self,
         turn: str,
+        question: str,
     ) -> str | None:
 
         try:
 
             self.memory.begin_turn(turn)
 
-            context, count = (
-                self.memory.context_text()
+            context_for = getattr(
+                self.memory,
+                "context_for",
+                None,
             )
+
+            if context_for is not None:
+
+                context, count, skills = context_for(
+                    question
+                )
+
+            else:
+
+                context, count = (
+                    self.memory.context_text()
+                )
+
+                skills = 0
 
         except Exception as exc:
 
@@ -612,6 +632,7 @@ class Agent:
                 "memory.context",
                 turn=turn,
                 turns=count,
+                skills=skills,
             )
 
         return context

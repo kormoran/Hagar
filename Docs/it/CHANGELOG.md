@@ -5,7 +5,25 @@ riferimento al commit quando utile.
 
 ---
 
-# Non rilasciato
+# 0.2.0 — 2026-11-04
+
+Prima release con memoria revisionabile, calling nativo, MCP auth/OAuth,
+retention dell'audit e packaging installabile.
+
+## Memoria v2
+
+- Ciclo di vita `candidate` → `confirmed` → `archived`: l'LLM propone,
+  l'utente promuove da CLI.
+- Comandi `/memory list`, `/memory show`, `/memory review`,
+  `/memory confirm`, `/memory archive`.
+- Iniezione automatica delle sole skill confermate, fino a
+  `memory.context_skills` (default 3), per match lessicale; le candidate
+  e le archiviate restano fuori.
+- `reviewed_at` nel frontmatter; eventi audit `memory.review` e
+  `memory.status`.
+- Retention opzione A: nessuna cancellazione automatica; `archive` è
+  reversibile con `confirm`.
+- `memory.context_skills` in configurazione; 552 test superati, 1 skip.
 
 ## MCP OAuth interattivo
 

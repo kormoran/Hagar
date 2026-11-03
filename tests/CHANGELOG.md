@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 522 test superati, 1 skip (symlink non disponibili senza Developer
+- 552 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
   che chiamano servizi reali (9 test).
@@ -32,6 +32,14 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-04 — memoria v2 (0.2.0)
+
+- stati `candidate`/`confirmed`/`archived` e `set_skill_status`;
+- review CLI `/memory` con conferma/archivio/salta/esci;
+- recall delle sole confermate, top 3, etichettato come dati;
+- test di store, CLI, Agent e dispatch nel loop;
+- 552 test, 1 skip.
 
 ### 2026-11-03 — MCP OAuth
 

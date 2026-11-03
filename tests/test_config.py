@@ -947,6 +947,7 @@ def test_memory_defaults(tmp_path):
     assert cfg.memory.enabled is True
     assert cfg.memory.vault_subdir == "Hagar"
     assert cfg.memory.context_turns == 10
+    assert cfg.memory.context_skills == 3
     assert cfg.memory.max_skill_chars == 4000
 
 
@@ -956,6 +957,7 @@ def test_memory_section(tmp_path):
         "enabled": False,
         "vault_subdir": "Ai",
         "context_turns": 3,
+        "context_skills": 5,
         "max_skill_chars": 1200,
     }
 
@@ -964,6 +966,7 @@ def test_memory_section(tmp_path):
     assert cfg.memory.enabled is False
     assert cfg.memory.vault_subdir == "Ai"
     assert cfg.memory.context_turns == 3
+    assert cfg.memory.context_skills == 5
     assert cfg.memory.max_skill_chars == 1200
 
 
@@ -1017,6 +1020,30 @@ def test_memory_context_turns_is_validated(tmp_path, value):
     with pytest.raises(
         ConfigError,
         match="memory.context_turns",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_memory_context_skills_can_be_zero(tmp_path):
+    data = base_config(tmp_path)
+    data["memory"] = {"context_skills": 0}
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.memory.context_skills == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [-1, "3", True],
+)
+def test_memory_context_skills_is_validated(tmp_path, value):
+    data = base_config(tmp_path)
+    data["memory"] = {"context_skills": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="memory.context_skills",
     ):
         ConfigLoader.load(write_yaml(tmp_path, data))
 

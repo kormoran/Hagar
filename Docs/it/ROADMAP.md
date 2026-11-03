@@ -26,7 +26,7 @@ Ordine deciso:
 
 # 2. Priorità 1 — Memoria su Vault
 
-## 2.0 Stato: v1 implementata (2026-11-03)
+## 2.0 Stato: v2 implementata (2026-11-04)
 
 Realizzato:
 
@@ -36,9 +36,14 @@ Realizzato:
 - provenance (`source_session`, `source_turn`, `model`), stato
   `candidate`, deduplicazione per slug;
 - policy `MEMORY_READ`/`MEMORY_WRITE` e namespace `chat` / `skills`;
-- vault assente → memoria disattivata con avviso, harness attivo.
+- vault assente → memoria disattivata con avviso, harness attivo;
+- ciclo di vita `candidate` → `confirmed` → `archived` con revisione
+  umana da CLI (`/memory review`, `confirm`, `archive`);
+- iniezione automatica delle sole skill confermate, top 3 per match
+  lessicale;
+- retention opzione A: nessuna cancellazione automatica, solo archivio.
 
-Restano: revisione delle skill, retention, ricerca semantica, GUI.
+Restano: retention delle chat, ricerca semantica, GUI.
 
 ## 2.1 Decisioni prese
 
@@ -83,8 +88,8 @@ Comportamenti:
   lunghezza (`max_skill_chars`), frontmatter con `status: candidate`,
   `source_session`, `source_turn`, `model`, `created_at`; se esiste già
   uno slug uguale restituisce l'id esistente invece di duplicare.
-- `list_skills`: legge solo il frontmatter, non i corpi; filtrabile per
-  `kind` (`fact` / `procedure`) e `status`.
+- `list_skills`: legge frontmatter e corpo (serve al recall), filtrabile
+  per `kind` (`fact` / `procedure`) e `status`.
 - `get_context`: senza `session` cerca in tutte le sessioni; con `query`
   cerca per parole chiave nei turni passati; `limit` viene limitato a
   1..50 per non riversare tutto il Vault nel contesto.
@@ -142,6 +147,7 @@ memory:
   enabled: true
   vault_subdir: Hagar
   context_turns: 10
+  context_skills: 3
   max_skill_chars: 4000
 ```
 
@@ -149,26 +155,26 @@ memory:
 
 - A fine turno: aggiunge domanda e risposta alla nota di sessione (solo
   conversazione, **non** output dei tool: quelli restano nell'audit).
-- All'inizio del turno: inietta gli ultimi `context_turns` turni nel
-  prompt, senza aspettare che il modello chiami `get_context`.
-- Ogni scrittura di memoria produce un evento di audit
+- All'inizio del turno: inietta gli ultimi `context_turns` turni e fino
+  a `context_skills` skill **confermate** pertinenti (match lessicale),
+  senza aspettare che il modello chiami `get_context`.
+- Ogni scrittura o revisione di memoria produce un evento di audit
   (`memory.enabled`, `memory.disabled`, `memory.context`, `memory.turn`,
-  `memory.failed`); un Vault mancante o non scrivibile non ferma il
-  harness.
+  `memory.review`, `memory.status`, `memory.failed`); un Vault mancante o
+  non scrivibile non ferma il harness.
 - La memoria episodica è separata dall'audit: l'audit resta forense e
   contiene anche i dati dei tool.
 
 ## 2.6 Punti aperti
 
-- **Retention**: quante sessioni conservare, se riassumere le vecchie.
-- **Revisione**: chi promuove una skill da `candidate` a `confirmed`
-  (utente via comando, o un passo di consolidamento).
+- **Retention chat**: quante sessioni conservare, se riassumere le
+  vecchie; la 0.2.0 non cancella nulla.
 - **Ricerca**: indice (SQLite FTS) o embedding quando i volumi
   cresceranno; oggi è per parola chiave.
 - **GUI**: conferma ASK con dialog modale anche per le scritture di
-  memoria.
-- **Selezione del contesto**: oggi vengono iniettati gli ultimi turni
-  globali, senza rilevanza semantica.
+  memoria e per la review.
+- **Selezione del contesto**: oggi turni recenti globali e top 3 skill
+  confermate per match lessicale, senza rilevanza semantica.
 
 ## 2.7 Non obiettivi (per ora)
 
@@ -328,9 +334,11 @@ Restano:
 
 # 8. Ordine di lavoro
 
-1. Memoria v1: fatta; restano revisione, retention e ricerca.
+1. Memoria v2: fatta (ciclo di vita, review CLI, iniezione confermate);
+   restano retention chat, ricerca semantica e GUI.
 2. PermissionEvaluator: v1 fatta; restano conferme GUI e policy
    dinamiche.
-3. Igiene: fatta (packaging, test live, MCP, audit, base URL, legacy);
-   restano autenticazione MCP e retention dell'audit.
+3. Igiene: fatta (packaging, test live, MCP auth/OAuth, audit con
+   retention, base URL, legacy).
 4. Calling nativo: v1 fatta; resta la misura col benchmark.
+5. Release 0.2.0: dichiarata con la memoria v2.

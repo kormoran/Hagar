@@ -544,6 +544,12 @@ class ConfigLoader:
                 "memory.context_turns",
                 10,
             ),
+            context_skills=_non_negative_int(
+                memory_data,
+                "context_skills",
+                "memory.context_skills",
+                3,
+            ),
             max_skill_chars=_positive_int(
                 memory_data,
                 "max_skill_chars",

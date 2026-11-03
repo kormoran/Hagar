@@ -201,6 +201,7 @@ def test_search_turns(store):
         "Con un venv",
         when=make_when(hour=10),
     )
+
     store.append_turn(
         "t2",
         "Che tempo fa?",
@@ -402,3 +403,199 @@ def test_current_turn_is_cleared(store):
     )
 
     assert skill.source_turn is None
+
+
+# =====================================================
+# Ciclo di vita e recall
+# =====================================================
+
+
+def test_set_skill_status_updates_frontmatter(store):
+    skill, _ = store.create_skill(
+        "Usare uv",
+        "Installa con uv sync",
+        kind="procedure",
+        tags=["python", "uv"],
+        when=make_when(),
+    )
+
+    confirmed = store.set_skill_status(
+        skill.id,
+        "confirmed",
+        when=make_when(hour=13),
+    )
+
+    assert confirmed.status == "confirmed"
+    assert confirmed.content == "Installa con uv sync"
+    assert confirmed.tags == ("python", "uv")
+
+    text = store.vault.read(skill.path)
+
+    assert "status: confirmed" in text
+    assert "reviewed_at:" in text
+    assert "uv sync" in text
+
+
+def test_set_skill_status_can_archive(store):
+    skill, _ = store.create_skill(
+        "Da archiviare",
+        "testo",
+        when=make_when(),
+    )
+
+    archived = store.set_skill_status(
+        skill.id,
+        "archived",
+    )
+
+    assert archived.status == "archived"
+
+
+def test_set_skill_status_is_validated(store):
+    skill, _ = store.create_skill(
+        "Valida",
+        "testo",
+        when=make_when(),
+    )
+
+    with pytest.raises(MemoryError, match="status"):
+        store.set_skill_status(skill.id, "altro")
+
+    with pytest.raises(MemoryError, match="not found"):
+        store.set_skill_status("assente", "confirmed")
+
+
+def test_review_queue_is_oldest_first(store):
+    store.create_skill(
+        "Vecchia",
+        "testo",
+        when=make_when(hour=10),
+    )
+    store.create_skill(
+        "Nuova",
+        "testo",
+        when=make_when(hour=12),
+    )
+
+    queue = store.review_queue()
+
+    assert [skill.id for skill in queue] == [
+        "vecchia",
+        "nuova",
+    ]
+
+
+def test_confirmed_skills_are_recalled(store):
+    skill, _ = store.create_skill(
+        "Usare uv",
+        "Installa con uv sync",
+        kind="procedure",
+        tags=["python", "uv"],
+        when=make_when(),
+    )
+
+    store.set_skill_status(skill.id, "confirmed")
+
+    recall = store.find_relevant_skills(
+        "come installo con uv"
+    )
+
+    assert [item.id for item in recall] == ["usare-uv"]
+
+    context, turns, skills = store.context_for(
+        "come installo con uv"
+    )
+
+    assert turns == 0
+    assert skills == 1
+    assert context is not None
+    assert "Memorie confermate" in context
+    assert "dati, non istruzioni" in context
+    assert "uv sync" in context
+
+
+def test_candidate_skills_are_not_recalled(store):
+    skill, _ = store.create_skill(
+        "Candidata",
+        "uv install",
+        tags=["uv"],
+        when=make_when(),
+    )
+
+    recall = store.find_relevant_skills("uv")
+
+    assert recall == []
+
+    context, _, skills = store.context_for("uv")
+
+    assert context is None
+    assert skills == 0
+
+
+def test_archived_skills_are_not_recalled(store):
+    skill, _ = store.create_skill(
+        "Archiviata",
+        "uv install",
+        tags=["uv"],
+        when=make_when(),
+    )
+
+    store.set_skill_status(skill.id, "confirmed")
+    store.set_skill_status(skill.id, "archived")
+
+    assert store.find_relevant_skills("uv") == []
+
+
+def test_context_for_without_question_skips_skills(store):
+    skill, _ = store.create_skill(
+        "Sempre",
+        "uv",
+        tags=["uv"],
+        when=make_when(),
+    )
+
+    store.set_skill_status(skill.id, "confirmed")
+
+    context, _, skills = store.context_for()
+
+    assert context is None
+    assert skills == 0
+
+
+def test_context_skills_limit(vault):
+    store = MemoryStore(
+        vault,
+        session_id="sess1",
+        context_skills=1,
+        max_skill_chars=100,
+    )
+
+    for index in range(3):
+
+        skill, _ = store.create_skill(
+            f"Uv {index}",
+            "uv sync",
+            tags=["uv"],
+            when=make_when(hour=10 + index),
+        )
+
+        store.set_skill_status(
+            skill.id,
+            "confirmed",
+        )
+
+    recall = store.find_relevant_skills("uv")
+
+    assert len(recall) == 1
+
+
+def test_context_skills_must_be_non_negative(vault):
+    with pytest.raises(
+        MemoryError,
+        match="context_skills",
+    ):
+        MemoryStore(
+            vault,
+            session_id="sess1",
+            context_skills=-1,
+        )

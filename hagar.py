@@ -36,6 +36,7 @@ from llm.mcp_client import (
     resolve_auth_headers,
 )
 from llm.mcp_oauth import OAuthProvider
+from memory.cli import MemoryCLI
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
@@ -260,6 +261,7 @@ def build_harness(
                 session_id=audit.session_id,
                 subdir=config.memory.vault_subdir,
                 context_turns=config.memory.context_turns,
+                context_skills=config.memory.context_skills,
                 max_skill_chars=config.memory.max_skill_chars,
                 model=config.model.name,
             )
@@ -271,6 +273,7 @@ def build_harness(
                 root=str(config.vault.path),
                 subdir=config.memory.vault_subdir,
                 context_turns=config.memory.context_turns,
+                context_skills=config.memory.context_skills,
             )
 
         except Exception as exc:
@@ -597,7 +600,8 @@ def main(
         print(
             "Memory:",
             config.vault.path,
-            f"(contesto {config.memory.context_turns} turni)",
+            f"(contesto {config.memory.context_turns} turni, "
+            f"{config.memory.context_skills} skill)",
         )
 
     elif config.memory.enabled and harness.memory_error:
@@ -631,6 +635,15 @@ def main(
 
 def _interactive_loop(harness: Harness) -> None:
 
+    memory_cli = (
+        MemoryCLI(
+            harness.memory,
+            harness.audit,
+        )
+        if harness.memory is not None
+        else None
+    )
+
     while True:
 
         try:
@@ -642,13 +655,33 @@ def _interactive_loop(harness: Harness) -> None:
             print()
             break
 
-        if question.strip().lower() in {
+        stripped = question.strip()
+
+        if stripped.lower() in {
             "exit",
             "quit",
         }:
             break
 
-        if not question.strip():
+        if not stripped:
+            continue
+
+        if (
+            stripped == "/memory"
+            or stripped.startswith("/memory ")
+        ):
+
+            if memory_cli is None:
+
+                print()
+                print("Memoria disattivata.")
+                print()
+
+            else:
+
+                memory_cli.handle(stripped)
+                print()
+
             continue
 
         answer = harness.agent.ask(question)

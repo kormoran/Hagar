@@ -20,6 +20,8 @@ from core.permissions import (
 from core.tool_call import ToolCall
 from core.tool_definition import ToolDefinition
 from llm.deepseek_client import DeepSeekClient
+from memory.store import MemoryStore
+from memory.vault import Vault
 
 EXPECTED_TOOLS = {
     "filesystem.read_file",
@@ -962,3 +964,44 @@ def test_main_version(capsys):
 
     assert excinfo.value.code == 0
     assert "hagar 0.2.0" in capsys.readouterr().out
+
+
+def test_memory_command_in_loop(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    store = MemoryStore(
+        Vault(vault),
+        session_id="sess1",
+    )
+
+    store.create_skill(
+        "Usare uv",
+        "Installa con uv sync",
+    )
+
+    class FakeHarness:
+        memory = store
+        audit = hagar.AuditLog(
+            tmp_path / "audit.jsonl",
+            enabled=False,
+        )
+        agent = None
+
+    answers = iter(["/memory list", "quit"])
+
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": next(answers),
+    )
+
+    hagar._interactive_loop(FakeHarness())
+
+    output = capsys.readouterr().out
+
+    assert "Memoria:" in output
+    assert "usare-uv" in output
