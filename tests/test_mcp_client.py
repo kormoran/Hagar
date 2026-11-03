@@ -8,8 +8,12 @@ import pytest
 import requests
 
 from core.permissions import Capability
+from core.models import MCPAuthConfig
 from core.tool_registry import ToolRegistry
-from llm.mcp_client import MCPClient
+from llm.mcp_client import (
+    MCPClient,
+    resolve_auth_headers,
+)
 
 
 class FakeResponse:
@@ -442,6 +446,126 @@ def test_headers_and_timeout(client, monkeypatch):
     assert "application/json" in headers["Accept"]
     assert "text/event-stream" in headers["Accept"]
     assert http.calls[0]["timeout"] == 30
+
+
+# =====================================================
+# Autenticazione
+# =====================================================
+
+
+def test_auth_headers_are_merged():
+    client = MCPClient(
+        endpoint="http://localhost:8080/mcp",
+        namespace="gh",
+        headers={
+            "Authorization": "Bearer secret",
+        },
+    )
+
+    headers = client._headers()
+
+    assert headers["Authorization"] == "Bearer secret"
+    assert "text/event-stream" in headers["Accept"]
+
+
+def test_auth_headers_are_request_headers(
+    monkeypatch,
+):
+    http = install(
+        monkeypatch,
+        {"result": {}},
+        {},
+    )
+
+    client = MCPClient(
+        endpoint="http://localhost:8080/mcp",
+        namespace="gh",
+        headers={
+            "Authorization": "Bearer secret",
+        },
+    )
+
+    client.initialize()
+
+    assert (
+        http.calls[0]["headers"]["Authorization"]
+        == "Bearer secret"
+    )
+
+
+def test_headers_are_not_shared():
+    client = MCPClient(
+        endpoint="http://localhost:8080/mcp",
+        namespace="gh",
+    )
+
+    headers = client._headers()
+    headers["Authorization"] = "Bearer x"
+
+    assert "Authorization" not in client._headers()
+
+
+def test_resolve_bearer_headers(monkeypatch):
+    monkeypatch.setenv("MCP_TOKEN", "secret")
+
+    headers = resolve_auth_headers(
+        MCPAuthConfig(
+            type="bearer",
+            token_env="MCP_TOKEN",
+        )
+    )
+
+    assert headers == {
+        "Authorization": "Bearer secret",
+    }
+
+
+def test_resolve_custom_header(monkeypatch):
+    monkeypatch.setenv("MCP_KEY", "secret")
+
+    headers = resolve_auth_headers(
+        MCPAuthConfig(
+            type="header",
+            header="X-API-Key",
+            token_env="MCP_KEY",
+        )
+    )
+
+    assert headers == {"X-API-Key": "secret"}
+
+
+def test_resolve_auth_requires_token(
+    monkeypatch,
+):
+    monkeypatch.delenv("MCP_TOKEN", raising=False)
+
+    with pytest.raises(
+        ValueError,
+        match="MCP_TOKEN",
+    ):
+        resolve_auth_headers(
+            MCPAuthConfig(
+                type="bearer",
+                token_env="MCP_TOKEN",
+            )
+        )
+
+
+def test_resolve_auth_rejects_non_ascii(
+    monkeypatch,
+):
+    monkeypatch.setenv("MCP_TOKEN", "\u2022")
+
+    with pytest.raises(
+        ValueError,
+        match="non-ASCII",
+    ):
+        resolve_auth_headers(
+            MCPAuthConfig(
+                type="bearer",
+                token_env="MCP_TOKEN",
+            )
+        )
 
 
 # =====================================================

@@ -431,6 +431,84 @@ def test_successful_mcp_registration(tmp_path):
     assert harness.registry.execute("mcp.gh.ping") == "pong"
 
 
+def test_mcp_auth_headers_are_passed(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setenv("MCP_TOKEN", "secret")
+
+    path, _ = write_config(
+        tmp_path,
+        mcp_servers=[
+            {
+                "endpoint": "http://localhost:9999/mcp",
+                "namespace": "gh",
+                "auth": {
+                    "type": "bearer",
+                    "token_env": "MCP_TOKEN",
+                },
+            }
+        ],
+    )
+
+    captured = {}
+
+    class FakeMCP:
+        def __init__(
+            self,
+            endpoint,
+            namespace,
+            headers=None,
+        ):
+            captured["headers"] = headers
+
+        def register_tools(self, registry):
+            pass
+
+    hagar.build_harness(
+        ConfigLoader.load(path),
+        mcp_client_factory=FakeMCP,
+    )
+
+    assert captured["headers"] == {
+        "Authorization": "Bearer secret",
+    }
+
+
+def test_mcp_auth_missing_token_is_isolated(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.delenv("MCP_TOKEN", raising=False)
+
+    path, _ = write_config(
+        tmp_path,
+        mcp_servers=[
+            {
+                "endpoint": "http://localhost:9999/mcp",
+                "namespace": "gh",
+                "auth": {
+                    "type": "bearer",
+                    "token_env": "MCP_TOKEN",
+                },
+            }
+        ],
+    )
+
+    harness = hagar.build_harness(
+        ConfigLoader.load(path),
+        mcp_client_factory=lambda **kwargs: None,
+    )
+
+    assert set(harness.registry.tool_names()) == EXPECTED_TOOLS
+
+    output = capsys.readouterr().out
+
+    assert "MCP auth token missing" in output
+    assert "MCP_TOKEN" in output
+
+
 def test_resolve_config_defaults_to_cwd(tmp_path, monkeypatch):
     monkeypatch.delenv("HAGAR_CONFIG", raising=False)
     monkeypatch.chdir(tmp_path)

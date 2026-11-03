@@ -40,3 +40,11 @@ permissions:
 
 rag:
   top_k: 8
+
+# mcp_servers:
+#   - endpoint: https://mcp.example.com/mcp
+#     namespace: example
+#     auth:
+#       type: bearer          # oppure "header"
+#       token_env: MCP_EXAMPLE_TOKEN
+#       # header: X-API-Key  # solo con type: header

@@ -90,9 +90,25 @@ class MemoryConfig:
 
 
 @dataclass(slots=True)
+class MCPAuthConfig:
+    """
+    Autenticazione verso un server MCP.
+
+    ``type`` è ``bearer`` (header ``Authorization: Bearer ...``) oppure
+    ``header`` (token grezzo nell'header indicato). Il token si legge solo
+    dalla variabile d'ambiente ``token_env``.
+    """
+
+    type: str
+    token_env: str
+    header: str = "Authorization"
+
+
+@dataclass(slots=True)
 class MCPServerConfig:
     endpoint: str
     namespace: str
+    auth: MCPAuthConfig | None = None
 
 
 @dataclass(slots=True)

@@ -124,7 +124,7 @@ Sezioni:
 | `filesystem` | sì | radici della sandbox (`allowed`) |
 | `permissions` | no | read, write, shell (default `true/false/false`) |
 | `rag` | no | `top_k` (default 8) |
-| `mcp_servers` | no | lista di `endpoint` + `namespace` |
+| `mcp_servers` | no | endpoint, namespace, auth (bearer/header, token_env) |
 | `audit` | no | enabled, path, max_field_chars, max_bytes, include_outputs |
 | `policy` | no | path del file policy, subject |
 | `memory` | no | enabled, vault_subdir, context_turns, max_skill_chars |
@@ -260,6 +260,22 @@ la notifica `notifications/initialized` dopo l'handshake. I risultati
 dei tool vengono normalizzati a testo: blocchi `text`, altrimenti
 `structuredContent` o JSON; un risultato con `isError` diventa un
 errore del tool.
+
+Autenticazione per server:
+
+```yaml
+mcp_servers:
+  - endpoint: https://mcp.example.com/mcp
+    namespace: example
+    auth:
+      type: bearer          # oppure "header"
+      token_env: MCP_EXAMPLE_TOKEN
+      # header: X-API-Key  # solo con type: header
+```
+
+Il token si legge solo dall'ambiente e non compare nell'audit. Se manca,
+il server viene saltato con `mcp.failed` e il harness continua; gli altri
+server restano disponibili.
 
 ## 3.8 Vault (`memory/vault.py`)
 
@@ -464,7 +480,7 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 479 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 496 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;

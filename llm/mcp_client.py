@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import requests
 
 from typing import Any
@@ -8,6 +9,55 @@ from typing import Any
 from core.tool_definition import ToolDefinition, ToolParameter
 from core.tool_registry import ToolRegistry
 from core.permissions import Capability
+
+
+def resolve_auth_headers(
+    auth: Any,
+) -> dict[str, str]:
+    """
+    Traduce la configurazione auth in header HTTP.
+
+    Il token si legge solo dall'ambiente; non viene mai registrato
+    nell'audit né incluso nei messaggi d'errore.
+    """
+
+    if auth is None:
+        return {}
+
+    token = os.environ.get(
+        auth.token_env,
+        "",
+    ).strip()
+
+    if not token:
+
+        raise ValueError(
+            "MCP auth token missing: set the "
+            f"{auth.token_env} environment variable"
+        )
+
+    if not token.isascii():
+
+        raise ValueError(
+            f"{auth.token_env} contains non-ASCII "
+            "characters"
+        )
+
+    if auth.type == "bearer":
+
+        return {
+            "Authorization": f"Bearer {token}",
+        }
+
+    if auth.type == "header":
+
+        return {
+            auth.header: token,
+        }
+
+    raise ValueError(
+        f"Unsupported MCP auth type: {auth.type}"
+    )
 
 
 class MCPClient:
@@ -26,6 +76,7 @@ class MCPClient:
         endpoint: str,
         namespace: str,
         timeout: int = 30,
+        headers: dict[str, str] | None = None,
     ) -> None:
 
         if not isinstance(
@@ -42,6 +93,14 @@ class MCPClient:
         self.namespace = namespace.strip()
 
         self.timeout = timeout
+
+        self.headers = {
+            "Accept":
+                "application/json, text/event-stream",
+        }
+
+        if headers:
+            self.headers.update(headers)
 
         self._request_id = 0
 
@@ -123,13 +182,9 @@ class MCPClient:
 
         return result
 
-    @staticmethod
-    def _headers() -> dict[str, str]:
+    def _headers(self) -> dict[str, str]:
 
-        return {
-            "Accept":
-                "application/json, text/event-stream",
-        }
+        return dict(self.headers)
 
     @staticmethod
     def _decode(

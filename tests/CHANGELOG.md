@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 479 test superati, 1 skip (symlink non disponibili senza Developer
+- 496 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
   che chiamano servizi reali (9 test).
@@ -32,6 +32,13 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-03 — MCP auth
+
+- `auth` bearer/header per server MCP, token da variabile d'ambiente;
+- risoluzione header e isolamento del server se il token manca;
+- test di config, header HTTP e harness;
+- 496 test, 1 skip.
 
 ### 2026-11-03 — DeepSeek live
 

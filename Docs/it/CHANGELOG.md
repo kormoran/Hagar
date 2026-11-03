@@ -7,6 +7,16 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## MCP auth
+
+- `mcp_servers[].auth`: `type: bearer` oppure `type: header`, con
+  `token_env` e, per l'header, il nome dell'header.
+- Il token si legge solo dall'ambiente: non va nel YAML, nell'audit o
+  nei log.
+- Token mancante o non-ASCII: il server viene saltato con `mcp.failed` e
+  il harness continua con gli altri.
+- 496 test superati, 1 skip.
+
 ## Benchmark nativo vs testo
 
 - `tools/bench_native.py`: 9 task filesystem sullo stesso registry,

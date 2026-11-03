@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import re
 import yaml
 
 from .models import (
@@ -16,6 +17,7 @@ from .models import (
     PermissionConfig,
     RagConfig,
     MCPServerConfig,
+    MCPAuthConfig,
 )
 
 
@@ -545,6 +547,68 @@ class ConfigLoader:
                     f"mcp_servers[{index}] must be a mapping"
                 )
 
+            auth_data = entry.get("auth")
+
+            auth: MCPAuthConfig | None = None
+
+            if auth_data is not None:
+
+                if not isinstance(auth_data, dict):
+
+                    raise ConfigError(
+                        f"mcp_servers[{index}].auth "
+                        "must be a mapping"
+                    )
+
+                auth_type = _text(
+                    auth_data,
+                    "type",
+                    f"mcp_servers[{index}].auth.type",
+                ).strip().lower()
+
+                if auth_type not in {
+                    "bearer",
+                    "header",
+                }:
+
+                    raise ConfigError(
+                        f"mcp_servers[{index}].auth.type "
+                        "must be 'bearer' or 'header'"
+                    )
+
+                token_env = _text(
+                    auth_data,
+                    "token_env",
+                    f"mcp_servers[{index}].auth.token_env",
+                )
+
+                header = "Authorization"
+
+                if auth_type == "header":
+
+                    header = _text(
+                        auth_data,
+                        "header",
+                        f"mcp_servers[{index}].auth.header",
+                    )
+
+                if not re.fullmatch(
+                    r"[A-Za-z0-9-]+",
+                    header,
+                ):
+
+                    raise ConfigError(
+                        f"mcp_servers[{index}].auth.header "
+                        "must contain only letters, "
+                        "digits and hyphens"
+                    )
+
+                auth = MCPAuthConfig(
+                    type=auth_type,
+                    token_env=token_env,
+                    header=header,
+                )
+
             mcp_servers.append(
                 MCPServerConfig(
                     endpoint=_text(
@@ -557,6 +621,7 @@ class ConfigLoader:
                         "namespace",
                         f"mcp_servers[{index}].namespace",
                     ),
+                    auth=auth,
                 )
             )
 

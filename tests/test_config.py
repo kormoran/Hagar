@@ -284,6 +284,110 @@ def test_mcp_server_requires_endpoint(tmp_path):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_mcp_auth_bearer_is_parsed(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "http://localhost:8080/mcp",
+            "namespace": "github",
+            "auth": {
+                "type": "bearer",
+                "token_env": "GITHUB_TOKEN",
+            },
+        }
+    ]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    auth = cfg.mcp_servers[0].auth
+
+    assert auth is not None
+    assert auth.type == "bearer"
+    assert auth.token_env == "GITHUB_TOKEN"
+    assert auth.header == "Authorization"
+
+
+def test_mcp_auth_header_is_parsed(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "http://localhost:8080/mcp",
+            "namespace": "custom",
+            "auth": {
+                "type": "header",
+                "header": "X-API-Key",
+                "token_env": "CUSTOM_MCP_KEY",
+            },
+        }
+    ]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    auth = cfg.mcp_servers[0].auth
+
+    assert auth is not None
+    assert auth.type == "header"
+    assert auth.header == "X-API-Key"
+
+
+def test_mcp_auth_is_optional(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "http://localhost:8080/mcp",
+            "namespace": "github",
+        }
+    ]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.mcp_servers[0].auth is None
+
+
+def test_mcp_auth_must_be_mapping(tmp_path):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "http://localhost:8080/mcp",
+            "namespace": "github",
+            "auth": "token",
+        }
+    ]
+
+    with pytest.raises(
+        ConfigError,
+        match=r"mcp_servers\[0\].auth",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+@pytest.mark.parametrize(
+    "auth",
+    [
+        {"type": "bearer"},
+        {"type": "basic", "token_env": "KEY"},
+        {"type": "header", "token_env": "KEY"},
+        {
+            "type": "header",
+            "header": "Bad Header",
+            "token_env": "KEY",
+        },
+    ],
+)
+def test_mcp_auth_is_validated(tmp_path, auth):
+    data = base_config(tmp_path)
+    data["mcp_servers"] = [
+        {
+            "endpoint": "http://localhost:8080/mcp",
+            "namespace": "github",
+            "auth": auth,
+        }
+    ]
+
+    with pytest.raises(ConfigError, match="auth"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 # =====================================================
 # Percorsi
 # =====================================================

@@ -31,7 +31,10 @@ from core.permissions import (
 from core.tool_registry import ToolRegistry
 from llm.base import LLMClient
 from llm.factory import create_llm
-from llm.mcp_client import MCPClient
+from llm.mcp_client import (
+    MCPClient,
+    resolve_auth_headers,
+)
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
@@ -352,10 +355,18 @@ def build_harness(
 
         try:
 
-            mcp = mcp_client_factory(
-                endpoint=server_cfg.endpoint,
-                namespace=server_cfg.namespace,
-            )
+            kwargs: dict[str, Any] = {
+                "endpoint": server_cfg.endpoint,
+                "namespace": server_cfg.namespace,
+            }
+
+            if server_cfg.auth is not None:
+
+                kwargs["headers"] = resolve_auth_headers(
+                    server_cfg.auth
+                )
+
+            mcp = mcp_client_factory(**kwargs)
 
             mcp.register_tools(registry)
 
