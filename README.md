@@ -151,3 +151,13 @@ repairs, elapsed time and the final answer.
 
 It needs a running Ollama server and already pulled models; the scratch
 area is `.bench/` (gitignored).
+
+---
+
+# 4. Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how the harness works today:
+  components, security model, known limits.
+- [ROADMAP.md](ROADMAP.md) — planned work, decisions already taken and
+  open questions.
+- [CHANGELOG.md](CHANGELOG.md) — version history.
