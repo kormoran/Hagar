@@ -74,3 +74,15 @@ class AppConfig:
     audit: AuditConfig = field(
         default_factory=AuditConfig
     )
+
+
+@dataclass
+class PolicyRule:
+
+    subject: str
+
+    capability: str
+
+    resource: str
+
+    action: PolicyAction

@@ -1,7 +1,7 @@
-## 0 H.A.G.A.R.
+## H.A.G.A.R.
 
 Harness Agentico Generale per AI Resilienti (General Agentic Harness for Resilient AIs)
-
+README.md in italiano in Docs/it
 
 # 1. Project Vision
 
