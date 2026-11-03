@@ -247,14 +247,19 @@ def test_disabled_log_entries_still_chain(tmp_path):
 
 def test_rotation_creates_single_backup(tmp_path):
     path = tmp_path / "audit.jsonl"
-    backup = path.with_name(path.name + ".1")
 
     log = AuditLog(path, max_bytes=1)
 
     log.record("a")
     log.record("b")
 
-    assert backup.exists()
+    backups = sorted(
+        tmp_path.glob("audit.jsonl.*")
+    )
+
+    assert len(backups) == 1
+
+    backup = backups[0]
 
     current = read_entries(path)
     previous = read_entries(backup)
@@ -267,16 +272,70 @@ def test_rotation_creates_single_backup(tmp_path):
     assert verify_chain(current) is True
 
 
+def test_rotation_keeps_last_files(tmp_path):
+    path = tmp_path / "audit.jsonl"
+
+    log = AuditLog(
+        path,
+        max_bytes=1,
+        max_files=3,
+    )
+
+    for event in "abcde":
+        log.record(event)
+
+    files = sorted(
+        tmp_path.glob("audit.jsonl*")
+    )
+
+    assert len(files) == 3
+
+    events: set[str] = set()
+
+    for file in files:
+        events.update(
+            entry["event"]
+            for entry in read_entries(file)
+        )
+
+    assert "e" in events
+    assert "c" in events
+    assert "a" not in events
+    assert "b" not in events
+
+
+def test_chain_continues_from_backup(tmp_path):
+    path = tmp_path / "audit.jsonl"
+
+    AuditLog(path, max_bytes=1).record("a")
+    AuditLog(path, max_bytes=1).record("b")
+
+    backup = sorted(
+        tmp_path.glob("audit.jsonl.*")
+    )[-1]
+
+    backup_hash = read_entries(backup)[-1]["hash"]
+
+    path.unlink()
+
+    restarted = AuditLog(path)
+
+    entry = restarted.record("c")
+
+    assert entry["prev"] == backup_hash
+
+
 def test_rotation_can_be_disabled(tmp_path):
     path = tmp_path / "audit.jsonl"
-    backup = path.with_name(path.name + ".1")
 
     log = AuditLog(path, max_bytes=0)
 
     log.record("a")
     log.record("b")
 
-    assert not backup.exists()
+    assert not list(
+        tmp_path.glob("audit.jsonl.*")
+    )
     assert len(read_entries(path)) == 2
 
 

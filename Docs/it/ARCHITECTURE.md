@@ -125,7 +125,7 @@ Sezioni:
 | `permissions` | no | read, write, shell (default `true/false/false`) |
 | `rag` | no | `top_k` (default 8) |
 | `mcp_servers` | no | endpoint, namespace, auth (bearer/header, token_env) |
-| `audit` | no | enabled, path, max_field_chars, max_bytes, include_outputs |
+| `audit` | no | enabled, path, max_field_chars, max_bytes, max_files, include_outputs |
 | `policy` | no | path del file policy, subject |
 | `memory` | no | enabled, vault_subdir, context_turns, max_skill_chars |
 
@@ -332,7 +332,9 @@ Proprietà:
   segnalato una sola volta su stderr;
 - troncamento configurabile (`audit.max_field_chars`, default 2000);
 - catena di hash (`prev`/`hash`) verificabile con `verify_chain`;
-- rotazione in `<file>.1` oltre `audit.max_bytes` (0 disattiva);
+- rotazione in `<file>.<timestamp>` oltre `audit.max_bytes` (0 disattiva);
+- retention: `audit.max_files` (default 100) tiene al massimo N file,
+  incluso quello attivo; i backup più vecchi vengono eliminati;
 - con `audit.include_outputs: false` l'output dei tool viene registrato
   solo come dimensione;
 - valori non JSON resi serializzabili;
@@ -493,7 +495,7 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 496 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 504 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;

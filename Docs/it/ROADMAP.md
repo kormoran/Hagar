@@ -294,6 +294,8 @@ Fatta (2026-11-03):
 - **Audit**: rotazione a `max_bytes`, catena di hash verificabile con
   `verify_chain`, redazione dell'output dei tool con
   `include_outputs: false`.
+- **Audit retention**: backup timestampati e `audit.max_files` (default
+  100, include il file attivo) con pruning dei più vecchi.
 - **Test live**: marker `live`, esclusi di default, `--live` per Ollama
   e provider remoti (questi ultimi skippati senza chiave).
 - **Packaging**: metadati completi, entry point `hagar`, `--config`,
@@ -304,7 +306,7 @@ Fatta (2026-11-03):
 Restano:
 
 - OAuth interattivo per MCP (oggi bearer/header da variabile d'ambiente);
-- retention e compattazione delle sessioni di audit;
+- compattazione delle sessioni di audit;
 - conferme GUI per `ASK`;
 - allineamento continuo della documentazione.
 

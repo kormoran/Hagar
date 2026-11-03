@@ -7,6 +7,15 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## Audit retention
+
+- Rotazione in `<file>.<timestamp>` oltre `audit.max_bytes`.
+- `audit.max_files` (default 100) limita il numero di file audit,
+  incluso quello attivo; i backup più vecchi vengono eliminati.
+- La catena di hash continua dal backup più recente se il file attivo
+  manca.
+- 504 test superati, 1 skip.
+
 ## MCP auth
 
 - `mcp_servers[].auth`: `type: bearer` oppure `type: header`, con

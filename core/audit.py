@@ -15,6 +15,8 @@ TRUNCATION_SUFFIX = "...<truncated {remaining} chars>"
 
 DEFAULT_MAX_BYTES = 5_000_000
 
+DEFAULT_MAX_FILES = 100
+
 
 def utc_now() -> str:
     """Timestamp ISO 8601 in UTC, con millisecondi."""
@@ -132,6 +134,7 @@ class AuditLog:
         session_id: str | None = None,
         max_bytes: int = DEFAULT_MAX_BYTES,
         include_outputs: bool = True,
+        max_files: int = DEFAULT_MAX_FILES,
     ) -> None:
 
         self.path = Path(path)
@@ -148,13 +151,19 @@ class AuditLog:
 
         self.include_outputs = include_outputs
 
+        self.max_files = int(max_files)
+
         self._warned = False
 
-        self._last_hash = (
-            self._read_last_hash()
-            if self.enabled
-            else None
-        )
+        if self.enabled:
+
+            self._prune()
+
+            self._last_hash = self._read_last_hash()
+
+        else:
+
+            self._last_hash = None
 
     # ==================================================
     # Public API
@@ -249,14 +258,27 @@ class AuditLog:
             if self.path.stat().st_size < self.max_bytes:
                 return
 
+            stamp = datetime.now(
+                timezone.utc
+            ).strftime("%Y%m%dT%H%M%S%fZ")
+
             backup = self.path.with_name(
-                self.path.name + ".1"
+                f"{self.path.name}.{stamp}"
             )
 
-            if backup.exists():
-                backup.unlink()
+            index = 2
+
+            while backup.exists():
+
+                backup = self.path.with_name(
+                    f"{self.path.name}.{stamp}-{index}"
+                )
+
+                index += 1
 
             self.path.rename(backup)
+
+            self._prune()
 
         except OSError:
 
@@ -267,16 +289,57 @@ class AuditLog:
 
             pass
 
-    def _read_last_hash(self) -> str | None:
+    def _backup_files(self) -> list[Path]:
 
-        if not self.path.exists():
-            return None
+        if not self.path.parent.exists():
+            return []
+
+        return sorted(
+            (
+                candidate
+                for candidate in self.path.parent.glob(
+                    self.path.name + ".*"
+                )
+                if candidate.is_file()
+            ),
+            key=lambda candidate: candidate.name,
+        )
+
+    def _prune(self) -> None:
+        """
+        Tiene al massimo ``max_files`` file, incluso quello attivo.
+
+        I backup sono ordinati per nome: il timestamp ha larghezza fissa,
+        quindi l'ordine lessicografico è anche cronologico.
+        """
+
+        if self.max_files <= 0:
+            return
+
+        backups = self._backup_files()
+
+        excess = len(backups) + 1 - self.max_files
+
+        for backup in backups[: max(0, excess)]:
+
+            try:
+
+                backup.unlink()
+
+            except OSError:
+
+                pass
+
+    @staticmethod
+    def _last_hash_in(
+        path: Path,
+    ) -> str | None:
 
         last: str | None = None
 
         try:
 
-            with self.path.open(
+            with path.open(
                 "r",
                 encoding="utf-8",
             ) as handle:
@@ -308,6 +371,28 @@ class AuditLog:
             return None
 
         return last
+
+    def _read_last_hash(self) -> str | None:
+
+        candidates: list[Path] = []
+
+        if self.path.exists():
+            candidates.append(self.path)
+
+        candidates.extend(
+            reversed(self._backup_files())
+        )
+
+        for candidate in candidates:
+
+            digest = self._last_hash_in(
+                candidate
+            )
+
+            if digest:
+                return digest
+
+        return None
 
     # ==================================================
     # Serialization

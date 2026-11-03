@@ -427,6 +427,12 @@ class ConfigLoader:
                 5_000_000,
             ),
             include_outputs=audit_include_outputs,
+            max_files=_positive_int(
+                audit_data,
+                "max_files",
+                "audit.max_files",
+                100,
+            ),
         )
 
         # -------------------------

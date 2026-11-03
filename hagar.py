@@ -166,6 +166,7 @@ def build_harness(
         enabled=config.audit.enabled,
         max_bytes=config.audit.max_bytes,
         include_outputs=config.audit.include_outputs,
+        max_files=config.audit.max_files,
     )
 
     # ==========================================

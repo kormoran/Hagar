@@ -58,6 +58,7 @@ class AuditConfig:
     max_field_chars: int = 2000
     max_bytes: int = 5_000_000
     include_outputs: bool = True
+    max_files: int = 100
 
 
 @dataclass(slots=True)

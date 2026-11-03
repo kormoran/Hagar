@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 496 test superati, 1 skip (symlink non disponibili senza Developer
+- 504 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
   che chiamano servizi reali (9 test).
@@ -32,6 +32,13 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-03 — audit retention
+
+- backup timestampati e pruning con `max_files` (default 100);
+- catena di hash che continua dal backup più recente;
+- test di rotazione, retention e riavvio;
+- 504 test, 1 skip.
 
 ### 2026-11-03 — MCP auth
 

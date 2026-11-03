@@ -668,6 +668,38 @@ def test_audit_include_outputs_must_be_boolean(tmp_path):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_audit_max_files_defaults_to_100(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.audit.max_files == 100
+
+
+def test_audit_max_files_can_be_configured(tmp_path):
+    data = base_config(tmp_path)
+    data["audit"] = {"max_files": 7}
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.audit.max_files == 7
+
+
+@pytest.mark.parametrize(
+    "value",
+    [0, -1, "100", True],
+)
+def test_audit_max_files_is_validated(tmp_path, value):
+    data = base_config(tmp_path)
+    data["audit"] = {"max_files": value}
+
+    with pytest.raises(
+        ConfigError,
+        match="audit.max_files",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 # =====================================================
 # Policy
 # =====================================================

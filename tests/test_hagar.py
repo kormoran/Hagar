@@ -541,6 +541,7 @@ def test_harness_writes_audit_log(tmp_path):
     assert harness.audit.path == audit_path
     assert audit_path.exists()
     assert harness.audit.max_bytes == 5_000_000
+    assert harness.audit.max_files == 100
     assert harness.audit.include_outputs is True
 
     entries = read_entries(audit_path)
