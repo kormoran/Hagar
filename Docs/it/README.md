@@ -69,7 +69,6 @@ python -m venv .venv
 `local_tools` packages and installs the `hagar` command:
 
 ```bash
-mkdir -p ~/ai
 hagar --config hagar.yaml
 hagar --model qwen3:8b
 hagar --no-memory
@@ -77,12 +76,10 @@ hagar --no-native-tools
 hagar --version
 ```
 
-Hagar non crea la radice della sandbox da solo: `~/ai` deve esistere
-ed essere scrivibile. Su Windows:
-
-```powershell
-New-Item -ItemType Directory -Force $HOME\ai
-```
+Le voci di `filesystem.allowed` sono percorsi del sistema ospite:
+qualsiasi directory esistente e raggiungibile va bene. Hagar non crea
+directory e non presume che esista una home dedicata; la prima radice
+è quella che l'agente vede come `/home/ai`.
 
 The configuration is searched as `--config`, then the `HAGAR_CONFIG`
 environment variable, then `./hagar.yaml`. `python -m hagar` also works

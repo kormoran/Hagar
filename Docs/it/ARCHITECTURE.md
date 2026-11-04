@@ -246,10 +246,10 @@ La prima radice concessa è la **radice virtuale** ed è esposta come
 virtuali: il percorso fisico della sandbox non compare mai nell'output
 del modello. Un input `/home/ai/...` viene risolto contro la radice
 virtuale; i percorsi relativi restano relativi alla directory corrente.
-La configurazione di esempio usa `~/ai` come radice fisica, così su
-Windows e su Unix cambia solo la home, non il percorso mostrato. La
-radice deve esistere ed essere scrivibile: Hagar non la crea
-automaticamente.
+Le radici in `filesystem.allowed` restano invece path del sistema
+ospite, assoluti o con `~` se l'utente lo sceglie: può essere qualsiasi
+directory esistente e raggiungibile. Hagar non crea directory e non
+presuppone l'esistenza di una home dedicata.
 
 ## 3.6 Tool filesystem (`core/filesystem_tools.py`)
 
@@ -613,8 +613,9 @@ nel registry e vivono fuori dal core, in un package separato.
 
 - I percorsi interni usano `pathlib.Path`; quelli mostrati all'agente
   usano sempre `/` e la radice virtuale `/home/ai`.
-- La configurazione usa `~/ai` e `~/HagarVault`: `Path.expanduser()`
-  risolve la home su Windows, Linux e macOS.
+- `filesystem.allowed` contiene path del sistema ospite, assoluti o con
+  `~` se l'utente lo sceglie: `Path.expanduser()` risolve la home solo
+  quando il path la usa. Non si presuppone che una home dedicata esista.
 - `tools/run_tests.sh` è il runner POSIX; `tools/run_tests.ps1` e
   `tools/pytest_shim` servono solo alla sandbox Windows con token
   ristretto.
