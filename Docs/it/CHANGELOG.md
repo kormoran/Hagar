@@ -34,13 +34,19 @@ riferimento al commit quando utile.
 - Filesystem con radice virtuale `/home/ai`: `stat`, `list_dir`,
   `search`, `read_chunk` e i messaggi dei tool non espongono più il
   percorso fisico; gli input `/home/ai/...` sono accettati.
-- Le voci di `filesystem.allowed` restano path del sistema ospite:
-  qualsiasi directory esistente e raggiungibile. Hagar non crea
-  directory e non presuppone una home dedicata; la prima radice è
-  quella mostrata come `/home/ai`.
+- `filesystem.allowed` sostituito da `filesystem.sandbox`: ogni voce ha
+  `alias`, `path` e permessi `R`/`W`/`X`. L'agente vede
+  `/home/ai/<alias>/...`; niente `hdN`, niente volumi o directory
+  intermedie sintetiche. `/home/ai` elenca gli alias ma non è un mount.
+- Permessi per alias: `R` lettura/elenco/ricerca/stat, `W`
+  scrittura/creazione/rinomina/copia/cancellazione, `X` `chdir`; i
+  permessi globali restano un tetto.
+- Alias obbligatorio, singolo segmento, unico case-insensitive, senza
+  nomi riservati Windows; le voci della sandbox restano path del sistema
+  ospite e Hagar non crea directory.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 604 test superati, 1 skip.
+- 627 test superati, 1 skip.
 
 # 0.2.0 — 2026-11-04
 

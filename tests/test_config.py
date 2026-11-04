@@ -27,7 +27,13 @@ def base_config(tmp_path: Path) -> dict:
             "path": str(tmp_path / "vault"),
         },
         "filesystem": {
-            "allowed": [str(tmp_path / "workspace")],
+            "sandbox": [
+                {
+                    "alias": "workspace",
+                    "path": str(tmp_path / "workspace"),
+                    "permissions": "RWX",
+                }
+            ],
         },
         "permissions": {
             "read": True,
@@ -67,7 +73,9 @@ def test_load_valid_config():
 
     assert cfg.rag.top_k == 8
 
-    assert len(cfg.filesystem.allowed) == 1
+    assert len(cfg.filesystem.sandbox) == 1
+    assert cfg.filesystem.sandbox[0].alias == "workspace"
+    assert cfg.filesystem.sandbox[0].permissions == "R"
 
 
 def test_missing_file():
@@ -193,28 +201,90 @@ def test_permissions_network_must_be_boolean(tmp_path):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
-def test_allowed_must_be_a_list(tmp_path):
+def test_sandbox_must_be_a_list(tmp_path):
     data = base_config(tmp_path)
-    data["filesystem"]["allowed"] = "workspace"
+    data["filesystem"]["sandbox"] = "workspace"
 
-    with pytest.raises(ConfigError, match="filesystem.allowed"):
+    with pytest.raises(ConfigError, match="filesystem.sandbox"):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
-def test_allowed_must_not_be_empty(tmp_path):
+def test_sandbox_must_not_be_empty(tmp_path):
     data = base_config(tmp_path)
-    data["filesystem"]["allowed"] = []
+    data["filesystem"]["sandbox"] = []
 
-    with pytest.raises(ConfigError, match="filesystem.allowed"):
+    with pytest.raises(ConfigError, match="filesystem.sandbox"):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
-def test_allowed_entries_must_be_strings(tmp_path):
+def test_sandbox_entry_must_be_a_mapping(tmp_path):
     data = base_config(tmp_path)
-    data["filesystem"]["allowed"] = [42]
+    data["filesystem"]["sandbox"] = [42]
 
-    with pytest.raises(ConfigError, match="filesystem.allowed"):
+    with pytest.raises(ConfigError, match="filesystem.sandbox\\[0\\]"):
         ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_sandbox_alias_is_required(tmp_path):
+    data = base_config(tmp_path)
+    del data["filesystem"]["sandbox"][0]["alias"]
+
+    with pytest.raises(ConfigError, match="alias"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+@pytest.mark.parametrize(
+    "alias",
+    ["", "..", "a/b", "a\\b", ".hidden", "CON", "con.txt", "a:"],
+)
+def test_sandbox_alias_is_validated(tmp_path, alias):
+    data = base_config(tmp_path)
+    data["filesystem"]["sandbox"][0]["alias"] = alias
+
+    with pytest.raises(ConfigError, match="alias"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_sandbox_aliases_are_case_insensitively_unique(
+    tmp_path,
+):
+    data = base_config(tmp_path)
+    data["filesystem"]["sandbox"].append(
+        {
+            "alias": "Workspace",
+            "path": str(tmp_path / "other"),
+            "permissions": "R",
+        }
+    )
+
+    with pytest.raises(ConfigError, match="duplicates"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_sandbox_permissions_are_canonicalized(tmp_path):
+    data = base_config(tmp_path)
+    data["filesystem"]["sandbox"][0]["permissions"] = "xwr"
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.filesystem.sandbox[0].permissions == "RWX"
+
+
+def test_sandbox_permissions_are_validated(tmp_path):
+    data = base_config(tmp_path)
+    data["filesystem"]["sandbox"][0]["permissions"] = "RXZ"
+
+    with pytest.raises(ConfigError, match="permissions"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_sandbox_permissions_default_to_read(tmp_path):
+    data = base_config(tmp_path)
+    del data["filesystem"]["sandbox"][0]["permissions"]
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.filesystem.sandbox[0].permissions == "R"
 
 
 def test_top_k_must_be_integer(tmp_path):
@@ -589,18 +659,20 @@ def test_paths_are_path_objects(tmp_path):
     )
 
     assert isinstance(cfg.vault.path, Path)
-    assert isinstance(cfg.filesystem.allowed[0], Path)
+    assert isinstance(cfg.filesystem.sandbox[0].path, Path)
 
 
 def test_tilde_is_expanded(tmp_path):
     data = base_config(tmp_path)
     data["vault"]["path"] = "~/vault"
-    data["filesystem"]["allowed"] = ["~/workspace"]
+    data["filesystem"]["sandbox"][0]["path"] = (
+        "~/workspace"
+    )
 
     cfg = ConfigLoader.load(write_yaml(tmp_path, data))
 
     assert cfg.vault.path == Path("~/vault").expanduser()
-    assert cfg.filesystem.allowed[0] == Path(
+    assert cfg.filesystem.sandbox[0].path == Path(
         "~/workspace"
     ).expanduser()
 

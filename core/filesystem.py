@@ -81,9 +81,10 @@ class FileSystemSandbox:
     rispetto alla directory corrente, verificata contro le radici concesse
     e filtrata dai permessi effettivi.
 
-    La prima radice è la radice virtuale del sandbox ed è esposta come
-    ``/home/ai``. Tutti i percorsi restituiti dai tool sono relativi a
-    questa radice, indipendentemente dal sistema operativo.
+    La radice virtuale del sandbox è ``/home/ai``. Ogni directory
+    configurata è esposta come ``/home/ai/<alias>``: non esistono volumi
+    o directory intermedie sintetiche. Tutti i percorsi restituiti dai
+    tool sono virtuali, indipendentemente dal sistema operativo.
     """
 
     VIRTUAL_ROOT = "/home/ai"
@@ -92,6 +93,7 @@ class FileSystemSandbox:
         self,
         roots: dict[Path, DirectoryPermissions],
         current_directory: Path,
+        aliases: dict[str, Path] | None = None,
     ) -> None:
 
         self.roots = {
@@ -103,11 +105,62 @@ class FileSystemSandbox:
             current_directory.resolve()
         )
 
-        self.virtual_root = next(iter(self.roots))
+        if aliases is None:
+
+            aliases = {
+                (
+                    "root"
+                    if len(self.roots) == 1
+                    else f"root{index}"
+                ): root
+                for index, root in enumerate(self.roots)
+            }
+
+        if not aliases:
+
+            raise ValueError(
+                "FileSystemSandbox requires at least one alias"
+            )
+
+        self.aliases = {
+            alias: Path(path).resolve()
+            for alias, path in aliases.items()
+        }
+
+        self._alias_lookup = {
+            alias.casefold(): alias
+            for alias in self.aliases
+        }
+
+        self.alias_by_root: dict[Path, str] = {}
+
+        for alias, root in self.aliases.items():
+
+            if root not in self.roots:
+
+                raise ValueError(
+                    f"Alias {alias!r} points outside roots"
+                )
+
+            self.alias_by_root[root] = alias
+
+        self.virtual_root = self.VIRTUAL_ROOT
 
     # ==================================================
     # Path helpers
     # ==================================================
+
+    def is_virtual_root(
+        self,
+        path: str | Path | None,
+    ) -> bool:
+
+        if path is None:
+            return False
+
+        raw = str(path).replace("\\", "/").rstrip("/")
+
+        return raw == self.VIRTUAL_ROOT
 
     def resolve_path(
         self,
@@ -126,9 +179,39 @@ class FileSystemSandbox:
 
             relative = raw[len(self.VIRTUAL_ROOT):].lstrip("/")
 
-            return (
-                self.virtual_root / relative
-            ).resolve()
+            if not relative:
+
+                raise PermissionError(
+                    f"{self.VIRTUAL_ROOT} is virtual; "
+                    "choose an alias"
+                )
+
+            alias, _, suffix = relative.partition("/")
+
+            canonical = self._alias_lookup.get(
+                alias.casefold()
+            )
+
+            if canonical is None:
+
+                raise PermissionError(
+                    f"Unknown sandbox alias: {alias}"
+                )
+
+            root = self.aliases[canonical]
+
+            target = (root / suffix).resolve() if suffix else root
+
+            if (
+                target != root
+                and root not in target.parents
+            ):
+
+                raise PermissionError(
+                    "Virtual path escapes its alias"
+                )
+
+            return target
 
         path = Path(path)
 
@@ -142,60 +225,41 @@ class FileSystemSandbox:
         path: str | Path,
     ) -> str:
         """
-        Percorso mostrato all'agente, relativo alla radice virtuale.
+        Percorso mostrato all'agente: ``/home/ai/<alias>/...``.
 
         Non restituisce mai il percorso fisico della sandbox.
         """
 
         target = self.resolve_path(path)
 
-        if (
-            target == self.virtual_root
-            or self.virtual_root in target.parents
-        ):
+        candidates = [
+            (root, alias)
+            for root, alias in self.alias_by_root.items()
+            if (
+                target == root
+                or root in target.parents
+            )
+        ]
 
-            root = self.virtual_root
+        if not candidates:
 
-        else:
+            raise PermissionError(
+                "Path outside configured aliases"
+            )
 
-            root = self._longest_root(target)
+        root, alias = max(
+            candidates,
+            key=lambda item: len(item[0].parts),
+        )
 
         relative = target.relative_to(root)
 
         if str(relative) == ".":
-            return self.VIRTUAL_ROOT
+            return f"{self.VIRTUAL_ROOT}/{alias}"
 
         return (
-            self.VIRTUAL_ROOT
-            + "/"
-            + relative.as_posix()
-        )
-
-    def _longest_root(
-        self,
-        target: Path,
-    ) -> Path:
-
-        matches = []
-
-        for root in self.roots:
-
-            try:
-                target.relative_to(root)
-                matches.append(root)
-
-            except ValueError:
-                continue
-
-        if not matches:
-
-            raise PermissionError(
-                "Path outside sandbox"
-            )
-
-        return max(
-            matches,
-            key=lambda item: len(item.parts),
+            f"{self.VIRTUAL_ROOT}/{alias}/"
+            f"{relative.as_posix()}"
         )
 
     def _display(
@@ -453,6 +517,15 @@ class FileSystemSandbox:
                     f"{self._display(target)}"
                 )
 
+        elif operation == "execute":
+
+            if not permissions.execute:
+
+                return (
+                    f"Enter access denied: "
+                    f"{self._display(target)}"
+                )
+
         disk_error = self.check_disk_space(
             target,
             required_space,
@@ -472,10 +545,17 @@ class FileSystemSandbox:
         path: str | Path,
     ) -> None:
 
+        if self.is_virtual_root(path):
+
+            raise PermissionError(
+                f"{self.VIRTUAL_ROOT} is virtual; "
+                "choose an alias"
+            )
+
         target = self.resolve_path(path)
 
         error = self.FS_Guardian(
-            "read",
+            "execute",
             target,
         )
 
@@ -511,6 +591,25 @@ class FileSystemSandbox:
         self,
         path: str | Path = ".",
     ) -> list[FileInfo]:
+
+        if self.is_virtual_root(path):
+
+            entries: list[FileInfo] = []
+
+            for alias in sorted(
+                self.aliases,
+                key=str.casefold,
+            ):
+
+                try:
+                    entries.append(
+                        self.stat(self.aliases[alias])
+                    )
+
+                except PermissionError:
+                    continue
+
+            return entries
 
         target = self.resolve_path(path)
 
@@ -573,6 +672,46 @@ class FileSystemSandbox:
             1,
             min(int(max_results), 5000),
         )
+
+        if self.is_virtual_root(path):
+
+            results: list[FileInfo] = []
+            total_matches = 0
+
+            for alias in sorted(
+                self.aliases,
+                key=str.casefold,
+            ):
+
+                try:
+                    partial = self.search(
+                        pattern,
+                        self.aliases[alias],
+                        max_results,
+                    )
+
+                except (
+                    PermissionError,
+                    FileNotFoundError,
+                    NotADirectoryError,
+                ):
+                    continue
+
+                total_matches += partial["total_matches"]
+
+                for item in partial["results"]:
+
+                    if len(results) < max_results:
+                        results.append(item)
+
+            return {
+                "pattern": pattern,
+                "searched_path": self.VIRTUAL_ROOT,
+                "total_matches": total_matches,
+                "returned_matches": len(results),
+                "truncated": total_matches > max_results,
+                "results": results,
+            }
 
         target = self.resolve_path(path)
 
@@ -902,6 +1041,22 @@ class FileSystemSandbox:
         permetterebbe su quel percorso. Un percorso fuori dalla sandbox
         resta un errore.
         """
+
+        if self.is_virtual_root(path):
+
+            return FileInfo(
+                path=self.VIRTUAL_ROOT,
+                exists=True,
+                kind="directory",
+                permissions={
+                    "read": True,
+                    "write": False,
+                    "create": False,
+                    "rename": False,
+                    "delete": False,
+                    "execute": False,
+                },
+            )
 
         target = self.resolve_path(path)
 

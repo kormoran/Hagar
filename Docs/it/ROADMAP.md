@@ -55,7 +55,7 @@ Restano: retention delle chat, ricerca semantica, GUI.
   esplicita, attribuibile e rivedibile — la Prima Legge vieta di
   trattarla come verità.
 - **Solo Vault Obsidian.** Nessuna scrittura sul filesystem reale per la
-  memoria (per ora). Il `filesystem.allowed` resta la sandbox operativa.
+  memoria (per ora). La `filesystem.sandbox` resta la sandbox operativa.
 - **Il Vault non si riscrive.** I tool aggiungono note o sezioni; non
   sovrascrivono note curate dall'utente.
 
@@ -357,7 +357,8 @@ Stato al 2026-11-04:
   `permissions.network` e dalla policy (feed in `ask`);
 - `feed.read` con policy SSRF: solo indirizzi globali, redirect
   rivalidati, niente credenziali nell'URL;
-- filesystem con radice virtuale `/home/ai` e input virtuali;
+- filesystem con radice virtuale `/home/ai`, alias obbligatori e
+  permessi per mount (`R`/`W`/`X`);
 - runner POSIX `tools/run_tests.sh` accanto a quello Windows.
 
 Punti aperti:

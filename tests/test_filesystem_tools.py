@@ -82,7 +82,7 @@ def test_read_write_roundtrip_via_registry(
     )
 
     assert "created" in created
-    assert "/home/ai/a.txt" in created
+    assert "/home/ai/root/a.txt" in created
     assert str(workspace) not in created
     assert registry.execute(
         "filesystem.read_file",
@@ -112,7 +112,7 @@ def test_mkdir_and_chdir(registry, workspace, sandbox):
     )
 
     assert "sub" in message
-    assert "/home/ai/sub" in message
+    assert "/home/ai/root/sub" in message
     assert str(workspace) not in message
     assert sandbox.current_directory == (
         workspace / "sub"
@@ -171,7 +171,7 @@ def test_stat_tool(registry, workspace):
         )
     )
 
-    assert payload["path"] == "/home/ai/a.txt"
+    assert payload["path"] == "/home/ai/root/a.txt"
     assert str(workspace) not in payload["path"]
     assert payload["exists"] is True
     assert payload["kind"] == "file"
@@ -237,7 +237,7 @@ def test_read_chunk_path_is_virtual(
         )
     )
 
-    assert payload["path"] == "/home/ai/a.txt"
+    assert payload["path"] == "/home/ai/root/a.txt"
     assert str(workspace) not in payload["path"]
 
 
@@ -259,8 +259,8 @@ def test_copy_and_rename_paths_are_virtual(
         )
     )
 
-    assert copied["source"] == "/home/ai/a.txt"
-    assert copied["destination"] == "/home/ai/b.txt"
+    assert copied["source"] == "/home/ai/root/a.txt"
+    assert copied["destination"] == "/home/ai/root/b.txt"
     assert str(workspace) not in json.dumps(copied)
 
     renamed = json.loads(
@@ -271,7 +271,7 @@ def test_copy_and_rename_paths_are_virtual(
         )
     )
 
-    assert renamed["destination"] == "/home/ai/c.txt"
+    assert renamed["destination"] == "/home/ai/root/c.txt"
     assert str(workspace) not in json.dumps(renamed)
 
 
@@ -291,8 +291,8 @@ def test_search_paths_are_virtual(registry, workspace):
         )
     )
 
-    assert payload["searched_path"] == "/home/ai/sub"
+    assert payload["searched_path"] == "/home/ai/root/sub"
     assert payload["results"][0]["path"] == (
-        "/home/ai/sub/a.py"
+        "/home/ai/root/sub/a.py"
     )
     assert str(workspace) not in json.dumps(payload)

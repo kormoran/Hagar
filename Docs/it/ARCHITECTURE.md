@@ -121,7 +121,7 @@ Sezioni:
 |---|---|---|
 | `model` | sì | provider, nome, host, max_tokens, api_key_env, native_tools |
 | `vault` | sì | percorso del vault Obsidian |
-| `filesystem` | sì | radici della sandbox (`allowed`) |
+| `filesystem` | sì | `sandbox`: lista di `{alias, path, permissions}` |
 | `permissions` | no | read, write, shell, network (default `true/false/false/false`) |
 | `rag` | no | `top_k` (default 8) |
 | `mcp_servers` | no | endpoint, namespace, auth (bearer/header/oauth) |
@@ -240,16 +240,36 @@ Un percorso fuori dalle radici è sempre `PermissionError`.
 creazione/modifica/accesso (ISO 8601 con offset locale) e i permessi
 **effettivi della sandbox**, non le ACL del sistema operativo.
 
-La prima radice concessa è la **radice virtuale** ed è esposta come
-`/home/ai`. `stat`, `list_dir`, `search`, `read_chunk`, i messaggi di
-`write`/`create`/`mkdir`/`delete` e `chdir` mostrano solo percorsi
-virtuali: il percorso fisico della sandbox non compare mai nell'output
-del modello. Un input `/home/ai/...` viene risolto contro la radice
-virtuale; i percorsi relativi restano relativi alla directory corrente.
-Le radici in `filesystem.allowed` restano invece path del sistema
-ospite, assoluti o con `~` se l'utente lo sceglie: può essere qualsiasi
-directory esistente e raggiungibile. Hagar non crea directory e non
-presuppone l'esistenza di una home dedicata.
+La radice virtuale del sandbox è `/home/ai`; ogni directory configurata
+è esposta come `/home/ai/<alias>`. `stat`, `list_dir`, `search`,
+`read_chunk`, i messaggi di `write`/`create`/`mkdir`/`delete` e `chdir`
+mostrano solo percorsi virtuali: il percorso fisico non compare mai
+nell'output del modello. Un input `/home/ai/<alias>/...` viene risolto
+contro la directory fisica dell'alias; i percorsi relativi restano
+relativi alla directory corrente.
+
+`/home/ai` è una directory sintetica: si può listare e statare, ma non
+è un mount e non è possibile farci `chdir`. Le voci di
+`filesystem.sandbox` restano path del sistema ospite, assoluti o con
+`~` se l'utente lo sceglie: può essere qualsiasi directory esistente e
+raggiungibile. Hagar non crea directory e non presuppone una home
+dedicata.
+
+```yaml
+filesystem:
+  sandbox:
+    - alias: documenti
+      path: C:\Users\pippo\Documenti
+      permissions: RWX
+    - alias: ebooks
+      path: D:\ebooks
+      permissions: R
+```
+
+`R` copre lettura, elenco, ricerca e `stat`; `W` copre scrittura,
+creazione, rinomina, copia e cancellazione; `X` copre `chdir`. I
+permessi globali `permissions.read`/`write` restano un tetto: un alias
+`RWX` non può superarli.
 
 ## 3.6 Tool filesystem (`core/filesystem_tools.py`)
 
@@ -273,7 +293,7 @@ filesystem.stat
 con `has_more`; `search` usa un glob ricorsivo con limite di risultati;
 `copy_file` richiede `create`; `rename` richiede `rename` sulla sorgente
 e `create` sulla destinazione. I percorsi restituiti sono sempre
-virtuali (`/home/ai/...`).
+virtuali (`/home/ai/<alias>/...`). `chdir` richiede `X` sull'alias.
 
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
@@ -598,7 +618,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 604 test superati, 1 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 627 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
@@ -613,9 +633,11 @@ nel registry e vivono fuori dal core, in un package separato.
 
 - I percorsi interni usano `pathlib.Path`; quelli mostrati all'agente
   usano sempre `/` e la radice virtuale `/home/ai`.
-- `filesystem.allowed` contiene path del sistema ospite, assoluti o con
+- `filesystem.sandbox` contiene path del sistema ospite, assoluti o con
   `~` se l'utente lo sceglie: `Path.expanduser()` risolve la home solo
   quando il path la usa. Non si presuppone che una home dedicata esista.
+- Ogni mount ha un alias esplicito e unico (case-insensitive); il
+  percorso fisico può stare su qualsiasi volume.
 - `tools/run_tests.sh` è il runner POSIX; `tools/run_tests.ps1` e
   `tools/pytest_shim` servono solo alla sandbox Windows con token
   ristretto.
@@ -654,6 +676,10 @@ nel registry e vivono fuori dal core, in un package separato.
   limitate, non simboliche.
 - `stat().created_at` è `None` su Linux quando manca `st_birthtime`; non
   viene inventata una data di creazione.
+- Due alias non possono puntare allo stesso path fisico: l'alias
+  identifica un mount e l'output virtuale deve restare univoco. Per una
+  vista in sola lettura usare un alias su una directory diversa o
+  cambiare i permessi dell'alias.
 
 ---
 

@@ -85,4 +85,5 @@ def sandbox(workspace: Path) -> FileSystemSandbox:
             )
         },
         current_directory=workspace,
+        aliases={"root": workspace},
     )

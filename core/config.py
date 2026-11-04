@@ -14,12 +14,24 @@ from .models import (
     PolicyConfig,
     VaultConfig,
     FileSystemConfig,
+    SandboxMount,
     PermissionConfig,
     RagConfig,
     MCPServerConfig,
     MCPAuthConfig,
     MCPOAuthConfig,
 )
+
+_RESERVED_ALIASES = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+}
+
+_ALIAS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 class ConfigError(RuntimeError):
@@ -311,35 +323,113 @@ class ConfigLoader:
             "filesystem",
         )
 
-        allowed = filesystem_data.get(
-            "allowed"
-        )
+        sandbox_data = filesystem_data.get("sandbox")
 
-        if not isinstance(allowed, list) or not allowed:
+        if not isinstance(sandbox_data, list) or not sandbox_data:
 
             raise ConfigError(
-                "filesystem.allowed must be a "
-                "non-empty list of paths"
+                "filesystem.sandbox must be a "
+                "non-empty list of mounts"
             )
 
-        allowed_paths: list[Path] = []
+        mounts: list[SandboxMount] = []
+        seen_aliases: set[str] = set()
 
-        for entry in allowed:
+        for index, entry in enumerate(sandbox_data):
 
-            if not isinstance(entry, str) or not entry.strip():
+            prefix = f"filesystem.sandbox[{index}]"
+
+            entry = _mapping(entry, prefix)
+
+            alias = entry.get("alias")
+
+            if not isinstance(alias, str) or not alias.strip():
 
                 raise ConfigError(
-                    "filesystem.allowed entries must "
-                    "be non-empty strings"
+                    f"{prefix}.alias must be a "
+                    "non-empty string"
                 )
 
-            allowed_paths.append(
-                Path(entry).expanduser()
+            alias = alias.strip()
+
+            if not _ALIAS_RE.fullmatch(alias):
+
+                raise ConfigError(
+                    f"{prefix}.alias is not a valid "
+                    "single path segment"
+                )
+
+            if alias.split(".", 1)[0].lower() in _RESERVED_ALIASES:
+
+                raise ConfigError(
+                    f"{prefix}.alias is a reserved name"
+                )
+
+            if alias.endswith((".", " ")):
+
+                raise ConfigError(
+                    f"{prefix}.alias must not end "
+                    "with a dot or a space"
+                )
+
+            normalized_alias = alias.casefold()
+
+            if normalized_alias in seen_aliases:
+
+                raise ConfigError(
+                    f"{prefix}.alias duplicates "
+                    f"{alias!r} (case-insensitive)"
+                )
+
+            seen_aliases.add(normalized_alias)
+
+            path_value = entry.get("path")
+
+            if not isinstance(path_value, str) or not path_value.strip():
+
+                raise ConfigError(
+                    f"{prefix}.path must be a "
+                    "non-empty string"
+                )
+
+            permissions_value = entry.get(
+                "permissions",
+                "R",
             )
 
-        filesystem = FileSystemConfig(
-            allowed=allowed_paths
-        )
+            if not isinstance(permissions_value, str):
+
+                raise ConfigError(
+                    f"{prefix}.permissions must be a string"
+                )
+
+            normalized_permissions = permissions_value.strip().upper()
+
+            if not normalized_permissions or any(
+                char not in "RWX"
+                for char in normalized_permissions
+            ):
+
+                raise ConfigError(
+                    f"{prefix}.permissions must contain "
+                    "only R, W and X"
+                )
+
+            permissions = "".join(
+                char
+                for char in "RWX"
+                if char in normalized_permissions
+            )
+
+            mounts.append(
+                SandboxMount(
+                    alias=alias,
+                    path=Path(path_value).expanduser(),
+                    permissions=permissions,
+                )
+            )
+
+        filesystem = FileSystemConfig(sandbox=mounts)
 
         # -------------------------
         # Permissions (optional)

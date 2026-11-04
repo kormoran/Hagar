@@ -7,8 +7,10 @@ vault:
   path: ./vault
 
 filesystem:
-  allowed:
-    - ./workspace
+  sandbox:
+    - alias: workspace
+      path: ./workspace
+      permissions: R
 
 permissions:
   read: true

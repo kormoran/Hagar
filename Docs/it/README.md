@@ -76,10 +76,21 @@ hagar --no-native-tools
 hagar --version
 ```
 
-Le voci di `filesystem.allowed` sono percorsi del sistema ospite:
-qualsiasi directory esistente e raggiungibile va bene. Hagar non crea
-directory e non presume che esista una home dedicata; la prima radice
-è quella che l'agente vede come `/home/ai`.
+Le voci di `filesystem.sandbox` sono percorsi del sistema ospite:
+qualsiasi directory esistente e raggiungibile va bene. Ogni voce ha un
+alias esplicito e i permessi `R`/`W`/`X`:
+
+```yaml
+filesystem:
+  sandbox:
+    - alias: documenti
+      path: C:\Users\pippo\Documenti
+      permissions: RWX
+```
+
+L'agente vede `/home/ai/documenti/...`; `/home/ai` elenca gli alias ma
+non è una directory fisica. Hagar non crea directory e non presume che
+esista una home dedicata.
 
 The configuration is searched as `--config`, then the `HAGAR_CONFIG`
 environment variable, then `./hagar.yaml`. `python -m hagar` also works

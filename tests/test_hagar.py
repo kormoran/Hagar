@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 
 from pathlib import Path
 
@@ -99,7 +100,15 @@ def write_config(
             "name": "test-model",
         },
         "vault": {"path": str(vault)},
-        "filesystem": {"allowed": [str(workspace)]},
+        "filesystem": {
+            "sandbox": [
+                {
+                    "alias": "workspace",
+                    "path": str(workspace),
+                    "permissions": "RWX",
+                }
+            ]
+        },
         "permissions": {
             "read": True,
             "write": write,
@@ -161,6 +170,36 @@ def test_write_permission_follows_config(tmp_path):
 
     with pytest.raises(PermissionError):
         harness.filesystem.create_file("a.txt")
+
+
+def test_missing_sandbox_path_is_rejected(tmp_path):
+    path, workspace = write_config(tmp_path)
+    shutil.rmtree(workspace)
+
+    with pytest.raises(
+        ConfigError,
+        match="not a directory",
+    ):
+        hagar.build_harness(ConfigLoader.load(path))
+
+
+def test_duplicate_sandbox_path_is_rejected(tmp_path):
+    path, workspace = write_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["filesystem"]["sandbox"].append(
+        {
+            "alias": "duplicate",
+            "path": str(workspace),
+            "permissions": "R",
+        }
+    )
+    path.write_text(
+        yaml.safe_dump(data),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="duplicate path"):
+        hagar.build_harness(ConfigLoader.load(path))
 
 
 class RecordingConfirmation:

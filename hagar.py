@@ -300,24 +300,47 @@ def build_harness(
     # Filesystem sandbox
     # ==========================================
 
-    permissions = DirectoryPermissions(
-        read=config.permissions.read,
-        write=config.permissions.write,
-        create=config.permissions.write,
-        rename=config.permissions.write,
-        delete=config.permissions.write,
-    )
+    sandbox_roots: dict[Path, DirectoryPermissions] = {}
+    sandbox_aliases: dict[str, Path] = {}
 
-    sandbox_roots = {
-        Path(path): permissions
-        for path in config.filesystem.allowed
-    }
+    for mount in config.filesystem.sandbox:
+
+        mount_path = mount.path.expanduser().resolve()
+
+        if not mount_path.is_dir():
+
+            raise ConfigError(
+                f"filesystem.sandbox path is not a "
+                f"directory: {mount.path}"
+            )
+
+        if mount_path in sandbox_roots:
+
+            raise ConfigError(
+                "filesystem.sandbox has duplicate path: "
+                f"{mount.path}"
+            )
+
+        sandbox_roots[mount_path] = DirectoryPermissions(
+            read=("R" in mount.permissions)
+            and config.permissions.read,
+            write=("W" in mount.permissions)
+            and config.permissions.write,
+            create=("W" in mount.permissions)
+            and config.permissions.write,
+            rename=("W" in mount.permissions)
+            and config.permissions.write,
+            delete=("W" in mount.permissions)
+            and config.permissions.write,
+            execute=("X" in mount.permissions),
+        )
+
+        sandbox_aliases[mount.alias] = mount_path
 
     filesystem = FileSystemSandbox(
         roots=sandbox_roots,
-        current_directory=Path(
-            config.filesystem.allowed[0]
-        ),
+        current_directory=next(iter(sandbox_roots)),
+        aliases=sandbox_aliases,
     )
 
     # ==========================================
@@ -510,8 +533,15 @@ def build_harness(
             filesystem.current_directory
         ),
         roots=[
-            str(root)
-            for root in config.filesystem.allowed
+            str(mount.path)
+            for mount in config.filesystem.sandbox
+        ],
+        sandbox=[
+            {
+                "alias": mount.alias,
+                "permissions": mount.permissions,
+            }
+            for mount in config.filesystem.sandbox
         ],
         permissions={
             "read": config.permissions.read,

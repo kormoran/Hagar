@@ -28,8 +28,22 @@ class VaultConfig:
 
 
 @dataclass(slots=True)
+class SandboxMount:
+    """
+    Una radice della sandbox, esposta all'agente come
+    ``/home/ai/<alias>``.
+
+    ``permissions`` è la stringa canonica composta da ``R``, ``W``, ``X``.
+    """
+
+    alias: str
+    path: Path
+    permissions: str = "R"
+
+
+@dataclass(slots=True)
 class FileSystemConfig:
-    allowed: list[Path]
+    sandbox: list[SandboxMount]
 
 
 @dataclass(slots=True)

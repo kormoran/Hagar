@@ -515,7 +515,7 @@ def test_stat_file(sandbox, workspace):
 
     info = sandbox.stat("a.txt")
 
-    assert info.path == "/home/ai/a.txt"
+    assert info.path == "/home/ai/root/a.txt"
     assert info.exists is True
     assert info.kind == "file"
     assert info.size_bytes == len(

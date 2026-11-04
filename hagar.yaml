@@ -33,10 +33,12 @@ memory:
   max_skill_chars: 4000
 
 filesystem:
-  allowed:
-    # Path del sistema ospite: qualsiasi directory esistente e
-    # raggiungibile. L'agente la vede come /home/ai.
-    - I:/src/costanti
+  # Path del sistema ospite; l'agente li vede come /home/ai/<alias>.
+  # Permessi: R = lettura, W = scrittura, X = ingresso/chdir.
+  sandbox:
+    - alias: costanti
+      path: I:/src/costanti
+      permissions: RWX
 
 permissions:
   read: true

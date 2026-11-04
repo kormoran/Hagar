@@ -7,9 +7,13 @@ vault:
   path: D:/Vault
 
 filesystem:
-  allowed:
-    - D:/Projects/SMAC
-    - D:/Projects/Archiver
+  sandbox:
+    - alias: projects
+      path: D:/Projects/SMAC
+      permissions: R
+    - alias: archiver
+      path: D:/Projects/Archiver
+      permissions: R
 
 permissions:
   read: true
