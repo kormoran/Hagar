@@ -240,6 +240,17 @@ Un percorso fuori dalle radici è sempre `PermissionError`.
 creazione/modifica/accesso (ISO 8601 con offset locale) e i permessi
 **effettivi della sandbox**, non le ACL del sistema operativo.
 
+La prima radice concessa è la **radice virtuale** ed è esposta come
+`/home/ai`. `stat`, `list_dir`, `search`, `read_chunk`, i messaggi di
+`write`/`create`/`mkdir`/`delete` e `chdir` mostrano solo percorsi
+virtuali: il percorso fisico della sandbox non compare mai nell'output
+del modello. Un input `/home/ai/...` viene risolto contro la radice
+virtuale; i percorsi relativi restano relativi alla directory corrente.
+La configurazione di esempio usa `~/ai` come radice fisica, così su
+Windows e su Unix cambia solo la home, non il percorso mostrato. La
+radice deve esistere ed essere scrivibile: Hagar non la crea
+automaticamente.
+
 ## 3.6 Tool filesystem (`core/filesystem_tools.py`)
 
 ```text
@@ -261,7 +272,8 @@ filesystem.stat
 `list_dir` restituisce metadati `FileInfo`; `read_chunk` legge per byte
 con `has_more`; `search` usa un glob ricorsivo con limite di risultati;
 `copy_file` richiede `create`; `rename` richiede `rename` sulla sorgente
-e `create` sulla destinazione.
+e `create` sulla destinazione. I percorsi restituiti sono sempre
+virtuali (`/home/ai/...`).
 
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
@@ -541,7 +553,7 @@ I test live sono esclusi dalla suite normale e si abilitano con
 `--live`: verificano Ollama e i provider remoti (questi ultimi solo se
 la chiave API è presente).
 
-## 3.13 Tool locali (`MCP_tools/`)
+## 3.13 Tool locali (`local_tools/`)
 
 Non sono server MCP: sono provider locali che registrano `ToolDefinition`
 nel registry e vivono fuori dal core, in un package separato.
@@ -557,9 +569,14 @@ nel registry e vivono fuori dal core, in un package separato.
   espressione, numero di nodi ed esponente.
 - `feed.read` scarica con `requests` (timeout 15 s, massimo 5 MB), accetta
   solo URL http/https e usa `feedparser`; la policy `NETWORK` è `ask`.
+- SSRF: ogni host viene risolto con `getaddrinfo` e ogni indirizzo deve
+  essere globale; loopback, reti private, link-local, multicast e
+  riservati sono rifiutati. I redirect non sono automatici: ogni
+  `Location` viene rivalidata e si fermano dopo 3 salti. Un URL con
+  credenziali viene rifiutato.
 - `permissions.network: true` è necessario perché il tetto di sistema
   conceda `NETWORK`; `COMPUTE` è sempre nel tetto ma la policy può negarlo.
-- `MCP_tools` è dichiarato in `pyproject.toml` e installato con il
+- `local_tools` è dichiarato in `pyproject.toml` e installato con il
   progetto.
 
 ---
@@ -580,15 +597,34 @@ nel registry e vivono fuori dal core, in un package separato.
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 586 test superati, 1 skip (symlink
+- Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
+  `.\tools\run_tests.ps1` (Windows) — 604 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
-- Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
+- Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
+  `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).
 - Confronto modelli: `python tools/bench_models.py` (README §3.5).
 - Confronto protocolli: `python tools/bench_native.py --provider ollama`
   (README §3.5).
 - La suite normale non tocca la rete: Ollama e MCP sono simulati.
+
+## 5.1 Multipiattaforma
+
+- I percorsi interni usano `pathlib.Path`; quelli mostrati all'agente
+  usano sempre `/` e la radice virtuale `/home/ai`.
+- La configurazione usa `~/ai` e `~/HagarVault`: `Path.expanduser()`
+  risolve la home su Windows, Linux e macOS.
+- `tools/run_tests.sh` è il runner POSIX; `tools/run_tests.ps1` e
+  `tools/pytest_shim` servono solo alla sandbox Windows con token
+  ristretto.
+- L'unico ramo esplicitamente Windows rimasto è la data di creazione in
+  `stat`: `st_birthtime` dove disponibile, altrimenti `st_ctime` su
+  Windows; su Linux `created_at` può essere `None`.
+- Le API esterne (OAuth, MCP, LLM) usano HTTP e `webbrowser`, non
+  comandi di sistema.
+- Restano da verificare in CI Linux/macOS: symlink, permessi dei file
+  token OAuth e callback loopback.
 
 ---
 
@@ -610,12 +646,13 @@ nel registry e vivono fuori dal core, in un package separato.
   l'unica rimozione dal contesto.
 - L'audit ha rotazione e retention (`max_files`), ma non compattazione
   delle sessioni né un ancoraggio esterno della catena.
-- `chdir` espone il percorso assoluto della sandbox; da valutare
-  percorsi virtuali (vedi AIsh in ROADMAP).
-- `feed.read` può raggiungere URL arbitrari (SSRF): la policy `NETWORK`
-  è `ask`, ma non c'è ancora un blocco per IP privati o localhost.
+- `feed.read` valida gli indirizzi e i redirect, ma resta il caso DNS
+  rebinding: `requests` risolve il nome una seconda volta al momento
+  della connessione; serve un resolver pinnato.
 - Il calcolatore non è un CAS: gestisce solo espressioni numeriche
   limitate, non simboliche.
+- `stat().created_at` è `None` su Linux quando manca `st_birthtime`; non
+  viene inventata una data di creazione.
 
 ---
 

@@ -9,8 +9,8 @@ from core.tool_definition import (
 )
 from core.tool_registry import ToolRegistry
 
-from MCP_tools.calculator import Calculator
-from MCP_tools.statistics import Stats_calc
+from local_tools.calculator import Calculator
+from local_tools.statistics import Stats_calc
 
 
 class MathToolsProvider:

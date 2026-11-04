@@ -1,4 +1,4 @@
-"""Test dei tool locali in MCP_tools."""
+"""Test dei tool locali in local_tools."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ import pytest
 
 from core.permissions import Capability
 from core.tool_registry import ToolRegistry
-from MCP_tools.calculator import Calculator
-from MCP_tools.feeder import Feeder
-from MCP_tools.feeder_tool import FeederToolProvider
-from MCP_tools.math_tools import MathToolsProvider
-from MCP_tools.statistics import Stats_calc
-from MCP_tools.unit_converter import UnitConverter
-from MCP_tools.unit_converter_tool import (
+from local_tools.calculator import Calculator
+from local_tools.feeder import Feeder
+from local_tools.feeder_tool import FeederToolProvider
+from local_tools.math_tools import MathToolsProvider
+from local_tools.statistics import Stats_calc
+from local_tools.unit_converter import UnitConverter
+from local_tools.unit_converter_tool import (
     UnitConverterToolProvider,
 )
 
@@ -42,15 +42,34 @@ RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class FakeResponse:
-    def __init__(self, content: bytes, status_code: int = 200):
+    def __init__(
+        self,
+        content: bytes,
+        status_code: int = 200,
+        headers: dict[str, str] | None = None,
+    ):
         self.content = content
         self.status_code = status_code
+        self.headers = headers or {}
 
     def raise_for_status(self):
         if self.status_code >= 400:
             raise RuntimeError(
                 f"HTTP {self.status_code}"
             )
+
+    def iter_content(
+        self,
+        chunk_size: int = 65536,
+    ):
+        for start in range(
+            0,
+            len(self.content),
+            chunk_size,
+        ):
+            yield self.content[
+                start:start + chunk_size
+            ]
 
 
 def test_calculator_arithmetic():
@@ -169,16 +188,22 @@ def test_feed_provider_registers_tool():
 
 
 def test_feed_read_rss(monkeypatch):
-    def fake_get(url, timeout, headers):
+    def fake_get(
+        url,
+        timeout,
+        headers,
+        allow_redirects,
+        stream,
+    ):
         return FakeResponse(RSS)
 
     monkeypatch.setattr(
-        "MCP_tools.feeder.requests.get",
+        "local_tools.feeder.requests.get",
         fake_get,
     )
 
     result = Feeder().read(
-        "https://example.com/feed",
+        "http://93.184.216.34/feed",
         max_items=1,
     )
 
@@ -200,27 +225,108 @@ def test_feed_rejects_non_http_url():
 
 def test_feed_reports_http_error(monkeypatch):
     monkeypatch.setattr(
-        "MCP_tools.feeder.requests.get",
-        lambda url, timeout, headers: FakeResponse(
+        "local_tools.feeder.requests.get",
+        lambda url, timeout, headers, allow_redirects, stream: FakeResponse(
             b"",
             status_code=500,
         ),
     )
 
-    result = Feeder().read("https://example.com/feed")
+    result = Feeder().read("http://93.184.216.34/feed")
 
     assert result["success"] is False
 
 
 def test_feed_rejects_oversized_response(monkeypatch):
     monkeypatch.setattr(
-        "MCP_tools.feeder.requests.get",
-        lambda url, timeout, headers: FakeResponse(
+        "local_tools.feeder.requests.get",
+        lambda url, timeout, headers, allow_redirects, stream: FakeResponse(
             b"x" * (Feeder.MAX_BYTES + 1)
         ),
     )
 
-    result = Feeder().read("https://example.com/feed")
+    result = Feeder().read("http://93.184.216.34/feed")
 
     assert result["success"] is False
     assert "larger" in result["error"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/feed",
+        "http://10.0.0.1/feed",
+        "http://172.16.0.1/feed",
+        "http://192.168.1.1/feed",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://[::1]/feed",
+        "http://0.0.0.0/feed",
+    ],
+)
+def test_feed_rejects_private_addresses(url):
+    result = Feeder().read(url)
+
+    assert result["success"] is False
+    assert "non-public" in result["error"]
+
+
+def test_feed_rejects_hostname_resolving_private(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "local_tools.feeder.socket.getaddrinfo",
+        lambda host, port, type: [
+            (
+                2,
+                1,
+                6,
+                "",
+                ("10.0.0.1", port),
+            )
+        ],
+    )
+
+    result = Feeder().read(
+        "http://public.example/feed"
+    )
+
+    assert result["success"] is False
+    assert "non-public" in result["error"]
+
+
+def test_feed_rejects_redirect_to_private(
+    monkeypatch,
+):
+    def fake_get(
+        url,
+        timeout,
+        headers,
+        allow_redirects,
+        stream,
+    ):
+        return FakeResponse(
+            b"",
+            status_code=302,
+            headers={
+                "Location": "http://127.0.0.1/feed",
+            },
+        )
+
+    monkeypatch.setattr(
+        "local_tools.feeder.requests.get",
+        fake_get,
+    )
+
+    result = Feeder().read("http://93.184.216.34/feed")
+
+    assert result["success"] is False
+    assert "non-public" in result["error"]
+
+
+def test_feed_rejects_credentials_in_url():
+    result = Feeder().read(
+        "http://user:password@93.184.216.34/feed"
+    )
+
+    assert result["success"] is False
+    assert "credentials" in result["error"]

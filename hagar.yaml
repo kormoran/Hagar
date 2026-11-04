@@ -22,7 +22,8 @@ policy:
   subject: assistant
 
 vault:
-  path: I:/Vaults
+  # Vault Obsidian separato dalla sandbox operativa.
+  path: ~/HagarVault
 
 memory:
   enabled: true
@@ -33,7 +34,8 @@ memory:
 
 filesystem:
   allowed:
-    - I:/src/costanti
+    # Radice fisica; l'agente la vede come /home/ai.
+    - ~/ai
 
 permissions:
   read: true

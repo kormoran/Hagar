@@ -9,7 +9,7 @@ riferimento al commit quando utile.
 
 ## Strumenti locali e filesystem v2
 
-- Nuova directory `MCP_tools/` per i provider locali: calcolo, statistica,
+- Nuova directory `local_tools/` per i provider locali: calcolo, statistica,
   conversione unità e feed. Non sono server MCP: registrano
   `ToolDefinition` nel registry.
 - Tool aggiunti: `calculator.evaluate`, `statistics.compute`,
@@ -22,10 +22,25 @@ riferimento al commit quando utile.
   calculator/statistics/units, `NETWORK` ask per feed.
 - `feedparser` tra le dipendenze; il feed viene scaricato con
   `requests`, timeout e limite di 5 MB, e solo da URL http/https.
+- SSRF: risoluzione DNS obbligatoria, solo indirizzi globali
+  (niente loopback, reti private, link-local, multicast o riservati),
+  redirect manuali rivalidati (massimo 3) e rifiuto degli URL con
+  credenziali.
 - Ripristinato il permesso `rename` della sandbox, perso durante
   l'estensione; `filesystem.rename` richiede `rename` sulla sorgente e
   `create` sulla destinazione.
-- 586 test superati, 1 skip.
+- Rinomina `MCP_tools/` → `local_tools/`: sono provider locali, non
+  server MCP; package, import, test e documentazione aggiornati.
+- Filesystem con radice virtuale `/home/ai`: `stat`, `list_dir`,
+  `search`, `read_chunk` e i messaggi dei tool non espongono più il
+  percorso fisico; gli input `/home/ai/...` sono accettati.
+- Configurazione portabile: `filesystem.allowed: [~/ai]` e
+  `vault.path: ~/HagarVault`, entrambi espansi con `Path.expanduser()`.
+  La radice `~/ai` va creata a mano: Hagar non scrive fuori dalla
+  sandbox all'avvio.
+- Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
+  specifici della sandbox Windows. Aggiornati i comandi di benchmark.
+- 604 test superati, 1 skip.
 
 # 0.2.0 — 2026-11-04
 
@@ -191,7 +206,7 @@ retention dell'audit e packaging installabile.
 
 ### Calculator
 
-- Nuova classe `MCP_tools/calculator.py`.
+- Nuova classe `local_tools/calculator.py`.
 - Parsing tramite AST sicuro, senza utilizzo di `eval()`.
 - Supporto a:
   - `+`
@@ -228,7 +243,7 @@ Tutte le operazioni vengono validate tramite whitelist di nodi AST, operatori e 
 
 ### Statistica
 
-Nuova classe MCP_tools/statistics.py.
+Nuova classe local_tools/statistics.py.
 
 Nuovo tool MCP:
 
@@ -255,7 +270,7 @@ Risultati strutturati con:
 
 ### Conversione unità
 
-Nuova classe `MCP_tools/unit_converter.py`.
+Nuova classe `local_tools/unit_converter.py`.
 
 Nuovo tool MCP:
 
@@ -323,7 +338,7 @@ Conversioni lineari per tutte le altre categorie.
 
 ### Feed RSS e Atom
 
-Nuova classe `MCP_tools/feeder.py`.
+Nuova classe `local_tools/feeder.py`.
 
 Nuovo tool MCP:
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from core.filesystem import (
@@ -20,9 +18,9 @@ def test_list_dir_returns_metadata(sandbox, workspace):
     entries = sandbox.list_dir(".")
 
     assert [entry.path for entry in entries] == [
-        "sub",
-        "a.txt",
-        "b.txt",
+        "/home/ai/sub",
+        "/home/ai/a.txt",
+        "/home/ai/b.txt",
     ]
     assert entries[0].kind == "directory"
     assert entries[1].size_bytes == 1
@@ -40,8 +38,8 @@ def test_list_dir_can_inspect_subdirectory(
 
     entries = sandbox.list_dir("sub")
 
-    assert [Path(entry.path) for entry in entries] == [
-        Path("sub/a.txt")
+    assert [entry.path for entry in entries] == [
+        "/home/ai/sub/a.txt"
     ]
 
 
@@ -60,7 +58,7 @@ def test_search_glob_and_truncation(sandbox, workspace):
     assert result["total_matches"] == 2
     assert result["returned_matches"] == 1
     assert result["truncated"] is True
-    assert result["results"][0].path == "a.py"
+    assert result["results"][0].path == "/home/ai/a.py"
 
 
 def test_search_rejects_escaping_pattern(sandbox):
@@ -192,3 +190,70 @@ def test_stat_exposes_rename_permission(sandbox):
     info = sandbox.stat(".")
 
     assert info.permissions["rename"] is True
+
+
+def test_stat_hides_real_path_even_for_absolute_input(
+    sandbox,
+    workspace,
+):
+    target = workspace / "a.txt"
+    target.write_text("a", encoding="utf-8")
+
+    info = sandbox.stat(str(target))
+
+    assert info.path == "/home/ai/a.txt"
+    assert str(workspace) not in info.path
+
+
+def test_virtual_paths_are_accepted_as_input(
+    sandbox,
+    workspace,
+):
+    (workspace / "a.txt").write_text(
+        "a",
+        encoding="utf-8",
+    )
+
+    assert sandbox.read_file("/home/ai/a.txt") == "a"
+    assert sandbox.virtual_path(".") == "/home/ai"
+
+
+def test_errors_do_not_expose_real_path(
+    sandbox,
+    workspace,
+):
+    with pytest.raises(FileNotFoundError) as exc:
+        sandbox.read_file("missing.txt")
+
+    assert "/home/ai/missing.txt" in str(exc.value)
+    assert str(workspace) not in str(exc.value)
+
+
+def test_virtual_path_is_stable_after_chdir(
+    sandbox,
+    workspace,
+):
+    (workspace / "sub").mkdir()
+    (workspace / "sub" / "a.txt").write_text(
+        "a",
+        encoding="utf-8",
+    )
+
+    sandbox.chdir("sub")
+
+    assert sandbox.stat("a.txt").path == (
+        "/home/ai/sub/a.txt"
+    )
+    assert sandbox.virtual_path(".") == "/home/ai/sub"
+
+
+def test_outside_error_does_not_expose_real_path(
+    sandbox,
+    workspace,
+):
+    with pytest.raises(PermissionError) as exc:
+        sandbox.read_file(
+            str(workspace.parent / "outside.txt")
+        )
+
+    assert str(workspace) not in str(exc.value)

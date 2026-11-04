@@ -401,8 +401,10 @@ class FileSystemToolProvider:
         return json.dumps(
             {
                 "success": True,
-                "source": source,
-                "destination": destination,
+                "source": self.fs.virtual_path(source),
+                "destination": self.fs.virtual_path(
+                    destination
+                ),
             },
             ensure_ascii=False,
             indent=2,
@@ -453,8 +455,10 @@ class FileSystemToolProvider:
         return json.dumps(
             {
                 "success": True,
-                "source": source,
-                "destination": destination,
+                "source": self.fs.virtual_path(source),
+                "destination": self.fs.virtual_path(
+                    destination
+                ),
             },
             ensure_ascii=False,
             indent=2,
@@ -480,7 +484,7 @@ class FileSystemToolProvider:
 
         return (
             f"File written successfully: "
-            f"{path}"
+            f"{self.fs.virtual_path(path)}"
         )
 
     def create_file(
@@ -496,7 +500,7 @@ class FileSystemToolProvider:
 
         return (
             f"File created successfully: "
-            f"{path}"
+            f"{self.fs.virtual_path(path)}"
         )
 
     def mkdir(
@@ -507,7 +511,8 @@ class FileSystemToolProvider:
         self.fs.mkdir(path)
 
         return (
-            f"Directory created: {path}"
+            f"Directory created: "
+            f"{self.fs.virtual_path(path)}"
         )
 
     def chdir(
@@ -519,7 +524,7 @@ class FileSystemToolProvider:
 
         return (
             "Current directory changed "
-            f"to {self.fs.current_directory}"
+            f"to {self.fs.virtual_path(self.fs.current_directory)}"
         )
 
     def delete_file(
@@ -530,7 +535,8 @@ class FileSystemToolProvider:
         self.fs.delete_file(path)
 
         return (
-            f"File deleted: {path}"
+            f"File deleted: "
+            f"{self.fs.virtual_path(path)}"
         )
 
     def free_space(

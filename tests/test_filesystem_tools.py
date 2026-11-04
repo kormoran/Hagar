@@ -82,6 +82,8 @@ def test_read_write_roundtrip_via_registry(
     )
 
     assert "created" in created
+    assert "/home/ai/a.txt" in created
+    assert str(workspace) not in created
     assert registry.execute(
         "filesystem.read_file",
         path="a.txt",
@@ -110,6 +112,8 @@ def test_mkdir_and_chdir(registry, workspace, sandbox):
     )
 
     assert "sub" in message
+    assert "/home/ai/sub" in message
+    assert str(workspace) not in message
     assert sandbox.current_directory == (
         workspace / "sub"
     ).resolve()
@@ -167,7 +171,8 @@ def test_stat_tool(registry, workspace):
         )
     )
 
-    assert payload["path"] == "a.txt"
+    assert payload["path"] == "/home/ai/a.txt"
+    assert str(workspace) not in payload["path"]
     assert payload["exists"] is True
     assert payload["kind"] == "file"
     assert payload["size_bytes"] == len(
@@ -211,3 +216,83 @@ def test_stat_tool_outside_sandbox(registry, tmp_path):
             "filesystem.stat",
             path=str(tmp_path / "outside.txt"),
         )
+
+
+def test_read_chunk_path_is_virtual(
+    registry,
+    workspace,
+):
+    registry.execute(
+        "filesystem.create_file",
+        path="a.txt",
+        content="abcdef",
+    )
+
+    payload = json.loads(
+        registry.execute(
+            "filesystem.read_chunk",
+            path="a.txt",
+            offset=0,
+            length=3,
+        )
+    )
+
+    assert payload["path"] == "/home/ai/a.txt"
+    assert str(workspace) not in payload["path"]
+
+
+def test_copy_and_rename_paths_are_virtual(
+    registry,
+    workspace,
+):
+    registry.execute(
+        "filesystem.create_file",
+        path="a.txt",
+        content="a",
+    )
+
+    copied = json.loads(
+        registry.execute(
+            "filesystem.copy_file",
+            source="a.txt",
+            destination="b.txt",
+        )
+    )
+
+    assert copied["source"] == "/home/ai/a.txt"
+    assert copied["destination"] == "/home/ai/b.txt"
+    assert str(workspace) not in json.dumps(copied)
+
+    renamed = json.loads(
+        registry.execute(
+            "filesystem.rename",
+            source="b.txt",
+            destination="c.txt",
+        )
+    )
+
+    assert renamed["destination"] == "/home/ai/c.txt"
+    assert str(workspace) not in json.dumps(renamed)
+
+
+def test_search_paths_are_virtual(registry, workspace):
+    registry.execute("filesystem.mkdir", path="sub")
+    registry.execute(
+        "filesystem.create_file",
+        path="sub/a.py",
+        content="a",
+    )
+
+    payload = json.loads(
+        registry.execute(
+            "filesystem.search",
+            pattern="*.py",
+            path="sub",
+        )
+    )
+
+    assert payload["searched_path"] == "/home/ai/sub"
+    assert payload["results"][0]["path"] == (
+        "/home/ai/sub/a.py"
+    )
+    assert str(workspace) not in json.dumps(payload)

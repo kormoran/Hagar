@@ -52,20 +52,36 @@ All operations must take place exclusively through tools that are registered and
 
 ## 3.0 Install and CLI
 
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+On Windows PowerShell:
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -e .
 ```
 
-`pip install -e .` declares the `core`, `llm` and `memory` packages and
-installs the `hagar` command:
+`pip install -e .` declares the `core`, `llm`, `memory` and
+`local_tools` packages and installs the `hagar` command:
 
-```powershell
+```bash
+mkdir -p ~/ai
 hagar --config hagar.yaml
 hagar --model qwen3:8b
 hagar --no-memory
 hagar --no-native-tools
 hagar --version
+```
+
+Hagar non crea la radice della sandbox da solo: `~/ai` deve esistere
+ed essere scrivibile. Su Windows:
+
+```powershell
+New-Item -ItemType Directory -Force $HOME\ai
 ```
 
 The configuration is searched as `--config`, then the `HAGAR_CONFIG`
@@ -79,17 +95,23 @@ the tool registry, the agent loop, the audit log, every LLM backend,
 Ollama response parsing, the MCP client, memory, the vault and the
 harness wiring.
 
-```powershell
+```bash
 python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
-.\tools\run_tests.ps1
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-dev.txt
+./tools/run_tests.sh
 ```
+
+On Windows use `.\tools\run_tests.ps1`; the shim described below is
+Windows-only.
 
 Live tests call real services and are excluded by default:
 
-```powershell
-.\tools\run_tests.ps1 --live
+```bash
+./tools/run_tests.sh --live
 ```
+
+On Windows: `.\tools\run_tests.ps1 --live`.
 
 They need a running Ollama server; the remote-provider checks run only
 when the corresponding API key is set (`DEEPSEEK_API_KEY`,
@@ -104,6 +126,7 @@ sandbox on Windows): Python 3.13+ applies the POSIX `0o700` mode to
 directory, so every `tmp_path` fixture fails with "Permission denied".
 On Windows the POSIX mode bits carry no meaning, so the shim restores the
 `0o777` default; confinement is still enforced by the token and the jail.
+Linux/macOS use `./tools/run_tests.sh`, which does not need the shim.
 
 ## 3.2 Layout
 
@@ -112,6 +135,7 @@ hagar.py            entry point and harness wiring
 core/               config, agent, audit log, registry, sandbox and tools
 llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), MCP client
 memory/             vault access
+local_tools/        local tools (calculator, statistics, units, feed)
 tests/              pytest suite
 tools/              development helpers (test runner, sandbox shim, model benchmark)
 ```
@@ -191,9 +215,9 @@ create, chat without tools) against a temporary sandbox and prints one
 JSON line per model/task: tool calls with arguments, tool results, JSON
 repairs, elapsed time and the final answer.
 
-```powershell
-.\.venv\Scripts\python.exe tools\bench_models.py
-.\.venv\Scripts\python.exe tools\bench_models.py llama3.1:latest
+```bash
+python tools/bench_models.py
+python tools/bench_models.py llama3.1:latest
 ```
 
 It needs a running Ollama server and already pulled models; the scratch
@@ -202,9 +226,9 @@ area is `.bench/` (gitignored).
 `tools/bench_native.py` compares native tool calling with the text JSON
 protocol on the same model and tasks:
 
-```powershell
-.\.venv\Scripts\python.exe tools\bench_native.py --provider ollama --model llama3.1:latest
-.\.venv\Scripts\python.exe tools\bench_native.py --provider deepseek --model deepseek-flash
+```bash
+python tools/bench_native.py --provider ollama --model llama3.1:latest
+python tools/bench_native.py --provider deepseek --model deepseek-flash
 ```
 
 It reports tool choice, argument correctness, latency and text-protocol

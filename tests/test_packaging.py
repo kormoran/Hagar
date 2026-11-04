@@ -37,7 +37,7 @@ def test_declared_packages():
         "core",
         "llm",
         "memory",
-        "MCP_tools",
+        "local_tools",
     }
 
 

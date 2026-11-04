@@ -80,7 +80,13 @@ class FileSystemSandbox:
     L'agente non vede mai percorsi reali: ogni richiesta viene risolta
     rispetto alla directory corrente, verificata contro le radici concesse
     e filtrata dai permessi effettivi.
+
+    La prima radice è la radice virtuale del sandbox ed è esposta come
+    ``/home/ai``. Tutti i percorsi restituiti dai tool sono relativi a
+    questa radice, indipendentemente dal sistema operativo.
     """
+
+    VIRTUAL_ROOT = "/home/ai"
 
     def __init__(
         self,
@@ -97,6 +103,8 @@ class FileSystemSandbox:
             current_directory.resolve()
         )
 
+        self.virtual_root = next(iter(self.roots))
+
     # ==================================================
     # Path helpers
     # ==================================================
@@ -109,12 +117,98 @@ class FileSystemSandbox:
         if path is None:
             return self.current_directory
 
+        raw = str(path).replace("\\", "/")
+
+        if (
+            raw == self.VIRTUAL_ROOT
+            or raw.startswith(self.VIRTUAL_ROOT + "/")
+        ):
+
+            relative = raw[len(self.VIRTUAL_ROOT):].lstrip("/")
+
+            return (
+                self.virtual_root / relative
+            ).resolve()
+
         path = Path(path)
 
         if not path.is_absolute():
             path = self.current_directory / path
 
         return path.resolve()
+
+    def virtual_path(
+        self,
+        path: str | Path,
+    ) -> str:
+        """
+        Percorso mostrato all'agente, relativo alla radice virtuale.
+
+        Non restituisce mai il percorso fisico della sandbox.
+        """
+
+        target = self.resolve_path(path)
+
+        if (
+            target == self.virtual_root
+            or self.virtual_root in target.parents
+        ):
+
+            root = self.virtual_root
+
+        else:
+
+            root = self._longest_root(target)
+
+        relative = target.relative_to(root)
+
+        if str(relative) == ".":
+            return self.VIRTUAL_ROOT
+
+        return (
+            self.VIRTUAL_ROOT
+            + "/"
+            + relative.as_posix()
+        )
+
+    def _longest_root(
+        self,
+        target: Path,
+    ) -> Path:
+
+        matches = []
+
+        for root in self.roots:
+
+            try:
+                target.relative_to(root)
+                matches.append(root)
+
+            except ValueError:
+                continue
+
+        if not matches:
+
+            raise PermissionError(
+                "Path outside sandbox"
+            )
+
+        return max(
+            matches,
+            key=lambda item: len(item.parts),
+        )
+
+    def _display(
+        self,
+        path: Path,
+    ) -> str:
+        """Percorso sicuro per i messaggi d'errore."""
+
+        try:
+            return self.virtual_path(path)
+
+        except Exception:
+            return "outside sandbox"
 
     def parent_path(
         self,
@@ -180,7 +274,7 @@ class FileSystemSandbox:
         if not matches:
 
             raise PermissionError(
-                f"Path outside sandbox: {path}"
+                "Path outside sandbox"
             )
 
         #
@@ -300,7 +394,7 @@ class FileSystemSandbox:
 
             return (
                 f"Access denied: "
-                f"{target} is outside "
+                f"{self._display(target)} is outside "
                 f"allowed directories. Use a path "
                 f"relative to the current sandbox "
                 f"directory."
@@ -310,7 +404,7 @@ class FileSystemSandbox:
 
             return (
                 f"Access denied: "
-                f"path '{target}' "
+                f"path '{self._display(target)}' "
                 f"contains a symbolic link."
             )
 
@@ -320,7 +414,7 @@ class FileSystemSandbox:
 
                 return (
                     f"Read access denied: "
-                    f"{target}"
+                    f"{self._display(target)}"
                 )
 
         elif operation == "write":
@@ -329,7 +423,7 @@ class FileSystemSandbox:
 
                 return (
                     f"Write access denied: "
-                    f"{target}"
+                    f"{self._display(target)}"
                 )
 
         elif operation == "create":
@@ -338,7 +432,7 @@ class FileSystemSandbox:
 
                 return (
                     f"Create access denied: "
-                    f"{target}"
+                    f"{self._display(target)}"
                 )
 
         elif operation == "rename":
@@ -347,7 +441,7 @@ class FileSystemSandbox:
 
                 return (
                     f"Rename access denied: "
-                    f"{target}"
+                    f"{self._display(target)}"
                 )
 
         elif operation == "delete":
@@ -356,7 +450,7 @@ class FileSystemSandbox:
 
                 return (
                     f"Delete access denied: "
-                    f"{target}"
+                    f"{self._display(target)}"
                 )
 
         disk_error = self.check_disk_space(
@@ -389,7 +483,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.is_dir():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         self.current_directory = target
 
@@ -429,10 +523,10 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.exists():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         if not target.is_dir():
-            raise NotADirectoryError(target)
+            raise NotADirectoryError(self._display(target))
 
         entries: list[FileInfo] = []
 
@@ -443,15 +537,8 @@ class FileSystemSandbox:
                 p.name.lower(),
             ),
         ):
-            try:
-                display = entry.relative_to(
-                    self.current_directory
-                )
-            except ValueError:
-                display = entry
-
             entries.append(
-                self.stat(display)
+                self.stat(entry)
             )
         return entries
 
@@ -498,10 +585,10 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.exists():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         if not target.is_dir():
-            raise NotADirectoryError(target)
+            raise NotADirectoryError(self._display(target))
 
         results: list[FileInfo] = []
 
@@ -519,15 +606,8 @@ class FileSystemSandbox:
 
             try:
 
-                try:
-                    display = entry.relative_to(
-                        self.current_directory
-                    )
-                except ValueError:
-                    display = entry
-
                 results.append(
-                    self.stat(display)
+                    self.stat(entry)
                 )
 
             except (PermissionError, OSError):
@@ -535,7 +615,7 @@ class FileSystemSandbox:
 
         return {
             "pattern": pattern,
-            "searched_path": str(path),
+            "searched_path": self.virtual_path(target),
             "total_matches": total_matches,
             "returned_matches": len(results),
             "truncated": (
@@ -577,7 +657,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.is_file():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         file_size = target.stat().st_size
 
@@ -596,7 +676,7 @@ class FileSystemSandbox:
         )
 
         return {
-            "path": str(path),
+            "path": self.virtual_path(target),
             "offset": offset,
             "length": len(data),
             "has_more": (
@@ -622,7 +702,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.is_file():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         return target.read_text(
             encoding="utf-8"
@@ -646,7 +726,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not src.is_file():
-            raise FileNotFoundError(src)
+            raise FileNotFoundError(self._display(src))
 
         required_space = src.stat().st_size
 
@@ -660,7 +740,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if dst.exists():
-            raise FileExistsError(dst)
+            raise FileExistsError(self._display(dst))
 
         shutil.copy2(
             src,
@@ -697,7 +777,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not src.exists():
-            raise FileNotFoundError(src)
+            raise FileNotFoundError(self._display(src))
 
         error = self.FS_Guardian(
             "create",
@@ -708,7 +788,7 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if dst.exists():
-            raise FileExistsError(dst)
+            raise FileExistsError(self._display(dst))
 
         src.rename(dst)
 
@@ -741,10 +821,10 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.exists():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         if target.is_dir():
-            raise IsADirectoryError(target)
+            raise IsADirectoryError(self._display(target))
 
         target.write_text(
             content,
@@ -773,10 +853,10 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if target.exists():
-            raise FileExistsError(target)
+            raise FileExistsError(self._display(target))
 
         if not target.parent.is_dir():
-            raise FileNotFoundError(target.parent)
+            raise FileNotFoundError(self._display(target.parent))
 
         target.write_text(
             content,
@@ -799,10 +879,10 @@ class FileSystemSandbox:
             raise PermissionError(error)
 
         if not target.exists():
-            raise FileNotFoundError(target)
+            raise FileNotFoundError(self._display(target))
 
         if target.is_dir():
-            raise IsADirectoryError(target)
+            raise IsADirectoryError(self._display(target))
 
         target.unlink()
 
@@ -840,7 +920,7 @@ class FileSystemSandbox:
         if not target.exists():
 
             return FileInfo(
-                path=str(path),
+                path=self.virtual_path(target),
                 exists=False,
                 permissions=permissions,
             )
@@ -880,7 +960,7 @@ class FileSystemSandbox:
             created = info.st_ctime
 
         return FileInfo(
-            path=str(path),
+            path=self.virtual_path(target),
             exists=True,
             kind=kind,
             size_bytes=size_bytes,

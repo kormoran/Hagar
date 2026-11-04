@@ -351,13 +351,21 @@ Stato al 2026-11-04:
 
 - filesystem v2: `list_dir`, `read_chunk`, `rename`, `copy_file`,
   `search`, oltre ai tool esistenti;
-- `MCP_tools/`: `calculator.evaluate`, `statistics.compute`,
+- `local_tools/`: `calculator.evaluate`, `statistics.compute`,
   `units.convert`, `feed.read` (provider locali, non server MCP);
 - capability `COMPUTE` sempre nel tetto, `NETWORK` controllata da
-  `permissions.network` e dalla policy (feed in `ask`).
+  `permissions.network` e dalla policy (feed in `ask`);
+- `feed.read` con policy SSRF: solo indirizzi globali, redirect
+  rivalidati, niente credenziali nell'URL;
+- filesystem con radice virtuale `/home/ai` e input virtuali;
+- runner POSIX `tools/run_tests.sh` accanto a quello Windows.
 
 Punti aperti:
 
-- `feed.read` non blocca IP privati/localhost: serve una policy SSRF;
+- DNS rebinding: la risoluzione viene validata, ma `requests` risolve
+  di nuovo il nome al momento della connessione; serve un resolver
+  pinnato o un adapter dedicato per chiudere il caso;
 - il calcolatore è volutamente limitato (niente algebra simbolica);
-- valutare un limite di dimensione anche per gli altri output dei tool.
+- valutare un limite di dimensione anche per gli altri output dei tool;
+- aggiungere CI Linux/macOS per symlink, permessi token e callback
+  OAuth.

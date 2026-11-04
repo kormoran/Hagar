@@ -23,7 +23,7 @@ hagar = "hagar:main"
 
 [tool.setuptools]
 py-modules = ["hagar"]
-packages = ["core", "llm", "memory", "MCP_tools"]
+packages = ["core", "llm", "memory", "local_tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

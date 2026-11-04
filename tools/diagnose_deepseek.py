@@ -1,7 +1,7 @@
 """Diagnostica DeepSeek: rete, chiave e endpoint.
 Non stampa mai la chiave: solo lunghezza, caratteri sospetti e l'esito
 delle richieste. Eseguire con la variabile DEEPSEEK_API_KEY impostata:
-    .\\.venv\\Scripts\\python.exe tools\\diagnose_deepseek.py
+    python tools/diagnose_deepseek.py
 """
 from __future__ import annotations
 import os

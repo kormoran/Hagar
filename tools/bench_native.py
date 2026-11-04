@@ -6,9 +6,9 @@ testuale.
 
 Esempi:
 
-    .\\.venv\\Scripts\\python.exe tools\\bench_native.py --provider ollama
-    .\\.venv\\Scripts\\python.exe tools\\bench_native.py --provider deepseek
-    .\\.venv\\Scripts\\python.exe tools\\bench_native.py --provider deepseek --mode native
+    python tools/bench_native.py --provider ollama
+    python tools/bench_native.py --provider deepseek
+    python tools/bench_native.py --provider deepseek --mode native
 """
 
 from __future__ import annotations
