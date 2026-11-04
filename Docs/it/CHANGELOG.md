@@ -59,7 +59,13 @@ riferimento al commit quando utile.
   hard link. Per isolamento totale l'utente deve garantire che nelle
   directory della sandbox non ce ne siano. Responsabilità dell'utente,
   punto chiuso.
-- Resta debito tecnico dichiarato: TOCTOU path-based.
+- TOCTOU: questa versione non usa `openat2`, `O_NOFOLLOW` su ogni
+  componente o handle Windows, quindi non garantisce atomicità tra check
+  e operazione. La race richiede un processo locale concorrente con
+  accesso in scrittura: scenario malevolo o ambiente compromesso, non
+  uso normale. Chiuso come responsabilità dell'utente; per isolamento
+  totale servono volume dedicato, utente separato, mount namespace o
+  container.
 - `filesystem.allowed` sostituito da `filesystem.sandbox`: ogni voce ha
   `alias`, `path` e permessi `R`/`W`/`X`. L'agente vede
   `/home/ai/<alias>/...`; niente `hdN`, niente volumi o directory

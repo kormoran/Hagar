@@ -728,21 +728,22 @@ nel registry e vivono fuori dal core, in un package separato.
   limitate, non simboliche.
 - `stat().created_at` è `None` su Linux quando manca `st_birthtime`; non
   viene inventata una data di creazione.
-- **TOCTOU**: la sandbox è path-based; tra il controllo dei symlink e
-  l'operazione reale il filesystem può cambiare. Un attaccante locale con
-  accesso concorrente potrebbe sostituire un componente con un link. Non
-  è chiuso; servirebbero `openat`/`O_NOFOLLOW` e handle Windows.
 - Due alias non possono puntare allo stesso path fisico: l'alias
   identifica un mount e l'output virtuale deve restare univoco.
 
-## 6.1 Responsabilità dell'utente: hard link e mount
+## 6.1 Responsabilità dell'utente: hard link, mount e TOCTOU
 
-**Hagar non controlla gli hard link e non controlla i mount/junction
-dentro le directory allowed.** Non è un difetto di Hagar: un hard link è
-un secondo nome dello stesso inode, non ha un target di percorso e la
-sandbox path-based non può sapere se esiste un altro nome fuori. Un mount
-o una junction può esporre un altro filesystem pur restando dentro il
-prefisso del path.
+**Hagar non controlla gli hard link, i mount/junction e le race TOCTOU
+dentro le directory allowed.** Non è un difetto di Hagar: la sandbox è
+path-based e non usa handle/file descriptor per l'intera operazione.
+
+Un hard link è un secondo nome dello stesso inode, non ha un target di
+percorso e la sandbox non può sapere se esiste un altro nome fuori. Un
+mount o una junction può esporre un altro filesystem pur restando dentro
+il prefisso del path. Una race TOCTOU può cambiare un componente tra il
+controllo dei symlink e l'operazione reale: Hagar non usa `openat2`,
+`O_NOFOLLOW` su ogni componente o handle Windows, quindi non garantisce
+atomicità tra check e accesso.
 
 I tool filesystem di Hagar non creano hard link. Se un hard link o un
 mount esiste già dentro una directory della sandbox, Hagar lo tratta come
@@ -751,18 +752,25 @@ nome interno.
 
 La responsabilità è quindi divisa:
 
-- **Hagar garantisce** che i percorsi risolti restino dentro l'alias,
-  che i symlink siano invisibili, che i permessi `R`/`W`/`X` siano
-  applicati e che i path reali non finiscano nell'output del modello.
+- **Hagar garantisce** che i percorsi risolti restino dentro l'alias al
+  momento del controllo, che i symlink siano invisibili, che i permessi
+  `R`/`W`/`X` siano applicati e che i path reali non finiscano
+  nell'output del modello.
 - **L'utente garantisce** che le directory configurate in
   `filesystem.sandbox` non contengano hard link, mount o junction verso
-  contenuti che non devono essere accessibili, se vuole isolamento
-  totale. Per un isolamento forte servono un volume dedicato, un utente
-  separato o un mount namespace; non è compito del resolver di path.
+  contenuti che non devono essere accessibili, e che nessun processo
+  concorrente non fidato possa modificare quelle directory durante
+  l'esecuzione, se vuole isolamento totale.
 
-Il punto è chiuso come **responsabilità dell'utente**, non come debito
-tecnico di Hagar. La presenza di hard link o mount esterni non è
-rilevata né bloccata.
+Le race TOCTOU richiedono un attore locale concorrente con accesso in
+scrittura alle directory della sandbox: non sono un caso accidentale
+dell'uso normale, ma uno scenario malevolo o di ambiente compromesso.
+Per un isolamento forte servono un volume dedicato, un utente separato,
+un mount namespace o un container; non è compito del resolver di path.
+
+I punti sono chiusi come **responsabilità dell'utente**, non come debiti
+tecnici di Hagar. Hard link, mount/junction e race TOCTOU non sono
+rilevati né bloccati da questa versione.
 
 ---
 

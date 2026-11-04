@@ -368,7 +368,6 @@ Punti aperti:
 - DNS rebinding: la risoluzione viene validata, ma `requests` risolve
   di nuovo il nome al momento della connessione; serve un resolver
   pinnato o un adapter dedicato per chiudere il caso;
-- TOCTOU della sandbox path-based: non chiuso, solo documentato;
 - il calcolatore è volutamente limitato (niente algebra simbolica);
 - valutare un limite di dimensione anche per gli altri output dei tool;
 - aggiungere CI Linux/macOS per symlink, permessi token e callback
@@ -378,4 +377,10 @@ Chiuso come responsabilità dell'utente:
 
 - hard link, mount e junction dentro le directory allowed non sono
   controllati da Hagar. Per isolamento totale l'utente deve garantire
-  che non ce ne siano; Hagar non li crea e non li rileva.
+  che non ce ne siano; Hagar non li crea e non li rileva;
+- race TOCTOU: Hagar non usa `openat2`, `O_NOFOLLOW` su ogni componente o
+  handle Windows e non garantisce atomicità tra check e operazione. La
+  race richiede un processo locale concorrente con accesso in scrittura;
+  è uno scenario malevolo o di ambiente compromesso, non uso normale.
+  Per isolamento totale servono volume dedicato, utente separato, mount
+  namespace o container.
