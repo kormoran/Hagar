@@ -6,7 +6,7 @@ import os
 import shutil
 import stat as stat_module
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,7 +23,6 @@ class DirectoryPermissions:
     read: bool | None = None
     write: bool | None = None
     create: bool | None = None
-    rename: bool | None = None
     delete: bool | None = None
     execute: bool | None = None
 
@@ -341,6 +340,14 @@ class FileSystemSandbox:
                     f"{target}"
                 )
 
+        elif operation == "rename":
+
+            if not permissions.write:
+                return (
+                    f"Rename access denied: "
+                    f"{target}"
+        )        
+        
         elif operation == "delete":
 
             if not permissions.delete:
@@ -404,9 +411,154 @@ class FileSystemSandbox:
             exist_ok=True,
         )
 
+    def list_dir(
+        self,
+        path: str | Path = ".",
+    ) -> list[FileInfo]:
+
+        target = self.resolve_path(path)
+
+        error = self.FS_Guardian(
+            "read",
+            target,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not target.is_dir():
+            raise NotADirectoryError(target)
+
+        entries: list[FileInfo] = []
+
+        for entry in sorted(
+            target.iterdir(),
+            key=lambda p: (
+                not p.is_dir(),
+                p.name.lower(),
+            ),
+        ):
+            relative = entry.relative_to(
+                self.current_directory
+            )
+
+            entries.append(
+                self.stat(relative)
+            )
+
+        return entries
+
+
     # ==================================================
     # File operations
     # ==================================================
+
+
+    def search(
+        self,
+        pattern: str,
+        path: str | Path = ".",
+        max_results: int = 1000,
+    ) -> dict:
+
+        target = self.resolve_path(path)
+
+        error = self.FS_Guardian(
+            "read",
+            target,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not target.is_dir():
+            raise NotADirectoryError(target)
+
+        results: list[FileInfo] = []
+
+        total_matches = 0
+
+        for entry in sorted(
+            target.rglob(pattern),
+            key=lambda p: str(p).lower(),
+        ):
+
+            total_matches += 1
+
+            if len(results) >= max_results:
+                continue
+
+            try:
+
+                relative = entry.relative_to(
+                    self.current_directory
+                )
+
+                results.append(
+                    self.stat(relative)
+                )
+
+            except PermissionError:
+                continue
+
+        return {
+            "pattern": pattern,
+            "searched_path": str(path),
+            "total_matches": total_matches,
+            "returned_matches": len(results),
+            "truncated": (
+                total_matches > max_results
+            ),
+            "results": results,
+        }
+
+
+    def read_chunk(
+        self,
+        path: str | Path,
+        offset: int = 0,
+        length: int = 4096,
+    ) -> dict:
+
+        target = self.resolve_path(path)
+
+        error = self.FS_Guardian(
+            "read",
+            target,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not target.is_file():
+            raise FileNotFoundError(target)
+
+        file_size = target.stat().st_size
+
+        with open(
+            target,
+            "rb",
+        ) as f:
+
+            f.seek(offset)
+
+            data = f.read(length)
+
+        content = data.decode(
+            "utf-8",
+            errors="replace",
+        )
+
+        return {
+            "path": str(path),
+            "offset": offset,
+            "length": len(data),
+            "has_more": (
+                offset + len(data)
+                < file_size
+            ),
+            "content": content,
+        }
 
     def read_file(
         self,
@@ -429,6 +581,82 @@ class FileSystemSandbox:
         return target.read_text(
             encoding="utf-8"
         )
+
+    def copy_file(
+        self,
+        source: str | Path,
+        destination: str | Path,
+    ) -> None:
+
+        src = self.resolve_path(source)
+        dst = self.resolve_path(destination)
+
+        error = self.FS_Guardian(
+            "read",
+            src,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not src.is_file():
+            raise FileNotFoundError(src)
+
+        required_space = src.stat().st_size
+
+        error = self.FS_Guardian(
+            "create",
+            dst,
+            required_space,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if dst.exists():
+            raise FileExistsError(dst)
+
+        shutil.copy2(
+            src,
+            dst,
+        )
+    
+    def rename(
+        self,
+        source: str | Path,
+        destination: str | Path,
+    ) -> None:
+        """
+        Rinomina o sposta un file.
+
+        Questa implementazione verifica soltanto il permesso
+        "rename" sul percorso sorgente.
+
+        In futuro potrebbe essere opportuno introdurre una
+        versione più rigorosa che richieda anche il permesso
+        "create" sulla destinazione, impedendo ad esempio
+        uno spostamento verso directory in cui la creazione
+        di nuovi file non sarebbe normalmente consentita.
+        """
+
+        src = self.resolve_path(source)
+        dst = self.resolve_path(destination)
+
+        error = self.FS_Guardian(
+            "rename",
+            src,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not src.exists():
+            raise FileNotFoundError(src)
+
+        if dst.exists():
+            raise FileExistsError(dst)
+
+        src.rename(dst)
 
     def write_file(
         self,

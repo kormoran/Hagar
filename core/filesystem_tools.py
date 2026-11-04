@@ -152,6 +152,110 @@ class FileSystemToolProvider:
 
         registry.register(
             ToolDefinition(
+                name="filesystem.list_dir",
+                capabilities=Capability.FILESYSTEM_READ,
+                description=(
+                    "List the contents of a directory."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description=(
+                            "Directory to inspect."
+                        ),
+                        required=False,
+                        default=".",
+                    ),
+                ],
+                handler=self.list_dir,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="filesystem.read_chunk",
+                capabilities=Capability.FILESYSTEM_READ,
+                description=(
+                    "Read a portion of a UTF-8 file."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description="File path.",
+                    ),
+                    ToolParameter(
+                        name="offset",
+                        param_type="integer",
+                        description="Byte offset.",
+                        required=False,
+                        default=0,
+                    ),
+                    ToolParameter(
+                        name="length",
+                        param_type="integer",
+                        description="Maximum bytes to read.",
+                        required=False,
+                        default=4096,
+                    ),
+                ],
+                handler=self.read_chunk,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="filesystem.rename",
+                capabilities=Capability.FILESYSTEM_WRITE,
+                description=(
+                    "Rename or move a file."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="source",
+                        param_type="string",
+                        description="Source path.",
+                    ),
+                    ToolParameter(
+                        name="destination",
+                        param_type="string",
+                        description="Destination path.",
+                    ),
+                ],
+                handler=self.rename,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="filesystem.copy_file",
+                capabilities=Capability.FILESYSTEM_CREATE,
+                description=(
+                    "Copy a file."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="source",
+                        param_type="string",
+                        description="Source file.",
+                    ),
+                    ToolParameter(
+                        name="destination",
+                        param_type="string",
+                        description="Destination file.",
+                    ),
+                ],
+                handler=self.copy_file,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
                 name="filesystem.delete_file",
                 capabilities=Capability.FILESYSTEM_DELETE,
                 description=(
@@ -168,6 +272,49 @@ class FileSystemToolProvider:
                     ),
                 ],
                 handler=self.delete_file,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="filesystem.search",
+                capabilities=Capability.FILESYSTEM_READ,
+                description=(
+                    "Search files and directories "
+                    "recursively using a glob pattern."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="pattern",
+                        param_type="string",
+                        description=(
+                            "Glob pattern "
+                            "(e.g. '*.py', '*.md')."
+                        ),
+                    ),
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description=(
+                            "Directory where the "
+                            "search starts."
+                        ),
+                        required=False,
+                        default=".",
+                    ),
+                    ToolParameter(
+                        name="max_results",
+                        param_type="integer",
+                        description=(
+                            "Maximum number of results "
+                            "returned."
+                        ),
+                        required=False,
+                        default=1000,
+                    ),
+                ],
+                handler=self.search,
             )
         )
 
@@ -215,6 +362,103 @@ class FileSystemToolProvider:
     # ==========================================
     # Tool handlers
     # ==========================================
+
+    def search(
+        self,
+        pattern: str,
+        path: str = ".",
+        max_results: int = 1000,
+    ) -> str:
+
+        result = self.fs.search(
+            pattern,
+            path,
+            max_results,
+        )
+
+        result["results"] = [
+            asdict(item)
+            for item in result["results"]
+        ]
+
+        return json.dumps(
+            result,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def copy_file(
+        self,
+        source: str,
+        destination: str,
+    ) -> str:
+
+        self.fs.copy_file(
+            source,
+            destination,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "source": source,
+                "destination": destination,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def list_dir(
+        self,
+        path: str = ".",
+    ) -> str:
+
+        return json.dumps(
+            [
+                asdict(item)
+                for item in self.fs.list_dir(path)
+            ],
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def read_chunk(
+        self,
+        path: str,
+        offset: int = 0,
+        length: int = 4096,
+    ) -> str:
+
+        return json.dumps(
+            self.fs.read_chunk(
+                path,
+                offset,
+                length,
+            ),
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def rename(
+        self,
+        source: str,
+        destination: str,
+    ) -> str:
+
+        self.fs.rename(
+            source,
+            destination,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "source": source,
+                "destination": destination,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
 
     def read_file(
         self,
