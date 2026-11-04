@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 627 test superati, 1 skip (symlink non disponibili senza Developer
+- 628 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
   `./tools/run_tests.sh` (Linux/macOS); con `--live` si aggiungono i test
@@ -46,7 +46,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
   case-insensitive, permessi per mount, `X` per `chdir`, ricerca tra
   alias;
 - capability `COMPUTE`/`NETWORK` e config `permissions.network`;
-- 627 test, 1 skip.
+- 628 test, 1 skip.
 
 ### 2026-11-04 — memoria v2 (0.2.0)
 

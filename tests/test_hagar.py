@@ -183,6 +183,35 @@ def test_missing_sandbox_path_is_rejected(tmp_path):
         hagar.build_harness(ConfigLoader.load(path))
 
 
+def test_every_valid_sandbox_entry_is_mounted(tmp_path):
+    path, _ = write_config(tmp_path)
+    second = tmp_path / "second"
+    second.mkdir()
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["filesystem"]["sandbox"].append(
+        {
+            "alias": "second",
+            "path": str(second),
+            "permissions": "R",
+        }
+    )
+    path.write_text(
+        yaml.safe_dump(data),
+        encoding="utf-8",
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert set(harness.filesystem.aliases) == {
+        "workspace",
+        "second",
+    }
+    assert harness.filesystem.stat(
+        "/home/ai/second"
+    ).kind == "directory"
+
+
 def test_duplicate_sandbox_path_is_rejected(tmp_path):
     path, workspace = write_config(tmp_path)
     data = yaml.safe_load(path.read_text(encoding="utf-8"))

@@ -46,7 +46,7 @@ riferimento al commit quando utile.
   ospite e Hagar non crea directory.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 627 test superati, 1 skip.
+- 628 test superati, 1 skip.
 
 # 0.2.0 — 2026-11-04
 
