@@ -91,9 +91,9 @@ class FileSystemSandbox:
 
     CHUNK_SIZE = 4096
 
-    MAX_DIR_ENTRIES = 100
+    DEFAULT_PAGE_SIZE = 100
 
-    MAX_SEARCH_RESULTS = 1000
+    MAX_PAGE_SIZE = 500
 
     def __init__(
         self,
@@ -623,7 +623,18 @@ class FileSystemSandbox:
     def list_dir(
         self,
         path: str | Path = ".",
+        offset: int = 0,
+        limit: int = 100,
     ) -> dict:
+
+        if offset < 0:
+
+            raise ValueError("offset must be >= 0")
+
+        limit = max(
+            1,
+            min(int(limit), self.MAX_PAGE_SIZE),
+        )
 
         if self.is_virtual_root(path):
 
@@ -634,7 +645,9 @@ class FileSystemSandbox:
             total = len(aliases)
             entries: list[FileInfo] = []
 
-            for alias in aliases[: self.MAX_DIR_ENTRIES]:
+            for alias in aliases[
+                offset:offset + limit
+            ]:
 
                 try:
                     entries.append(
@@ -647,6 +660,8 @@ class FileSystemSandbox:
             return self._dir_listing(
                 entries,
                 total,
+                offset,
+                limit,
             )
 
         target = self.resolve_path(path)
@@ -680,7 +695,9 @@ class FileSystemSandbox:
         total = len(visible)
         entries = []
 
-        for entry in visible[: self.MAX_DIR_ENTRIES]:
+        for entry in visible[
+            offset:offset + limit
+        ]:
 
             try:
                 entries.append(
@@ -697,29 +714,57 @@ class FileSystemSandbox:
         return self._dir_listing(
             entries,
             total,
+            offset,
+            limit,
         )
 
     def _dir_listing(
         self,
         entries: list[FileInfo],
         total: int,
+        offset: int,
+        limit: int,
     ) -> dict:
 
         returned = len(entries)
+        next_offset = offset + returned
+        has_more = next_offset < total
 
-        limited = returned < total
+        if offset >= total and total:
+
+            message = (
+                f"voci: nessuna voce all'offset {offset} "
+                f"(totale {total})"
+            )
+
+        elif has_more:
+
+            message = (
+                f"voci: riportate {returned} di {total}; "
+                f"per continuare usa offset={next_offset}"
+            )
+
+        elif offset > 0:
+
+            message = (
+                f"voci: riportate {returned} di {total}; "
+                "fine elenco"
+            )
+
+        else:
+
+            message = None
 
         return {
             "entries": entries,
             "total_entries": total,
             "returned_entries": returned,
-            "truncated": limited,
-            "message": (
-                "voci: riportate solo le prime "
-                f"{returned} di {total}"
-                if limited
-                else None
-            ),
+            "offset": offset,
+            "limit": limit,
+            "next_offset": next_offset,
+            "has_more": has_more,
+            "truncated": has_more,
+            "message": message,
         }
 
 
@@ -732,7 +777,8 @@ class FileSystemSandbox:
         self,
         pattern: str,
         path: str | Path = ".",
-        max_results: int = 1000,
+        max_results: int = 100,
+        offset: int = 0,
     ) -> dict:
 
         if not isinstance(pattern, str) or not pattern.strip():
@@ -749,18 +795,21 @@ class FileSystemSandbox:
                 "pattern must stay inside the sandbox"
             )
 
+        if offset < 0:
+
+            raise ValueError("offset must be >= 0")
+
         max_results = max(
             1,
             min(
                 int(max_results),
-                self.MAX_SEARCH_RESULTS,
+                self.MAX_PAGE_SIZE,
             ),
         )
 
         if self.is_virtual_root(path):
 
-            results: list[FileInfo] = []
-            total_matches = 0
+            matches: list[FileInfo] = []
 
             for alias in sorted(
                 self.aliases,
@@ -768,10 +817,11 @@ class FileSystemSandbox:
             ):
 
                 try:
-                    partial = self.search(
-                        pattern,
-                        self.aliases[alias],
-                        max_results,
+                    matches.extend(
+                        self._search_matches(
+                            pattern,
+                            self.aliases[alias],
+                        )
                     )
 
                 except (
@@ -781,27 +831,13 @@ class FileSystemSandbox:
                 ):
                     continue
 
-                total_matches += partial["total_matches"]
-
-                for item in partial["results"]:
-
-                    if len(results) < max_results:
-                        results.append(item)
-
-            return {
-                "pattern": pattern,
-                "searched_path": self.VIRTUAL_ROOT,
-                "total_matches": total_matches,
-                "returned_matches": len(results),
-                "truncated": total_matches > max_results,
-                "message": (
-                    "voci: riportate solo le prime "
-                    f"{len(results)} di {total_matches}"
-                    if total_matches > max_results
-                    else None
-                ),
-                "results": results,
-            }
+            return self._search_listing(
+                pattern,
+                self.VIRTUAL_ROOT,
+                matches,
+                max_results,
+                offset,
+            )
 
         target = self.resolve_path(path)
 
@@ -819,9 +855,26 @@ class FileSystemSandbox:
         if not target.is_dir():
             raise NotADirectoryError(self._display(target))
 
-        results: list[FileInfo] = []
+        matches = self._search_matches(
+            pattern,
+            target,
+        )
 
-        total_matches = 0
+        return self._search_listing(
+            pattern,
+            self.virtual_path(target),
+            matches,
+            max_results,
+            offset,
+        )
+
+    def _search_matches(
+        self,
+        pattern: str,
+        target: Path,
+    ) -> list[FileInfo]:
+
+        matches: list[FileInfo] = []
 
         for entry in sorted(
             target.rglob(pattern),
@@ -837,14 +890,8 @@ class FileSystemSandbox:
             except FileNotFoundError:
                 continue
 
-            total_matches += 1
-
-            if len(results) >= max_results:
-                continue
-
             try:
-
-                results.append(
+                matches.append(
                     self.stat(entry)
                 )
 
@@ -855,21 +902,62 @@ class FileSystemSandbox:
             ):
                 continue
 
+        return matches
+
+    def _search_listing(
+        self,
+        pattern: str,
+        searched_path: str,
+        matches: list[FileInfo],
+        max_results: int,
+        offset: int,
+    ) -> dict:
+
+        total = len(matches)
+        selected = matches[
+            offset:offset + max_results
+        ]
+        returned = len(selected)
+        next_offset = offset + returned
+        has_more = next_offset < total
+
+        if offset >= total and total:
+
+            message = (
+                f"voci: nessuna voce all'offset {offset} "
+                f"(totale {total})"
+            )
+
+        elif has_more:
+
+            message = (
+                f"voci: riportate {returned} di {total}; "
+                f"per continuare usa offset={next_offset}"
+            )
+
+        elif offset > 0:
+
+            message = (
+                f"voci: riportate {returned} di {total}; "
+                "fine elenco"
+            )
+
+        else:
+
+            message = None
+
         return {
             "pattern": pattern,
-            "searched_path": self.virtual_path(target),
-            "total_matches": total_matches,
-            "returned_matches": len(results),
-            "truncated": (
-                total_matches > max_results
-            ),
-            "message": (
-                "voci: riportate solo le prime "
-                f"{len(results)} di {total_matches}"
-                if total_matches > max_results
-                else None
-            ),
-            "results": results,
+            "searched_path": searched_path,
+            "total_matches": total,
+            "returned_matches": returned,
+            "offset": offset,
+            "limit": max_results,
+            "next_offset": next_offset,
+            "has_more": has_more,
+            "truncated": has_more,
+            "message": message,
+            "results": selected,
         }
 
 

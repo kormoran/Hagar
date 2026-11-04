@@ -119,6 +119,29 @@ def test_mkdir_and_chdir(registry, workspace, sandbox):
     ).resolve()
 
 
+def test_list_dir_tool_paginates(registry, workspace):
+    for name in ("a.txt", "b.txt", "c.txt"):
+        registry.execute(
+            "filesystem.create_file",
+            path=name,
+            content="x",
+        )
+
+    page = json.loads(
+        registry.execute(
+            "filesystem.list_dir",
+            offset=1,
+            limit=1,
+        )
+    )
+
+    assert page["total_entries"] == 3
+    assert page["returned_entries"] == 1
+    assert page["next_offset"] == 2
+    assert page["has_more"] is True
+    assert page["entries"][0]["path"] == "/home/ai/root/b.txt"
+
+
 def test_delete_file(registry, workspace):
     registry.execute(
         "filesystem.create_file",

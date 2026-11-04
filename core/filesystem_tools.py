@@ -155,7 +155,8 @@ class FileSystemToolProvider:
                 name="filesystem.list_dir",
                 capabilities=Capability.FILESYSTEM_READ,
                 description=(
-                    "List the contents of a directory."
+                    "List the contents of a directory. "
+                    "Use offset/next_offset to paginate."
                 ),
                 category="filesystem",
                 parameters=[
@@ -167,6 +168,25 @@ class FileSystemToolProvider:
                         ),
                         required=False,
                         default=".",
+                    ),
+                    ToolParameter(
+                        name="offset",
+                        param_type="integer",
+                        description=(
+                            "Pagination offset."
+                        ),
+                        required=False,
+                        default=0,
+                    ),
+                    ToolParameter(
+                        name="limit",
+                        param_type="integer",
+                        description=(
+                            "Maximum number of entries "
+                            "(max 500)."
+                        ),
+                        required=False,
+                        default=100,
                     ),
                 ],
                 handler=self.list_dir,
@@ -281,7 +301,8 @@ class FileSystemToolProvider:
                 capabilities=Capability.FILESYSTEM_READ,
                 description=(
                     "Search files and directories "
-                    "recursively using a glob pattern."
+                    "recursively using a glob pattern. "
+                    "Use offset/next_offset to paginate."
                 ),
                 category="filesystem",
                 parameters=[
@@ -308,10 +329,19 @@ class FileSystemToolProvider:
                         param_type="integer",
                         description=(
                             "Maximum number of results "
-                            "returned."
+                            "(max 500)."
                         ),
                         required=False,
-                        default=1000,
+                        default=100,
+                    ),
+                    ToolParameter(
+                        name="offset",
+                        param_type="integer",
+                        description=(
+                            "Pagination offset."
+                        ),
+                        required=False,
+                        default=0,
                     ),
                 ],
                 handler=self.search,
@@ -367,13 +397,15 @@ class FileSystemToolProvider:
         self,
         pattern: str,
         path: str = ".",
-        max_results: int = 1000,
+        max_results: int = 100,
+        offset: int = 0,
     ) -> str:
 
         result = self.fs.search(
             pattern,
             path,
             max_results,
+            offset,
         )
 
         result["results"] = [
@@ -413,9 +445,15 @@ class FileSystemToolProvider:
     def list_dir(
         self,
         path: str = ".",
+        offset: int = 0,
+        limit: int = 100,
     ) -> str:
 
-        result = self.fs.list_dir(path)
+        result = self.fs.list_dir(
+            path,
+            offset,
+            limit,
+        )
 
         result["entries"] = [
             asdict(item)

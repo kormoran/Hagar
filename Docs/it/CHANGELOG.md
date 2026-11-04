@@ -38,9 +38,11 @@ riferimento al commit quando utile.
   `next_offset`; non spezza più caratteri multibyte.
 - `read_file` rifiuta file oltre 4096 byte e rimanda a `read_chunk()`
   per evitare di caricare tutto il file nella context window.
-- `list_dir` restituisce al massimo 100 voci e `search` al massimo
-  1000; quando troncano aggiungono
-  `voci: riportate solo le prime X di Y`.
+- `list_dir` restituisce al massimo 100 voci per pagina e `search` 100
+  risultati (massimo 500); entrambi supportano `offset`, `next_offset`,
+  `has_more` e il messaggio
+  `voci: riportate X di Y; per continuare usa offset=Z`. Per alberi
+  grandi conviene restringere pattern/path invece di iterare pagine.
 - I symlink non esistono per la sandbox: non sono mostrati, letti,
   seguiti o cancellati; `chdir` su un link risponde
   “Directory not found”. Decisione di progetto: restano invisibili
@@ -60,7 +62,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 635 test superati, 2 skip.
+- 637 test superati, 2 skip.
 
 # 0.2.0 — 2026-11-04
 

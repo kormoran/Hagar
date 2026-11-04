@@ -308,12 +308,16 @@ glob ricorsivo con limite di risultati; `copy_file` richiede `create`;
 I percorsi restituiti sono sempre virtuali (`/home/ai/<alias>/...`).
 `chdir` richiede `X` sull'alias.
 
-`list_dir` restituisce al massimo `MAX_DIR_ENTRIES` (100) voci e, se
-tronca, un campo `message` del tipo `voci: riportate solo le prime X di
-Y`. `search` è limitato a `MAX_SEARCH_RESULTS` (1000) e usa lo stesso
-messaggio. `read_file` accetta solo file fino a `CHUNK_SIZE` (4096
-byte); oltre, l'errore rimanda a `read_chunk()` perché leggere tutto il
-file supererebbe la context window.
+`list_dir` restituisce al massimo 100 voci per pagina (`limit` massimo
+500) con `offset`, `next_offset` e `has_more`; se ci sono altre voci il
+`message` dice `voci: riportate X di Y; per continuare usa offset=Z`.
+`search` usa la stessa paginazione: `max_results` è il limite di pagina
+(default 100, massimo 500), `offset` scorre i risultati. Per alberi
+grandi conviene restringere `pattern`/`path` invece di iterare molte
+pagine. `read_file` accetta solo file fino a `CHUNK_SIZE` (4096 byte);
+oltre, l'errore rimanda a `read_chunk()` perché leggere tutto il file
+supererebbe la context window. `read_chunk` restituisce `next_offset` e
+confini UTF-8 completi.
 
 `list_dir` e `search` non mostrano i symlink; `read_file` e `read_chunk`
 li trattano come file inesistenti.
@@ -641,7 +645,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 635 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 637 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

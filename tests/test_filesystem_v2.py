@@ -58,8 +58,10 @@ def test_search_glob_and_truncation(sandbox, workspace):
     assert result["total_matches"] == 2
     assert result["returned_matches"] == 1
     assert result["truncated"] is True
+    assert result["next_offset"] == 1
+    assert result["has_more"] is True
     assert result["message"] == (
-        "voci: riportate solo le prime 1 di 2"
+        "voci: riportate 1 di 2; per continuare usa offset=1"
     )
     assert result["results"][0].path == "/home/ai/root/a.py"
 
@@ -435,6 +437,41 @@ def test_root_search_spans_aliases(tmp_path):
     }
 
 
+def test_search_paginates(sandbox, workspace):
+    for index in range(105):
+        (workspace / f"{index:03}.py").write_text(
+            "x",
+            encoding="utf-8",
+        )
+
+    first = sandbox.search(
+        "*.py",
+        max_results=100,
+    )
+
+    assert first["total_matches"] == 105
+    assert first["returned_matches"] == 100
+    assert first["next_offset"] == 100
+    assert first["has_more"] is True
+    assert first["message"] == (
+        "voci: riportate 100 di 105; "
+        "per continuare usa offset=100"
+    )
+
+    second = sandbox.search(
+        "*.py",
+        max_results=100,
+        offset=100,
+    )
+
+    assert second["returned_matches"] == 5
+    assert second["next_offset"] == 105
+    assert second["has_more"] is False
+    assert second["message"] == (
+        "voci: riportate 5 di 105; fine elenco"
+    )
+
+
 def test_outside_error_does_not_expose_real_path(
     sandbox,
     workspace,
@@ -522,10 +559,24 @@ def test_list_dir_limit_and_message(sandbox, workspace):
     result = sandbox.list_dir(".")
 
     assert result["total_entries"] == 105
-    assert result["returned_entries"] == sandbox.MAX_DIR_ENTRIES
+    assert result["returned_entries"] == (
+        sandbox.DEFAULT_PAGE_SIZE
+    )
+    assert result["next_offset"] == 100
+    assert result["has_more"] is True
     assert result["truncated"] is True
     assert result["message"] == (
-        "voci: riportate solo le prime 100 di 105"
+        "voci: riportate 100 di 105; "
+        "per continuare usa offset=100"
+    )
+
+    second = sandbox.list_dir(".", offset=100)
+
+    assert second["returned_entries"] == 5
+    assert second["next_offset"] == 105
+    assert second["has_more"] is False
+    assert second["message"] == (
+        "voci: riportate 5 di 105; fine elenco"
     )
 
 
