@@ -24,7 +24,7 @@ To this end, we adopt principles and methodologies from HMI/HCI (Human-Machine I
 ## 1.3 Third Law of HAGAR
 **State must exist outside the LLM’s "mind."** By implementing components such as `ToolRegistry`, `MCP`, `FilesystemSandbox`, and (forthcoming) `PermissionEvaluator`, we shift knowledge and control outside of the model itself. This aligns with standard practices for safety-critical systems. 
 
-## 1.4 HAGAR’s Fourth Law
+## 1.4 Fourth Law of HAGAR
 **Every action must be explainable after the fact.** An audit log is essential: when something goes wrong — and eventually it will — the question should not be "Why did the LLM go haywire?" but rather: "What assumption did it make?" "Which tool did it use?" "Which piece of data was incorrect?" In other words: incident investigation — much like in aviation.
 
 ## 1.5 Software Architecture
@@ -188,48 +188,7 @@ The log is made to be read after an incident, not by the model. It may
 contain the content of files read through the filesystem tools, so it
 should be treated with the same care as the workspace itself.
 
-## 3.5 Model check
-
-`tools/bench_models.py` runs a few representative turns (read, stat,
-create, chat without tools) against a temporary sandbox and prints one
-JSON line per model/task: tool calls with arguments, tool results, JSON
-repairs, elapsed time and the final answer.
-
-```powershell
-.\.venv\Scripts\python.exe tools\bench_models.py
-.\.venv\Scripts\python.exe tools\bench_models.py llama3.1:latest
-```
-
-It needs a running Ollama server and already pulled models; the scratch
-area is `.bench/` (gitignored).
-
-`tools/bench_native.py` compares native tool calling with the text JSON
-protocol on the same model and tasks:
-
-```powershell
-.\.venv\Scripts\python.exe tools\bench_native.py --provider ollama --model llama3.1:latest
-.\.venv\Scripts\python.exe tools\bench_native.py --provider deepseek --model deepseek-flash
-```
-
-It reports tool choice, argument correctness, latency and text-protocol
-repairs; `--mode`, `--tasks` and `--json` narrow or serialize the run.
-
-Indicative results (one run; 5-task subset for Ollama, full 9 for
-DeepSeek):
-
-| model | native | text |
-|---|---|---|
-| `llama3.1` | 4/5 | 5/5 |
-| `qwen3:8b` | 4/5 | 5/5 |
-| `hermes3:8b` | 4/5 | 3/5 |
-| `deepseek-flash` | 8/9 | 9/9 |
-
-No protocol wins everywhere. Native is usually faster; the text protocol
-sometimes selects better tools. The default stays native, with
-`model.native_tools: false` (or `--no-native-tools`) per model when the
-benchmark says otherwise.
-
-## 3.6 Permissions and `policy.yaml`
+## 3.5 Permissions and `policy.yaml`
 
 Every tool call is authorized before execution. A tool declares its
 **capabilities** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
@@ -252,14 +211,14 @@ subjects:
         paths: ["note"]
 ```
 
-`ask` prompts on the console with `lo faccio? (y/N)` (default N); the
+`ask` prompts on the console with `do I do it? (y/N)` (default N); the
 `ConfirmationProvider` protocol leaves room for a GUI modal dialog. The
 policy file is read before the LLM is created: if it is missing or
 invalid, every policy becomes `DENY`, the failure is written to the
 audit log (`policy.failed`) and shown in chat, and the harness keeps
 running.
 
-## 3.7 Memory
+## 3.6 Memory
 
 The harness keeps an episodic memory of the conversation in the
 Obsidian vault (`<vault>/Hagar/chat/`) and injects the last
@@ -285,9 +244,11 @@ confirmation). See ARCHITECTURE §3.11 for the vault layout.
 
 # 4. Documentation
 
-- [ARCHITECTURE.md](Docs/en/ARCHITECTURE.md) — how the harness works
+HAGAR has multilanguage documentation. At present, languages supported
+are: it, en, es, pt, zh, ru. Each language has its dedicated subdir in Docs.
+
+- [ARCHITECTURE.md](Docs/.../ARCHITECTURE.md) — how the harness works
   today: components, security model, known limits.
-- [ROADMAP.md](Docs/en/ROADMAP.md) — planned work, decisions already
+- [ROADMAP.md](Docs/.../ROADMAP.md) — planned work, decisions already
   taken and open questions.
-- [CHANGELOG.md](Docs/en/CHANGELOG.md) — version history.
-- Italian copies live in `Docs/it/`.
+- [CHANGELOG.md](Docs/.../CHANGELOG.md) — version history.
