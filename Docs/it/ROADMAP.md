@@ -372,13 +372,14 @@ Restano:
 3. Igiene: fatta (packaging, test live, MCP auth/OAuth, audit con
    retention, base URL, legacy).
 4. Calling nativo: v1 fatta; resta la misura col benchmark.
-5. Release 0.2.0: dichiarata con la memoria v2.
+5. Release 0.3.0: preparata per GitHub, con CI multipiattaforma e
+   workflow di release.
 
 ---
 
 # 9. Tool locali
 
-Stato al 2026-11-04:
+Stato al 2026-11-05:
 
 - filesystem v2: `list_dir`, `read_chunk`, `rename`, `copy_file`,
   `search`, oltre ai tool esistenti;
@@ -400,9 +401,7 @@ Punti aperti:
   di nuovo il nome al momento della connessione; serve un resolver
   pinnato o un adapter dedicato per chiudere il caso;
 - il calcolatore è volutamente limitato (niente algebra simbolica);
-- valutare un limite di dimensione anche per gli altri output dei tool;
-- aggiungere CI Linux/macOS per symlink, permessi token e callback
-  OAuth.
+- valutare un limite di dimensione anche per gli altri output dei tool.
 
 Chiuso come responsabilità dell'utente:
 

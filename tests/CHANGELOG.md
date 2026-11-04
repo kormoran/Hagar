@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 666 test superati, 2 skip (symlink non disponibili senza Developer
+- 668 test superati, 2 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
   `./tools/run_tests.sh` (Linux/macOS); con `--live` si aggiungono i test

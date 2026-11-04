@@ -8,8 +8,11 @@ from pathlib import Path
 
 import hagar
 
+from core.config import ConfigLoader
+
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
+EXAMPLE = ROOT / "hagar.example.yaml"
 
 
 def project() -> dict:
@@ -56,6 +59,30 @@ def test_dependencies_are_declared():
         item.startswith("requests")
         for item in dependencies
     )
+
+
+def test_example_configuration_is_portable():
+    assert EXAMPLE.is_file()
+
+    config = ConfigLoader.load(EXAMPLE)
+
+    assert config.model.provider == "ollama"
+    assert config.filesystem.sandbox[0].alias == "workspace"
+    assert config.vault.path.name == "vault"
+    assert config.memory.enabled is True
+
+
+def test_release_metadata_files_exist():
+    assert (ROOT / "LICENSE").is_file()
+    assert (ROOT / "SECURITY.md").is_file()
+    assert (ROOT / "CONTRIBUTING.md").is_file()
+    assert (ROOT / "MANIFEST.in").is_file()
+    assert (
+        ROOT / ".github" / "workflows" / "ci.yml"
+    ).is_file()
+    assert (
+        ROOT / ".github" / "workflows" / "release.yml"
+    ).is_file()
 
 
 def test_cli_parser_has_core_options():

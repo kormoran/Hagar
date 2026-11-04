@@ -187,6 +187,9 @@ cython_debug/
 # Scratch area of tools/bench_models.py
 .bench/
 
+# Local configuration (copy hagar.example.yaml and adjust paths)
+hagar.yaml
+
 # Audit logs produced by hagar.py
 logs/
 

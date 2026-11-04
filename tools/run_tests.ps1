@@ -19,6 +19,13 @@ if (-not (Test-Path $python)) {
     $python = 'python'
 }
 
-& $python -m pytest -p no:cacheprovider @args
+Push-Location $root
+
+try {
+    & $python -m pytest -p no:cacheprovider @args
+}
+finally {
+    Pop-Location
+}
 
 exit $LASTEXITCODE

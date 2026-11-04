@@ -24,3 +24,16 @@ def _sandbox_safe_mkdir(path, mode=0o777, *, dir_fd=None):
 
 
 os.mkdir = _sandbox_safe_mkdir
+
+
+# tempfile cleanup tries to chmod temporary directories back to 0o700.
+# Under the restricted Windows token that chmod is denied and build
+# cleanup fails even though the build itself succeeded. Mode bits are
+# meaningless for this token; skip the cosmetic reset.
+try:
+    import tempfile
+
+    tempfile._resetperms = lambda path: None
+
+except Exception:
+    pass

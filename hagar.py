@@ -53,7 +53,7 @@ from local_tools.unit_converter_tool import UnitConverterToolProvider
 from local_tools.feeder_tool import FeederToolProvider
 
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 DEFAULT_CONFIG_NAME = "hagar.yaml"
 

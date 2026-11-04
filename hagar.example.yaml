@@ -1,0 +1,77 @@
+# Hagar example configuration.
+#
+# Copy this file to hagar.yaml and adjust the paths for your machine:
+#
+#   cp hagar.example.yaml hagar.yaml
+#   mkdir -p vault logs
+#   hagar --config hagar.yaml
+#
+# hagar.yaml is intentionally ignored by git: it contains local paths.
+
+model:
+  # provider: ollama | deepseek | claude | gemini
+  provider: ollama
+  host: http://localhost:11434
+  name: llama3.1:latest
+  native_tools: true
+  # max_tokens: 1024
+  # api_key_env: DEEPSEEK_API_KEY
+
+audit:
+  enabled: true
+  path: logs/audit.jsonl
+  max_field_chars: 2000
+  max_bytes: 5000000
+  max_files: 100
+  include_outputs: true
+
+policy:
+  path: policy.yaml
+  subject: assistant
+
+vault:
+  # Memory is stored in ordinary Markdown files. Create this directory
+  # before starting Hagar; if it is missing, memory is disabled.
+  path: ./vault
+
+memory:
+  enabled: true
+  vault_subdir: Hagar
+  context_turns: 10
+  context_skills: 3
+  context_project_memories: 10
+  max_context_chars: 6000
+  project_max_active: 200
+  summary_max_chars: 4000
+  max_skill_chars: 4000
+
+filesystem:
+  # Host paths, exposed to the model as /home/ai/<alias>.
+  # Permissions: R = read/list/search/stat, W = write/create/rename/
+  # copy/delete, X = chdir.
+  sandbox:
+    - alias: workspace
+      path: .
+      permissions: RX
+  limits:
+    # 0 disables the limit. Byte counters are per session.
+    max_write_bytes: 0
+    min_free_bytes: 0
+    session_write_bytes: 0
+    ask_over_bytes: 0
+
+permissions:
+  read: true
+  write: false
+  shell: false
+  network: false
+
+rag:
+  top_k: 8
+
+# mcp_servers:
+#   - endpoint: https://mcp.example.com/mcp
+#     namespace: example
+#     auth:
+#       type: bearer
+#       token_env: MCP_EXAMPLE_TOKEN

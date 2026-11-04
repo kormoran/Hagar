@@ -5,7 +5,7 @@ riferimento al commit quando utile.
 
 ---
 
-# Non rilasciato
+# 0.3.0 — 2026-11-05
 
 ## Memoria di progetto, summary e archivio
 
@@ -106,7 +106,19 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 666 test superati, 2 skip.
+- 668 test superati, 2 skip.
+
+## Rilascio e multipiattaforma
+
+- Versione `0.3.0` in `pyproject.toml` e `hagar.py`.
+- CI GitHub Actions su Linux, macOS e Windows con Python 3.11, 3.12 e
+  3.13; build del pacchetto, `twine check` e smoke test del wheel.
+- Workflow di release su tag `v*`: build sdist/wheel, verifica che il tag
+  corrisponda alla versione e creazione della release GitHub.
+- `hagar.example.yaml` portabile; `hagar.yaml` locale e `testvault/` sono
+  ignorati da git.
+- `MANIFEST.in`, `SECURITY.md`, `CONTRIBUTING.md` e `RELEASING.md` per il
+  primo rilascio pubblico.
 
 # 0.2.0 — 2026-11-04
 

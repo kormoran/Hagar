@@ -76,18 +76,32 @@ resolver-path feature. See `ARCHITECTURE.md` §6.1.
 
 ## 3.0 Install and CLI
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-```
+The repository ships a portable example configuration. Copy it and
+create the Vault directory before the first run:
 
-On Windows PowerShell:
+```bash
+# Linux / macOS
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+cp hagar.example.yaml hagar.yaml
+mkdir -p vault logs
+hagar --config hagar.yaml
+```
 
 ```powershell
+# Windows
 python -m venv .venv
-.\.venv\Scripts\python -m pip install -e .
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+Copy-Item hagar.example.yaml hagar.yaml
+New-Item -ItemType Directory -Force vault, logs
+hagar --config hagar.yaml
 ```
+
+`hagar.yaml` and `testvault/` are local and ignored by git. The example
+uses `./vault` as the memory root and the current directory as a
+read-only sandbox alias; adjust both paths to your machine.
 
 `pip install -e .` declares the `core`, `llm`, `memory` and
 `local_tools` packages and installs the `hagar` command:

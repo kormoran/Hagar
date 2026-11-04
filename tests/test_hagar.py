@@ -1104,7 +1104,7 @@ def test_main_version(capsys):
         hagar.main(["--version"])
 
     assert excinfo.value.code == 0
-    assert "hagar 0.2.0" in capsys.readouterr().out
+    assert f"hagar {hagar.__version__}" in capsys.readouterr().out
 
 
 def test_memory_command_in_loop(

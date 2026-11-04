@@ -675,7 +675,12 @@ soggette alle policy (`MEMORY_READ`/`MEMORY_WRITE`).
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
-`pyproject.toml`. L'entry point è `hagar = "hagar:main"`.
+`pyproject.toml`. L'entry point è `hagar = "hagar:main"`. La versione
+corrente è `0.3.0`.
+
+La configurazione d'esempio è `hagar.example.yaml`; `hagar.yaml` è un
+file locale ignorato da git. Il Vault predefinito dell'esempio è
+`./vault` e va creato prima dell'avvio.
 
 ```text
 hagar --config PATH       file di configurazione
@@ -690,6 +695,12 @@ hagar --version
 La configurazione si cerca in quest'ordine: `--config`, variabile
 `HAGAR_CONFIG`, `./hagar.yaml`. `python -m hagar` funziona dalla
 directory del progetto.
+
+La CI GitHub Actions esegue la suite su Linux, macOS e Windows con
+Python 3.11/3.12/3.13, costruisce sdist e wheel, esegue `twine check` e
+prova l'installazione del wheel. Il workflow `Release` parte da un tag
+`v*`, verifica che il tag corrisponda alla versione del pacchetto e
+crea la release GitHub con gli artefatti.
 
 I test live sono esclusi dalla suite normale e si abilitano con
 `--live`: verificano Ollama e i provider remoti (questi ultimi solo se
@@ -740,7 +751,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 666 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 668 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
@@ -768,8 +779,9 @@ nel registry e vivono fuori dal core, in un package separato.
   Windows; su Linux `created_at` può essere `None`.
 - Le API esterne (OAuth, MCP, LLM) usano HTTP e `webbrowser`, non
   comandi di sistema.
-- Restano da verificare in CI Linux/macOS: symlink, permessi dei file
-  token OAuth e callback loopback.
+- La CI GitHub Actions copre Linux, macOS e Windows su Python
+  3.11/3.12/3.13; symlink, permessi dei token OAuth e callback loopback
+  restano da verificare con test live, non nella suite offline.
 
 ---
 
