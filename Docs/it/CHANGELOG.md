@@ -7,6 +7,29 @@ riferimento al commit quando utile.
 
 # Non rilasciato
 
+## Memoria di progetto, summary e archivio
+
+- Nuova memoria di progetto separata dalle skill:
+  `Hagar/projects/<id>/index.md` e `decisions/<data>-<slug>.md`, con
+  stato `candidate`/`active`/`superseded`/`archived`, alternative,
+  motivazione, provenance e `auto_saved`.
+- All'avvio Hagar mostra i progetti attivi e “attività libera”; comandi
+  `/project list|new|select|free|status` e override `--project`/`--free`.
+- A fine sessione il transcript viene spostato in `archive/chat/` e
+  sostituito da un summary con link e hash; fallback meccanico se il
+  modello non è disponibile.
+- Le decisioni di progetto vengono proposte come `candidate` e riviste
+  a fine sessione; se l'utente rifiuta, restano candidate con
+  `auto_saved: true`.
+- Contesto a indice: summary e titoli delle decisioni attive, non i
+  corpi; dettagli con `memory.project_context`. Budget
+  `max_context_chars` (caratteri, non token) e audit
+  `memory.context_trimmed`.
+- `project_max_active` fa scattare la richiesta di archiviazione del
+  progetto; l'archiviazione è reversibile e non cancella nulla.
+- Se la directory `projects` non è scrivibile, la memoria resta attiva
+  e i progetti vengono disabilitati con `project.disabled`.
+
 ## Strumenti locali e filesystem v2
 
 - Nuova directory `local_tools/` per i provider locali: calcolo, statistica,
@@ -79,7 +102,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 650 test superati, 2 skip.
+- 661 test superati, 2 skip.
 
 # 0.2.0 — 2026-11-04
 

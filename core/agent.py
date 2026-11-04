@@ -23,6 +23,10 @@ class Agent:
         max_tool_calls: int = 10,
         audit: Any = None,
         memory: Any = None,
+        project_store: Any = None,
+        project_id: str | None = None,
+        max_context_chars: int = 6000,
+        context_project_memories: int = 10,
     ) -> None:
 
         self.llm = llm
@@ -35,6 +39,12 @@ class Agent:
 
         self.audit = audit
         self.memory = memory
+        self.project_store = project_store
+        self.project_id = project_id
+        self.max_context_chars = int(max_context_chars)
+        self.context_project_memories = int(
+            context_project_memories
+        )
 
     # ==================================================
     # Public API
@@ -615,6 +625,66 @@ class Agent:
 
                 skills = 0
 
+            project_text = ""
+            project_decisions = 0
+            summary_text = ""
+
+            if (
+                self.project_store is not None
+                and self.project_id
+            ):
+
+                project_text, project_decisions = (
+                    self.project_store.context_index(
+                        self.project_id,
+                        max_decisions=(
+                            self.context_project_memories
+                        ),
+                        max_chars=self.max_context_chars,
+                    )
+                )
+
+            elif self.memory is not None:
+
+                latest_summary = getattr(
+                    self.memory,
+                    "latest_summary",
+                    None,
+                )
+
+                if latest_summary is not None:
+
+                    summary_text = (
+                        latest_summary(free_only=True) or ""
+                    )
+
+            parts = [
+                part
+                for part in (
+                    project_text,
+                    summary_text,
+                    context,
+                )
+                if part
+            ]
+
+            context = "\n\n".join(parts) or None
+
+            trimmed = False
+
+            if (
+                context
+                and self.max_context_chars > 0
+                and len(context) > self.max_context_chars
+            ):
+
+                context = (
+                    context[: self.max_context_chars]
+                    .rstrip()
+                    + "…"
+                )
+                trimmed = True
+
         except Exception as exc:
 
             self._record(
@@ -633,7 +703,20 @@ class Agent:
                 turn=turn,
                 turns=count,
                 skills=skills,
+                project=self.project_id,
+                project_decisions=project_decisions,
+                chars=len(context),
+                trimmed=trimmed,
             )
+
+            if trimmed:
+
+                self._record(
+                    "memory.context_trimmed",
+                    turn=turn,
+                    chars=len(context),
+                    limit=self.max_context_chars,
+                )
 
         return context
 

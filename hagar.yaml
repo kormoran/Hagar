@@ -30,6 +30,10 @@ memory:
   vault_subdir: Hagar
   context_turns: 10
   context_skills: 3
+  context_project_memories: 10
+  max_context_chars: 6000
+  project_max_active: 200
+  summary_max_chars: 4000
   max_skill_chars: 4000
 
 filesystem:

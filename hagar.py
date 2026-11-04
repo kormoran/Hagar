@@ -37,6 +37,10 @@ from llm.mcp_client import (
 )
 from llm.mcp_oauth import OAuthProvider
 from memory.cli import MemoryCLI
+from memory.projects import ProjectStore
+from memory.project_cli import ProjectCLI
+from memory.project_tools import ProjectToolProvider
+from memory.session import SessionSummarizer
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
@@ -122,6 +126,20 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    project_group = parser.add_mutually_exclusive_group()
+
+    project_group.add_argument(
+        "--project",
+        metavar="NAME",
+        help="seleziona un progetto attivo all'avvio",
+    )
+
+    project_group.add_argument(
+        "--free",
+        action="store_true",
+        help="avvia in attività libera, senza progetto",
+    )
+
     parser.add_argument(
         "--version",
         action="version",
@@ -148,6 +166,9 @@ class Harness:
     policy_error: str | None = None
     memory: MemoryStore | None = None
     memory_error: str | None = None
+    project_store: ProjectStore | None = None
+    project_id: str | None = None
+    project_state: dict[str, str | None] | None = None
 
 
 def build_harness(
@@ -254,6 +275,8 @@ def build_harness(
 
     memory: MemoryStore | None = None
     memory_error: str | None = None
+    project_store: ProjectStore | None = None
+    project_state: dict[str, str | None] = {"id": None}
 
     if config.memory.enabled:
 
@@ -288,6 +311,7 @@ def build_harness(
         except Exception as exc:
 
             memory = None
+            project_store = None
             memory_error = str(exc)
 
             audit.record(
@@ -295,6 +319,31 @@ def build_harness(
                 root=str(config.vault.path),
                 error=memory_error,
             )
+
+        if memory is not None:
+
+            try:
+
+                project_store = ProjectStore(
+                    vault,
+                    subdir=config.memory.vault_subdir,
+                )
+                project_store.ensure()
+
+                audit.record(
+                    "project.enabled",
+                    root=str(config.vault.path),
+                )
+
+            except Exception as exc:
+
+                project_store = None
+
+                audit.record(
+                    "project.disabled",
+                    root=str(config.vault.path),
+                    error=str(exc),
+                )
 
     # ==========================================
     # Filesystem sandbox
@@ -379,6 +428,13 @@ def build_harness(
         )
 
         memory_provider.register_tools(registry)
+
+        if project_store is not None:
+
+            ProjectToolProvider(
+                project_store,
+                lambda: project_state["id"],
+            ).register_tools(registry)
 
     # ==========================================
     # Local tools (non-MCP)
@@ -520,6 +576,12 @@ def build_harness(
         vault=vault,
         audit=audit,
         memory=memory,
+        project_store=project_store,
+        project_id=None,
+        max_context_chars=config.memory.max_context_chars,
+        context_project_memories=(
+            config.memory.context_project_memories
+        ),
     )
 
     # ==========================================
@@ -593,6 +655,9 @@ def build_harness(
         policy_error=policy_error,
         memory=memory,
         memory_error=memory_error,
+        project_store=project_store,
+        project_id=None,
+        project_state=project_state,
     )
 
 
@@ -691,6 +756,60 @@ def main(
 
         print("Memory: disabled")
 
+    if harness.memory is not None:
+
+        if getattr(harness, "project_store", None) is not None:
+
+            print("Projects: enabled")
+
+        else:
+
+            print(
+                "Projects: disabled "
+                "(directory projects non scrivibile)"
+            )
+
+    print()
+
+    project_cli: ProjectCLI | None = None
+
+    if getattr(harness, "project_store", None) is not None:
+
+        project_cli = ProjectCLI(
+            harness.project_store,
+            lambda: harness.project_id,
+            lambda project_id: _set_project(
+                harness,
+                project_id,
+            ),
+            max_active=(
+                config.memory.project_max_active
+            ),
+            interactive=sys.stdin.isatty(),
+            audit=harness.audit,
+        )
+
+        try:
+
+            project_cli.choose_initial(
+                forced=args.project,
+                free=(
+                    args.free
+                    or (
+                        not sys.stdin.isatty()
+                        and not args.project
+                    )
+                ),
+            )
+
+        except ValueError as exc:
+
+            print(
+                f"Errore progetto: {exc}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from exc
+
     print()
     print("Available tools:")
 
@@ -702,9 +821,11 @@ def main(
 
     try:
 
-        _interactive_loop(harness)
+        _interactive_loop(harness, project_cli)
 
     finally:
+
+        _finish_session(harness)
 
         harness.audit.record(
             "harness.stop",
@@ -712,7 +833,67 @@ def main(
         )
 
 
-def _interactive_loop(harness: Harness) -> None:
+def _set_project(
+    harness: Harness,
+    project_id: str | None,
+) -> None:
+
+    harness.project_id = project_id
+
+    if harness.project_state is not None:
+        harness.project_state["id"] = project_id
+
+    harness.agent.project_id = project_id
+
+
+def _finish_session(
+    harness: Harness,
+) -> None:
+
+    if getattr(harness, "memory", None) is None:
+        return
+
+    interactive = sys.stdin.isatty()
+
+    try:
+
+        SessionSummarizer(
+            harness.memory,
+            projects=getattr(
+                harness,
+                "project_store",
+                None,
+            ),
+            project_id=getattr(
+                harness,
+                "project_id",
+                None,
+            ),
+            llm=harness.llm,
+            audit=harness.audit,
+            input_func=(
+                input
+                if interactive
+                else (lambda _prompt: "")
+            ),
+            summary_max_chars=(
+                harness.config.memory.summary_max_chars
+            ),
+        ).finish()
+
+    except Exception as exc:
+
+        harness.audit.record(
+            "memory.failed",
+            stage="session_end",
+            error=str(exc),
+        )
+
+
+def _interactive_loop(
+    harness: Harness,
+    project_cli: ProjectCLI | None = None,
+) -> None:
 
     memory_cli = (
         MemoryCLI(
@@ -743,6 +924,24 @@ def _interactive_loop(harness: Harness) -> None:
             break
 
         if not stripped:
+            continue
+
+        if (
+            stripped == "/project"
+            or stripped.startswith("/project ")
+        ):
+
+            if project_cli is None:
+
+                print()
+                print("Progetti disattivati: memoria assente.")
+                print()
+
+            else:
+
+                project_cli.handle(stripped)
+                print()
+
             continue
 
         if (

@@ -127,6 +127,24 @@ class Vault:
 
         return path
 
+    def move(
+        self,
+        relative: str | Path,
+        destination: str | Path,
+    ) -> Path:
+
+        source = self._resolve(relative)
+        target = self._resolve(destination)
+
+        target.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        source.replace(target)
+
+        return target
+
     def list_files(
         self,
         relative: str | Path = ".",

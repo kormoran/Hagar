@@ -41,9 +41,21 @@ Realizzato:
   umana da CLI (`/memory review`, `confirm`, `archive`);
 - iniezione automatica delle sole skill confermate, top 3 per match
   lessicale;
-- retention opzione A: nessuna cancellazione automatica, solo archivio.
+- retention opzione A: nessuna cancellazione automatica, solo archivio;
+- memoria di progetto separata dalle skill: decisioni, alternative,
+  motivazioni, stato e provenance;
+- selezione progetto all'avvio, `--project`/`--free`, comandi
+  `/project`;
+- summary di fine sessione con fallback, transcript in `archive/chat/`
+  e link/hash nel summary;
+- review delle decisioni a fine sessione; se rifiutata, restano
+  `candidate` con `auto_saved: true`;
+- contesto a indice con budget `max_context_chars` (caratteri, non
+  token) e `memory.project_context` per i dettagli;
+- `project_max_active` per la richiesta di archiviazione del progetto.
 
-Restano: retention delle chat, ricerca semantica, GUI.
+Restano: consultazione archivio, retention delle chat, ricerca
+semantica, GUI.
 
 ## 2.1 Decisioni prese
 
@@ -58,6 +70,19 @@ Restano: retention delle chat, ricerca semantica, GUI.
   memoria (per ora). La `filesystem.sandbox` resta la sandbox operativa.
 - **Il Vault non si riscrive.** I tool aggiungono note o sezioni; non
   sovrascrivono note curate dall'utente.
+- **Progetti espliciti.** Il progetto si sceglie all'avvio dalla lista
+  dei progetti attivi, oppure con `--project`; `--free` e “attività
+  libera” non hanno memoria di progetto.
+- **Decisioni di progetto.** Sono separate dalle skill: registrano
+  decisioni, alternative e motivazioni. Si propongono come `candidate`
+  e si rivedono a fine sessione; se la review viene rifiutata restano
+  candidate con `auto_saved: true`, non diventano verità automatiche.
+- **Niente quote token.** Il contesto è limitato per costruzione:
+  indice del progetto, titoli delle decisioni, summary e
+  `max_context_chars` in caratteri. Non si misura la context window del
+  modello.
+- **Archivio, non cancellazione.** Transcript e decisioni archiviate
+  restano nel Vault; l'archiviazione di un progetto è reversibile.
 
 ## 2.2 Tool previsti
 
@@ -167,14 +192,20 @@ memory:
 
 ## 2.6 Punti aperti
 
+- **Consultazione archivio**: i transcript sono in `archive/chat/`, ma
+  manca un comando/tool per cercarli e riaprirli.
 - **Retention chat**: quante sessioni conservare, se riassumere le
   vecchie; la 0.2.0 non cancella nulla.
 - **Ricerca**: indice (SQLite FTS) o embedding quando i volumi
   cresceranno; oggi è per parola chiave.
 - **GUI**: conferma ASK con dialog modale anche per le scritture di
   memoria e per la review.
-- **Selezione del contesto**: oggi turni recenti globali e top 3 skill
-  confermate per match lessicale, senza rilevanza semantica.
+- **Selezione del contesto**: oggi turni recenti globali, indice del
+  progetto e top 3 skill confermate per match lessicale, senza
+  rilevanza semantica.
+- **Consolidamento decisioni**: il progetto può superare
+  `project_max_active`; oggi Hagar propone l'archiviazione, non il
+  merge delle decisioni duplicate.
 
 ## 2.7 Non obiettivi (per ora)
 

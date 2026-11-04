@@ -596,8 +596,63 @@ memory:
   vault_subdir: Hagar
   context_turns: 10
   context_skills: 3
+  context_project_memories: 10
+  max_context_chars: 6000
+  project_max_active: 200
+  summary_max_chars: 4000
   max_skill_chars: 4000
 ```
+
+### Memoria di progetto
+
+La memoria di progetto è separata dalle skill:
+
+```text
+<vault>/Hagar/projects/<id>/index.md
+<vault>/Hagar/projects/<id>/decisions/<data>-<slug>.md
+<vault>/Hagar/summaries/<data>-<session>.md
+<vault>/Hagar/archive/chat/<data>-<session>.md
+```
+
+Ogni progetto ha un `index.md` con stato, ultima attività, summary e
+conteggio delle decisioni attive. Ogni decisione ha stato
+`candidate`/`active`/`superseded`/`archived`, alternative, motivazione,
+provenance e `auto_saved`. Le decisioni non si riscrivono: una nuova
+decisione può sostituirne una vecchia.
+
+All’avvio Hagar mostra i progetti attivi e “attività libera”:
+
+```text
+/project list
+/project new <nome>
+/project select <nome>
+/project free
+/project status
+/project archive <nome>
+/project unarchive <nome>
+```
+
+Gli override non interattivi sono `--project <nome>` e `--free`.
+
+A fine sessione:
+
+1. il transcript viene spostato in `archive/chat/`;
+2. viene generato un summary con il modello, con fallback meccanico;
+3. il summary viene salvato con link e hash del transcript;
+4. se c’è un progetto, l’LLM propone decisioni `candidate`;
+5. l’utente può rivederle; se rifiuta, restano `candidate` con
+   `auto_saved: true`.
+
+Il contesto iniettato usa l’**indice** del progetto: summary, titoli
+delle decisioni attive e conteggio, non tutti i corpi. I dettagli si
+leggono con `memory.project_context(query=..., limit=...)`. Il blocco
+complessivo è limitato da `max_context_chars`; se viene tagliato,
+l’audit registra `memory.context_trimmed`. Non è una stima di token: è
+un budget in caratteri, deterministico.
+
+Quando un progetto supera `project_max_active`, Hagar chiede se
+archiviarlo. L’archiviazione è reversibile e non cancella nulla.
+La consultazione dell’archivio è ancora da fare.
 
 Se `vault.path` non esiste o non è scrivibile, la memoria viene
 disattivata con un avviso in chat e `memory.disabled` nell'audit; gli
@@ -612,6 +667,8 @@ Il progetto si installa con `pip install -e .` e dichiara i package in
 ```text
 hagar --config PATH       file di configurazione
 hagar --model NAME        sovrascrive model.name
+hagar --project NAME      seleziona un progetto attivo
+hagar --free              avvia in attività libera
 hagar --no-memory         disattiva la memoria per la sessione
 hagar --no-native-tools   usa il protocollo JSON testuale
 hagar --version
@@ -670,7 +727,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 650 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 661 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

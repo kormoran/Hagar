@@ -41,6 +41,7 @@ EXPECTED_TOOLS = {
     "memory.create_skill",
     "memory.list_skills",
     "memory.get_context",
+    "memory.project_context",
     "calculator.evaluate",
     "statistics.compute",
     "units.convert",
@@ -754,8 +755,9 @@ def test_harness_writes_audit_log(tmp_path):
     assert entries[0]["path"] == str(tmp_path / "policy.yaml")
 
     assert entries[1]["event"] == "memory.enabled"
+    assert entries[2]["event"] == "project.enabled"
 
-    start = entries[2]
+    start = entries[3]
 
     assert start["event"] == "harness.start"
     assert start["provider"] == "ollama"
@@ -806,6 +808,7 @@ def test_agent_turn_is_audited(tmp_path):
     assert events == [
         "policy.loaded",
         "memory.enabled",
+        "project.enabled",
         "harness.start",
         "turn.start",
         "turn.answer",

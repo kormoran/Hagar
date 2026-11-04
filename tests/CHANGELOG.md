@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 650 test superati, 2 skip (symlink non disponibili senza Developer
+- 661 test superati, 2 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
   `./tools/run_tests.sh` (Linux/macOS); con `--live` si aggiungono i test
@@ -24,6 +24,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | tool locali | `test_local_tools.py` |
 | registry e definizioni | `test_tool_definition.py`, `test_tool_registry.py` |
 | agent e audit | `test_agent.py`, `test_audit.py` |
+| memoria e progetti | `test_memory_store.py`, `test_memory_tools.py`, `test_memory_cli.py`, `test_agent_memory.py`, `test_projects.py` |
 | calling nativo | `test_native_tools.py`, `test_agent_native.py` |
 | backend LLM | `test_ollama_client.py`, `test_llm_backends.py`, `test_factory.py` |
 | MCP | `test_mcp_client.py` |

@@ -95,6 +95,8 @@ python -m venv .venv
 ```bash
 hagar --config hagar.yaml
 hagar --model qwen3:8b
+hagar --project hagar
+hagar --free
 hagar --no-memory
 hagar --no-native-tools
 hagar --version
@@ -336,18 +338,45 @@ running.
 
 The harness keeps an episodic memory of the conversation in the
 Obsidian vault (`<vault>/Hagar/chat/`) and injects the last
-`memory.context_turns` turns into every prompt. The model can save
-durable memories with `memory.create_skill` (stored as `candidate` with
-provenance), list them with `memory.list_skills`, and search past turns
-with `memory.get_context`.
+`memory.context_turns` turns into every prompt. At the end of a session
+the transcript is moved to `Hagar/archive/chat/` and replaced by a
+summary with a link and hash. The model can save durable memories with
+`memory.create_skill` (stored as `candidate` with provenance), list them
+with `memory.list_skills`, and search past turns with
+`memory.get_context`.
+
+Projects add a separate decision log:
+
+```text
+<vault>/Hagar/projects/<id>/index.md
+<vault>/Hagar/projects/<id>/decisions/<date>-<slug>.md
+```
+
+At startup Hagar lists active projects and “free activity”. Use
+`--project NAME`, `--free`, or the
+`/project list|new|select|free|status|archive|unarchive` commands. Project decisions are proposed at session end as `candidate`;
+if review is refused they stay `candidate` with `auto_saved: true`.
+Only the project index — summary and decision titles — is injected;
+details are read with `memory.project_context`.
 
 ```yaml
 memory:
   enabled: true
   vault_subdir: Hagar
   context_turns: 10
+  context_skills: 3
+  context_project_memories: 10
+  max_context_chars: 6000
+  project_max_active: 200
+  summary_max_chars: 4000
   max_skill_chars: 4000
 ```
+
+The memory block is capped by `max_context_chars` (characters, not
+tokens); when it is trimmed, the audit records
+`memory.context_trimmed`. If a project exceeds `project_max_active`,
+Hagar asks whether to archive it; archiving is reversible and deletes
+nothing.
 
 If the vault is missing or unwritable, memory is disabled with a warning
 and the harness keeps running. Memory writes go through the policy

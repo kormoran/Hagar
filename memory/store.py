@@ -375,6 +375,142 @@ class MemoryStore:
 
         return self.base / "chat"
 
+    @property
+    def summaries_dir(self) -> Path:
+
+        return self.base / "summaries"
+
+    @property
+    def archive_chat_dir(self) -> Path:
+
+        return self.base / "archive" / "chat"
+
+    def session_turns(
+        self,
+        limit: int | None = None,
+    ) -> list[Turn]:
+
+        return self.recent_turns(
+            limit=limit,
+            session=self.session_id,
+        )
+
+    def archive_session(
+        self,
+    ) -> list[str]:
+
+        archived: list[str] = []
+
+        for path in self.vault.list_files(
+            self.chat_dir,
+            f"*-{self.session_id}.md",
+        ):
+
+            relative = path.relative_to(
+                self.vault.root.resolve()
+            )
+            target = (
+                self.archive_chat_dir
+                / relative.name
+            )
+
+            self.vault.move(relative, target)
+
+            archived.append(str(target).replace("\\", "/"))
+
+        return archived
+
+    def write_summary(
+        self,
+        summary: str,
+        project: str | None = None,
+        archived: list[str] | None = None,
+        transcript_sha256: str | None = None,
+        when: datetime | None = None,
+    ) -> Path:
+
+        timestamp = _iso_timestamp(when)
+
+        relative = (
+            self.summaries_dir
+            / f"{timestamp[:10]}-{self.session_id}.md"
+        )
+
+        self.vault.write(
+            relative,
+            _frontmatter(
+                {
+                    "session": self.session_id,
+                    "project": project,
+                    "created_at": timestamp,
+                    "archived_transcripts": list(
+                        archived or []
+                    ),
+                    "transcript_sha256": transcript_sha256,
+                }
+            )
+            + "\n"
+            + summary.strip()
+            + "\n"
+            + (
+                "\n## Transcript archiviato\n"
+                + "\n".join(
+                    f"- [[{path}]]"
+                    for path in (archived or [])
+                )
+                + "\n"
+                if archived
+                else ""
+            ),
+        )
+
+        return relative
+
+    def latest_summary(
+        self,
+        project: str | None = None,
+        free_only: bool = False,
+    ) -> str | None:
+
+        summaries: list[tuple[str, str]] = []
+
+        for path in self.vault.list_files(
+            self.summaries_dir,
+            "*.md",
+        ):
+
+            try:
+                text = self.vault.read(
+                    path.relative_to(
+                        self.vault.root.resolve()
+                    )
+                )
+
+            except (OSError, ValueError):
+                continue
+
+            meta, body = _split_frontmatter(text)
+
+            item_project = meta.get("project")
+
+            if free_only and item_project:
+                continue
+
+            if (
+                project is not None
+                and str(item_project or "") != project
+            ):
+                continue
+
+            summaries.append(
+                (str(meta.get("created_at", "")), body)
+            )
+
+        if not summaries:
+            return None
+
+        return max(summaries, key=lambda pair: pair[0])[1].strip()
+
     def append_turn(
         self,
         turn_id: str,
