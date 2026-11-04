@@ -218,6 +218,33 @@ def test_virtual_paths_are_accepted_as_input(
     assert sandbox.virtual_path(".") == "/home/ai/root"
 
 
+def test_file_and_directory_names_can_contain_spaces(
+    sandbox,
+    workspace,
+):
+    (workspace / "my docs").mkdir()
+    (workspace / "my docs" / "my file.txt").write_text(
+        "contenuto",
+        encoding="utf-8",
+    )
+
+    assert sandbox.read_file(
+        "my docs/my file.txt"
+    ) == "contenuto"
+
+    info = sandbox.stat("my docs/my file.txt")
+
+    assert info.path == (
+        "/home/ai/root/my docs/my file.txt"
+    )
+
+    entries = sandbox.list_dir("my docs")
+
+    assert [entry.path for entry in entries] == [
+        "/home/ai/root/my docs/my file.txt"
+    ]
+
+
 def test_errors_do_not_expose_real_path(
     sandbox,
     workspace,

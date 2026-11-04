@@ -183,6 +183,25 @@ def test_missing_sandbox_path_is_rejected(tmp_path):
         hagar.build_harness(ConfigLoader.load(path))
 
 
+def test_sandbox_path_with_spaces_is_mounted(tmp_path):
+    path, workspace = write_config(tmp_path)
+    spaced = tmp_path / "my workspace"
+    workspace.rename(spaced)
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["filesystem"]["sandbox"][0]["path"] = str(spaced)
+    path.write_text(
+        yaml.safe_dump(data),
+        encoding="utf-8",
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert harness.filesystem.stat(
+        "/home/ai/workspace"
+    ).kind == "directory"
+
+
 def test_every_valid_sandbox_entry_is_mounted(tmp_path):
     path, _ = write_config(tmp_path)
     second = tmp_path / "second"

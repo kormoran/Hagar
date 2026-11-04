@@ -235,7 +235,17 @@ def test_sandbox_alias_is_required(tmp_path):
 
 @pytest.mark.parametrize(
     "alias",
-    ["", "..", "a/b", "a\\b", ".hidden", "CON", "con.txt", "a:"],
+    [
+        "",
+        "..",
+        "a/b",
+        "a\\b",
+        ".hidden",
+        "CON",
+        "con.txt",
+        "a:",
+        "my alias",
+    ],
 )
 def test_sandbox_alias_is_validated(tmp_path, alias):
     data = base_config(tmp_path)
@@ -243,6 +253,16 @@ def test_sandbox_alias_is_validated(tmp_path, alias):
 
     with pytest.raises(ConfigError, match="alias"):
         ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_sandbox_path_can_contain_spaces(tmp_path):
+    data = base_config(tmp_path)
+    spaced = tmp_path / "my workspace"
+    data["filesystem"]["sandbox"][0]["path"] = str(spaced)
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.filesystem.sandbox[0].path == spaced
 
 
 def test_sandbox_aliases_are_case_insensitively_unique(

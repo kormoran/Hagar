@@ -90,7 +90,13 @@ filesystem:
 
 L'agente vede `/home/ai/documenti/...`; `/home/ai` elenca gli alias ma
 non è una directory fisica. Hagar non crea directory e non presume che
-esista una home dedicata.
+esista una home dedicata. I path fisici e i nomi interni possono
+contenere spazi; l'alias no. In YAML conviene racchiudere tra apici
+singoli i path Windows con spazi:
+
+```yaml
+path: 'C:\Users\pippo\My Documents'
+```
 
 The configuration is searched as `--config`, then the `HAGAR_CONFIG`
 environment variable, then `./hagar.yaml`. `python -m hagar` also works

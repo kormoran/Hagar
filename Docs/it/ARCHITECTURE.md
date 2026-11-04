@@ -268,7 +268,9 @@ filesystem:
 
 Non esiste un flag `enabled`: ogni voce valida di `filesystem.sandbox`
 viene montata. Alias o permessi invalidi, path mancante o path duplicato
-fermano la configurazione.
+fermano la configurazione. I path fisici e i nomi interni possono
+contenere spazi; l'alias no, perché deve restare un singolo segmento
+virtuale.
 
 `R` copre lettura, elenco, ricerca e `stat`; `W` copre scrittura,
 creazione, rinomina, copia e cancellazione; `X` copre `chdir`. I
@@ -622,7 +624,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 628 test superati, 1 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 632 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

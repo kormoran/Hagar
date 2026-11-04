@@ -43,10 +43,11 @@ riferimento al commit quando utile.
   permessi globali restano un tetto.
 - Alias obbligatorio, singolo segmento, unico case-insensitive, senza
   nomi riservati Windows; le voci della sandbox restano path del sistema
-  ospite e Hagar non crea directory.
+  ospite e Hagar non crea directory. I path fisici e i nomi interni
+  possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 628 test superati, 1 skip.
+- 632 test superati, 1 skip.
 
 # 0.2.0 — 2026-11-04
 
