@@ -707,12 +707,37 @@ nel registry e vivono fuori dal core, in un package separato.
   l'operazione reale il filesystem può cambiare. Un attaccante locale con
   accesso concorrente potrebbe sostituire un componente con un link. Non
   è chiuso; servirebbero `openat`/`O_NOFOLLOW` e handle Windows.
-- **Mount e hard link**: la sandbox controlla i prefissi di path, non i
-  confini di volume. Un mount/junction dentro un alias può esporre un
-  altro filesystem e un hard link può rendere leggibile un file esterno.
-  È un limite noto, non gestito.
 - Due alias non possono puntare allo stesso path fisico: l'alias
   identifica un mount e l'output virtuale deve restare univoco.
+
+## 6.1 Responsabilità dell'utente: hard link e mount
+
+**Hagar non controlla gli hard link e non controlla i mount/junction
+dentro le directory allowed.** Non è un difetto di Hagar: un hard link è
+un secondo nome dello stesso inode, non ha un target di percorso e la
+sandbox path-based non può sapere se esiste un altro nome fuori. Un mount
+o una junction può esporre un altro filesystem pur restando dentro il
+prefisso del path.
+
+I tool filesystem di Hagar non creano hard link. Se un hard link o un
+mount esiste già dentro una directory della sandbox, Hagar lo tratta come
+un normale file o directory e può leggerlo, modificarlo o cancellarne il
+nome interno.
+
+La responsabilità è quindi divisa:
+
+- **Hagar garantisce** che i percorsi risolti restino dentro l'alias,
+  che i symlink siano invisibili, che i permessi `R`/`W`/`X` siano
+  applicati e che i path reali non finiscano nell'output del modello.
+- **L'utente garantisce** che le directory configurate in
+  `filesystem.sandbox` non contengano hard link, mount o junction verso
+  contenuti che non devono essere accessibili, se vuole isolamento
+  totale. Per un isolamento forte servono un volume dedicato, un utente
+  separato o un mount namespace; non è compito del resolver di path.
+
+Il punto è chiuso come **responsabilità dell'utente**, non come debito
+tecnico di Hagar. La presenza di hard link o mount esterni non è
+rilevata né bloccata.
 
 ---
 

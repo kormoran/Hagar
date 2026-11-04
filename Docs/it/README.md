@@ -46,6 +46,23 @@ The model must never:
 
 All operations must take place exclusively through tools that are registered and controlled by the harness.
 
+## 2.1 Hard links and mounts
+
+Hagar does not inspect hard links, mounts or junctions inside the
+configured sandbox directories. A hard link is another name for the same
+inode, not a path target: a path-based sandbox cannot know that another
+name exists outside the allowed tree. The filesystem tools do not create
+hard links.
+
+If a hard link or mount is already present inside an allowed directory,
+Hagar treats it as a normal file/directory and may read, modify or
+unlink its internal name. The user is responsible for keeping sandbox
+directories free of hard links, mounts and junctions to content that
+must not be accessible when total isolation is required. Strong
+isolation requires a dedicated volume, a separate user or a mount
+namespace; it is not a resolver-path feature. See `ARCHITECTURE.md`
+§6.1.
+
 ---
 
 # 3. Development

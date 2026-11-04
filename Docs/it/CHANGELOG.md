@@ -47,8 +47,14 @@ riferimento al commit quando utile.
   seguiti o cancellati; `chdir` su un link risponde
   “Directory not found”. Decisione di progetto: restano invisibili
   anche se il filesystem ospite li supporta.
-- Restano debiti tecnici dichiarati: TOCTOU path-based, mount/junction
-  e hard link non sono confinati.
+- Hard link, mount e junction dentro le directory allowed non sono
+  controllati né rilevati da Hagar. Non è un difetto: un hard link è un
+  secondo nome dello stesso inode e un mount può esporre un altro
+  filesystem restando dentro il prefisso. I tool filesystem non creano
+  hard link. Per isolamento totale l'utente deve garantire che nelle
+  directory della sandbox non ce ne siano. Responsabilità dell'utente,
+  punto chiuso.
+- Resta debito tecnico dichiarato: TOCTOU path-based.
 - `filesystem.allowed` sostituito da `filesystem.sandbox`: ogni voce ha
   `alias`, `path` e permessi `R`/`W`/`X`. L'agente vede
   `/home/ai/<alias>/...`; niente `hdN`, niente volumi o directory
