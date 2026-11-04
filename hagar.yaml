@@ -39,6 +39,12 @@ filesystem:
     - alias: costanti
       path: I:/src/costanti
       permissions: RWX
+  limits:
+    # 0 = limite disabilitato. I byte sono cumulativi per sessione.
+    max_write_bytes: 0
+    min_free_bytes: 0
+    session_write_bytes: 0
+    ask_over_bytes: 0
 
 permissions:
   read: true

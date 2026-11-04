@@ -43,6 +43,11 @@ riferimento al commit quando utile.
   `has_more` e il messaggio
   `voci: riportate X di Y; per continuare usa offset=Z`. Per alberi
   grandi conviene restringere pattern/path invece di iterare pagine.
+- Nuovi limiti di scrittura `filesystem.limits`:
+  `max_write_bytes` per operazione, `min_free_bytes` come riserva,
+  `session_write_bytes` cumulativo e `ask_over_bytes` per la conferma.
+  I primi tre sono invarianti; `ask_over_bytes` passa dal preflight di
+  `ToolRegistry` e chiede una sola volta, anche se la policy è `ASK`.
 - I symlink non esistono per la sandbox: non sono mostrati, letti,
   seguiti o cancellati; `chdir` su un link risponde
   “Directory not found”. Decisione di progetto: restano invisibili
@@ -68,7 +73,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 637 test superati, 2 skip.
+- 650 test superati, 2 skip.
 
 # 0.2.0 — 2026-11-04
 

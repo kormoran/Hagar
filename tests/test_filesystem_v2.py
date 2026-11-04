@@ -8,6 +8,7 @@ from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
 )
+from core.models import FileSystemLimits
 
 
 def test_list_dir_returns_metadata(sandbox, workspace):
@@ -629,3 +630,114 @@ def test_symlinks_are_invisible(sandbox, workspace, tmp_path):
         match="Directory not found",
     ):
         sandbox.chdir("linkdir")
+
+
+def make_limited_sandbox(tmp_path, **limits):
+    root = tmp_path / "limited"
+    root.mkdir()
+
+    sandbox = FileSystemSandbox(
+        roots={
+            root: DirectoryPermissions(
+                read=True,
+                write=True,
+                create=True,
+                rename=True,
+                delete=True,
+                execute=True,
+            )
+        },
+        current_directory=root,
+        aliases={"root": root},
+        limits=FileSystemLimits(**limits),
+    )
+
+    return sandbox, root
+
+
+def test_max_write_bytes_is_per_operation(tmp_path):
+    sandbox, _ = make_limited_sandbox(
+        tmp_path,
+        max_write_bytes=10,
+    )
+
+    assert sandbox.create_file("ok.txt", "1234567890") is None
+
+    with pytest.raises(
+        ValueError,
+        match="max_write_bytes",
+    ):
+        sandbox.create_file("too-big.txt", "12345678901")
+
+
+def test_session_write_budget_is_cumulative(tmp_path):
+    sandbox, _ = make_limited_sandbox(
+        tmp_path,
+        session_write_bytes=10,
+    )
+
+    sandbox.create_file("first.txt", "123456")
+
+    with pytest.raises(
+        ValueError,
+        match="session write budget",
+    ):
+        sandbox.create_file("second.txt", "123456")
+
+
+def test_min_free_bytes_reserves_space(tmp_path):
+    sandbox, _ = make_limited_sandbox(
+        tmp_path,
+        min_free_bytes=10**18,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="insufficient disk space",
+    ):
+        sandbox.create_file("a.txt", "x")
+
+
+def test_copy_file_respects_max_write_bytes(tmp_path):
+    sandbox, root = make_limited_sandbox(
+        tmp_path,
+        max_write_bytes=10,
+    )
+    (root / "source.bin").write_bytes(b"x" * 11)
+
+    with pytest.raises(
+        ValueError,
+        match="max_write_bytes",
+    ):
+        sandbox.copy_file("source.bin", "copy.bin")
+
+
+def test_preflight_ask_threshold(tmp_path):
+    sandbox, root = make_limited_sandbox(
+        tmp_path,
+        ask_over_bytes=5,
+    )
+    (root / "source.bin").write_bytes(b"x" * 6)
+
+    reason = sandbox.preflight_write(
+        "filesystem.create_file",
+        {"path": "a.txt", "content": "123456"},
+    )
+
+    assert reason is not None
+    assert "ask_over_bytes" in reason
+
+    assert sandbox.preflight_write(
+        "filesystem.create_file",
+        {"path": "a.txt", "content": "12345"},
+    ) is None
+
+    copy_reason = sandbox.preflight_write(
+        "filesystem.copy_file",
+        {
+            "source": "source.bin",
+            "destination": "copy.bin",
+        },
+    )
+
+    assert copy_reason is not None

@@ -115,6 +115,21 @@ singoli i path Windows con spazi:
 path: 'C:\Users\pippo\My Documents'
 ```
 
+La sandbox può limitare le scritture:
+
+```yaml
+filesystem:
+  limits:
+    max_write_bytes: 100000000
+    min_free_bytes: 5000000000
+    session_write_bytes: 2000000000
+    ask_over_bytes: 50000000
+```
+
+`0` disabilita il limite. `max_write_bytes`, `min_free_bytes` e
+`session_write_bytes` sono invarianti; `ask_over_bytes` chiede conferma
+una sola volta, integrandosi con la policy.
+
 The configuration is searched as `--config`, then the `HAGAR_CONFIG`
 environment variable, then `./hagar.yaml`. `python -m hagar` also works
 from a source checkout.

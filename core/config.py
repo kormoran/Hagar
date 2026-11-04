@@ -14,6 +14,7 @@ from .models import (
     PolicyConfig,
     VaultConfig,
     FileSystemConfig,
+    FileSystemLimits,
     SandboxMount,
     PermissionConfig,
     RagConfig,
@@ -429,7 +430,41 @@ class ConfigLoader:
                 )
             )
 
-        filesystem = FileSystemConfig(sandbox=mounts)
+        limits_data = _mapping(
+            filesystem_data.get("limits", {}),
+            "filesystem.limits",
+        )
+
+        limit_defaults = {
+            "max_write_bytes": 0,
+            "min_free_bytes": 0,
+            "session_write_bytes": 0,
+            "ask_over_bytes": 0,
+        }
+
+        limit_values: dict[str, int] = {}
+
+        for name, default in limit_defaults.items():
+
+            value = limits_data.get(name, default)
+
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+            ):
+
+                raise ConfigError(
+                    f"filesystem.limits.{name} must be "
+                    "a non-negative integer"
+                )
+
+            limit_values[name] = value
+
+        filesystem = FileSystemConfig(
+            sandbox=mounts,
+            limits=FileSystemLimits(**limit_values),
+        )
 
         # -------------------------
         # Permissions (optional)

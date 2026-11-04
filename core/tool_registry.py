@@ -292,6 +292,38 @@ class ToolRegistry:
             effect = Effect.ASK
             reason = reason or "requires confirmation"
 
+        #
+        # Preflight: può alzare un ALLOW ad ASK, ma non può mai
+        # trasformare un DENY in esecuzione. Se il preflight fallisce,
+        # si nega (fail closed).
+        #
+
+        if effect is not Effect.DENY and tool.preflight is not None:
+
+            try:
+
+                preflight_reason = tool.preflight(
+                    dict(arguments)
+                )
+
+            except Exception as ex:
+
+                effect = Effect.DENY
+                reason = f"preflight failed: {ex}"
+
+            else:
+
+                if preflight_reason:
+
+                    if effect is Effect.ALLOW:
+                        effect = Effect.ASK
+
+                    reason = (
+                        preflight_reason
+                        if not reason
+                        else f"{reason}; {preflight_reason}"
+                    )
+
         self._record(
             "permission.decision",
             subject=self.subject.name,

@@ -6,8 +6,20 @@ import json
 
 import pytest
 
+from core.filesystem import (
+    DirectoryPermissions,
+    FileSystemSandbox,
+)
 from core.filesystem_tools import FileSystemToolProvider
-from core.permissions import Capability
+from core.models import FileSystemLimits
+from core.permissions import (
+    ALL_CAPABILITIES,
+    Capability,
+    Effect,
+    PermissionDenied,
+    PermissionEvaluator,
+    Subject,
+)
 from core.tool_registry import ToolRegistry
 
 EXPECTED_TOOLS = {
@@ -239,6 +251,82 @@ def test_stat_tool_outside_sandbox(registry, tmp_path):
             "filesystem.stat",
             path=str(tmp_path / "outside.txt"),
         )
+
+
+class RecordingConfirmation:
+    def __init__(self, approved=True):
+        self.approved = approved
+        self.requests = []
+
+    def confirm(self, request):
+        self.requests.append(request)
+        return self.approved
+
+
+def make_ask_registry(workspace):
+    sandbox = FileSystemSandbox(
+        roots={
+            workspace: DirectoryPermissions(
+                read=True,
+                write=True,
+                create=True,
+                rename=True,
+                delete=True,
+                execute=True,
+            )
+        },
+        current_directory=workspace,
+        aliases={"root": workspace},
+        limits=FileSystemLimits(ask_over_bytes=5),
+    )
+
+    confirmation = RecordingConfirmation(approved=True)
+
+    registry = ToolRegistry(
+        evaluator=PermissionEvaluator(ALL_CAPABILITIES),
+        subject=Subject(
+            name="assistant",
+            default=Effect.ALLOW,
+        ),
+        confirmation=confirmation,
+    )
+    FileSystemToolProvider(sandbox).register_tools(registry)
+
+    return registry, confirmation, workspace
+
+
+def test_ask_over_bytes_asks_once(workspace):
+    registry, confirmation, workspace = make_ask_registry(
+        workspace
+    )
+
+    registry.execute(
+        "filesystem.create_file",
+        path="a.txt",
+        content="123456",
+    )
+
+    assert len(confirmation.requests) == 1
+    assert "ask_over_bytes" in (
+        confirmation.requests[0].reason or ""
+    )
+    assert (workspace / "a.txt").exists()
+
+
+def test_ask_over_bytes_denied(workspace):
+    registry, confirmation, workspace = make_ask_registry(
+        workspace
+    )
+    confirmation.approved = False
+
+    with pytest.raises(PermissionDenied):
+        registry.execute(
+            "filesystem.create_file",
+            path="a.txt",
+            content="123456",
+        )
+
+    assert not (workspace / "a.txt").exists()
 
 
 def test_read_chunk_path_is_virtual(

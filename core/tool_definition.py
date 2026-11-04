@@ -59,3 +59,7 @@ class ToolDefinition:
     enabled: bool = True
 
     requires_confirmation: bool = False
+
+    preflight: (
+        Callable[[dict[str, Any]], str | None] | None
+    ) = None

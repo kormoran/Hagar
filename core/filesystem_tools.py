@@ -74,6 +74,7 @@ class FileSystemToolProvider:
                     ),
                 ],
                 handler=self.write_file,
+                preflight=self.preflight_write_file,
             )
         )
 
@@ -104,6 +105,7 @@ class FileSystemToolProvider:
                     ),
                 ],
                 handler=self.create_file,
+                preflight=self.preflight_create_file,
             )
         )
 
@@ -271,6 +273,7 @@ class FileSystemToolProvider:
                     ),
                 ],
                 handler=self.copy_file,
+                preflight=self.preflight_copy_file,
             )
         )
 
@@ -392,6 +395,36 @@ class FileSystemToolProvider:
     # ==========================================
     # Tool handlers
     # ==========================================
+
+    def preflight_write_file(
+        self,
+        arguments: dict,
+    ) -> str | None:
+
+        return self.fs.preflight_write(
+            "filesystem.write_file",
+            arguments,
+        )
+
+    def preflight_create_file(
+        self,
+        arguments: dict,
+    ) -> str | None:
+
+        return self.fs.preflight_write(
+            "filesystem.create_file",
+            arguments,
+        )
+
+    def preflight_copy_file(
+        self,
+        arguments: dict,
+    ) -> str | None:
+
+        return self.fs.preflight_write(
+            "filesystem.copy_file",
+            arguments,
+        )
 
     def search(
         self,

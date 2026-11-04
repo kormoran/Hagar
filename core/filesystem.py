@@ -10,6 +10,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .models import FileSystemLimits
+
 
 @dataclass(slots=True)
 class DirectoryPermissions:
@@ -100,7 +102,11 @@ class FileSystemSandbox:
         roots: dict[Path, DirectoryPermissions],
         current_directory: Path,
         aliases: dict[str, Path] | None = None,
+        limits: FileSystemLimits | None = None,
     ) -> None:
+
+        self.limits = limits or FileSystemLimits()
+        self._session_write_bytes = 0
 
         self.roots = {
             p.resolve(): perms
@@ -459,6 +465,140 @@ class FileSystemSandbox:
                 f"Insufficient disk space. "
                 f"Required={required_space} bytes, "
                 f"Available={free_space} bytes."
+            )
+
+        return None
+
+    def _available_space(
+        self,
+        target: Path,
+    ) -> int:
+
+        candidate = target.parent
+
+        while (
+            not candidate.exists()
+            and candidate != candidate.parent
+        ):
+            candidate = candidate.parent
+
+        return shutil.disk_usage(candidate).free
+
+    def _check_write_limits(
+        self,
+        target: Path,
+        size: int,
+    ) -> None:
+
+        maximum = self.limits.max_write_bytes
+
+        if maximum and size > maximum:
+
+            raise ValueError(
+                f"write size {size} exceeds "
+                f"max_write_bytes={maximum}"
+            )
+
+        session = self.limits.session_write_bytes
+
+        if session:
+
+            used = self._session_write_bytes
+
+            if used + size > session:
+
+                raise ValueError(
+                    "session write budget exceeded: "
+                    f"used={used} requested={size} "
+                    f"budget={session}"
+                )
+
+        reserve = self.limits.min_free_bytes
+
+        if reserve:
+
+            free = self._available_space(target)
+
+            if free < size + reserve:
+
+                raise ValueError(
+                    "insufficient disk space with reserve: "
+                    f"required={size} reserve={reserve} "
+                    f"free={free}"
+                )
+
+    def _record_write(
+        self,
+        size: int,
+    ) -> None:
+
+        self._session_write_bytes += size
+
+    def estimate_write_bytes(
+        self,
+        tool_name: str,
+        arguments: dict,
+    ) -> int:
+        """
+        Stima i byte che un tool filesystem scriverebbe.
+        """
+
+        if tool_name == "filesystem.copy_file":
+
+            source = arguments.get("source")
+
+            if source is None:
+                return 0
+
+            target = self.resolve_path(source)
+
+            if not target.is_file():
+                return 0
+
+            return target.stat().st_size
+
+        if tool_name in {
+            "filesystem.write_file",
+            "filesystem.create_file",
+        }:
+
+            content = arguments.get("content", "")
+
+            if not isinstance(content, str):
+                return 0
+
+            return len(content.encode("utf-8"))
+
+        return 0
+
+    def preflight_write(
+        self,
+        tool_name: str,
+        arguments: dict,
+    ) -> str | None:
+        """
+        Motivo di conferma per una scrittura sopra ``ask_over_bytes``.
+        """
+
+        threshold = self.limits.ask_over_bytes
+
+        if not threshold:
+            return None
+
+        try:
+            size = self.estimate_write_bytes(
+                tool_name,
+                arguments,
+            )
+
+        except (OSError, ValueError, TypeError):
+            return None
+
+        if size > threshold:
+
+            return (
+                f"write of {size} bytes exceeds "
+                f"ask_over_bytes={threshold}"
             )
 
         return None
@@ -1173,10 +1313,17 @@ class FileSystemSandbox:
         if dst.exists():
             raise FileExistsError(self._display(dst))
 
+        self._check_write_limits(
+            dst,
+            required_space,
+        )
+
         shutil.copy2(
             src,
             dst,
         )
+
+        self._record_write(required_space)
     
     def rename(
         self,
@@ -1257,10 +1404,17 @@ class FileSystemSandbox:
         if target.is_dir():
             raise IsADirectoryError(self._display(target))
 
+        self._check_write_limits(
+            target,
+            required_space,
+        )
+
         target.write_text(
             content,
             encoding="utf-8",
         )
+
+        self._record_write(required_space)
 
     def create_file(
         self,
@@ -1289,10 +1443,17 @@ class FileSystemSandbox:
         if not target.parent.is_dir():
             raise FileNotFoundError(self._display(target.parent))
 
+        self._check_write_limits(
+            target,
+            required_space,
+        )
+
         target.write_text(
             content,
             encoding="utf-8",
         )
+
+        self._record_write(required_space)
 
     def delete_file(
         self,

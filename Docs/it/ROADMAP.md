@@ -355,6 +355,8 @@ Stato al 2026-11-04:
   `units.convert`, `feed.read` (provider locali, non server MCP);
 - capability `COMPUTE` sempre nel tetto, `NETWORK` controllata da
   `permissions.network` e dalla policy (feed in `ask`);
+- limiti di scrittura: `max_write_bytes`, `min_free_bytes`,
+  `session_write_bytes` e `ask_over_bytes` con preflight unico;
 - `feed.read` con policy SSRF: solo indirizzi globali, redirect
   rivalidati, niente credenziali nell'URL;
 - filesystem con radice virtuale `/home/ai`, alias obbligatori e

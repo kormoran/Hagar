@@ -341,6 +341,7 @@ def build_harness(
         roots=sandbox_roots,
         current_directory=next(iter(sandbox_roots)),
         aliases=sandbox_aliases,
+        limits=config.filesystem.limits,
     )
 
     # ==========================================
@@ -548,6 +549,20 @@ def build_harness(
             "write": config.permissions.write,
             "shell": config.permissions.shell,
             "network": config.permissions.network,
+        },
+        filesystem_limits={
+            "max_write_bytes": (
+                config.filesystem.limits.max_write_bytes
+            ),
+            "min_free_bytes": (
+                config.filesystem.limits.min_free_bytes
+            ),
+            "session_write_bytes": (
+                config.filesystem.limits.session_write_bytes
+            ),
+            "ask_over_bytes": (
+                config.filesystem.limits.ask_over_bytes
+            ),
         },
         tools=registry.tool_names(),
         mcp_servers=mcp_status,

@@ -307,6 +307,56 @@ def test_sandbox_permissions_default_to_read(tmp_path):
     assert cfg.filesystem.sandbox[0].permissions == "R"
 
 
+def test_filesystem_limits_default_to_disabled(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    limits = cfg.filesystem.limits
+
+    assert limits.max_write_bytes == 0
+    assert limits.min_free_bytes == 0
+    assert limits.session_write_bytes == 0
+    assert limits.ask_over_bytes == 0
+
+
+def test_filesystem_limits_are_parsed(tmp_path):
+    data = base_config(tmp_path)
+    data["filesystem"]["limits"] = {
+        "max_write_bytes": 100,
+        "min_free_bytes": 200,
+        "session_write_bytes": 300,
+        "ask_over_bytes": 50,
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.filesystem.limits.max_write_bytes == 100
+    assert cfg.filesystem.limits.min_free_bytes == 200
+    assert cfg.filesystem.limits.session_write_bytes == 300
+    assert cfg.filesystem.limits.ask_over_bytes == 50
+
+
+@pytest.mark.parametrize(
+    "value",
+    [-1, "10", True, 1.5],
+)
+def test_filesystem_limits_must_be_non_negative_integers(
+    tmp_path,
+    value,
+):
+    data = base_config(tmp_path)
+    data["filesystem"]["limits"] = {
+        "max_write_bytes": value,
+    }
+
+    with pytest.raises(
+        ConfigError,
+        match="filesystem.limits.max_write_bytes",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 def test_top_k_must_be_integer(tmp_path):
     data = base_config(tmp_path)
     data["rag"]["top_k"] = "8"

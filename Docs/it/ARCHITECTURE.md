@@ -121,7 +121,7 @@ Sezioni:
 |---|---|---|
 | `model` | sì | provider, nome, host, max_tokens, api_key_env, native_tools |
 | `vault` | sì | percorso del vault Obsidian |
-| `filesystem` | sì | `sandbox`: lista di `{alias, path, permissions}` |
+| `filesystem` | sì | `sandbox`: lista di `{alias, path, permissions}`; `limits`: budget di scrittura |
 | `permissions` | no | read, write, shell, network (default `true/false/false/false`) |
 | `rag` | no | `top_k` (default 8) |
 | `mcp_servers` | no | endpoint, namespace, auth (bearer/header/oauth) |
@@ -325,6 +325,31 @@ li trattano come file inesistenti.
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
 aggirare il divieto di creazione scrivendo un percorso nuovo.
+
+### Limiti di scrittura
+
+```yaml
+filesystem:
+  limits:
+    max_write_bytes: 0       # 0 = disabilitato
+    min_free_bytes: 0
+    session_write_bytes: 0
+    ask_over_bytes: 0
+```
+
+- `max_write_bytes` è il massimo per singola operazione di
+  `write_file`, `create_file` o `copy_file`;
+- `min_free_bytes` è la riserva di spazio che deve restare dopo
+  l'operazione;
+- `session_write_bytes` è il budget cumulativo della sessione;
+- `ask_over_bytes` alza a `ASK` le operazioni sopra soglia. Il preflight
+  è integrato in `ToolRegistry`: se anche la policy dice `ASK`, la
+  conferma è una sola.
+
+`0` disabilita il singolo limite. Superare `max_write_bytes`,
+`session_write_bytes` o la riserva produce un errore, non una conferma:
+sono invarianti, non domande. `ask_over_bytes` è l'unico livello che
+chiede all'utente.
 
 `filesystem.stat` restituisce JSON con `path`, `exists`, `kind`
 (`file`/`directory`/`other`), `size_bytes`, `created_at`, `modified_at`,
@@ -645,7 +670,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 637 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 650 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

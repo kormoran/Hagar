@@ -42,8 +42,26 @@ class SandboxMount:
 
 
 @dataclass(slots=True)
+class FileSystemLimits:
+    """
+    Budget di scrittura della sandbox.
+
+    ``0`` disabilita il singolo limite. I byte sono cumulativi per
+    sessione del ``FileSystemSandbox``.
+    """
+
+    max_write_bytes: int = 0
+    min_free_bytes: int = 0
+    session_write_bytes: int = 0
+    ask_over_bytes: int = 0
+
+
+@dataclass(slots=True)
 class FileSystemConfig:
     sandbox: list[SandboxMount]
+    limits: FileSystemLimits = field(
+        default_factory=FileSystemLimits
+    )
 
 
 @dataclass(slots=True)
