@@ -652,7 +652,20 @@ un budget in caratteri, deterministico.
 
 Quando un progetto supera `project_max_active`, Hagar chiede se
 archiviarlo. L’archiviazione è reversibile e non cancella nulla.
-La consultazione dell’archivio è ancora da fare.
+
+**Consultazione archivio.** I transcript archiviati hanno il `project`
+nel frontmatter. La ricerca e la lettura sono on demand:
+
+```text
+/memory archive search <testo>
+/memory archive read <session> [offset] [limit]
+```
+
+Gli stessi strumenti sono esposti come `memory.archive_search` e
+`memory.archive_read`; la ricerca restituisce session, turn, timestamp,
+progetto e snippet, la lettura pagina i turni. Non c’è iniezione
+automatica dell’archivio nel prompt: il summary resta l’indice, il
+transcript è la fonte da consultare quando serve.
 
 Se `vault.path` non esiste o non è scrivibile, la memoria viene
 disattivata con un avviso in chat e `memory.disabled` nell'audit; gli
@@ -727,7 +740,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 661 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 666 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

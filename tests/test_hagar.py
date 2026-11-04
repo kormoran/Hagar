@@ -42,6 +42,8 @@ EXPECTED_TOOLS = {
     "memory.list_skills",
     "memory.get_context",
     "memory.project_context",
+    "memory.archive_search",
+    "memory.archive_read",
     "calculator.evaluate",
     "statistics.compute",
     "units.convert",

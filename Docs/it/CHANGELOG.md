@@ -29,6 +29,10 @@ riferimento al commit quando utile.
   progetto; l'archiviazione è reversibile e non cancella nulla.
 - Se la directory `projects` non è scrivibile, la memoria resta attiva
   e i progetti vengono disabilitati con `project.disabled`.
+- Consultazione archivio: `memory.archive_search` e
+  `memory.archive_read`, comandi `/memory archive search|read`, con
+  filtro per progetto e transcript che conserva `project` nel
+  frontmatter. L'archivio non viene mai iniettato automaticamente.
 
 ## Strumenti locali e filesystem v2
 
@@ -102,7 +106,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 661 test superati, 2 skip.
+- 666 test superati, 2 skip.
 
 # 0.2.0 — 2026-11-04
 

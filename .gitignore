@@ -189,3 +189,6 @@ cython_debug/
 
 # Audit logs produced by hagar.py
 logs/
+
+# Local development vault: contains conversations and memories
+testvault/

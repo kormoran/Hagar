@@ -47,6 +47,8 @@ def test_tools_are_registered(registry):
         "memory.create_skill",
         "memory.list_skills",
         "memory.get_context",
+        "memory.archive_search",
+        "memory.archive_read",
     }
 
     create = registry.get("memory.create_skill")

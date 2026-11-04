@@ -87,11 +87,7 @@ class MemoryCLI:
 
             elif command == "archive":
 
-                self._set_status(
-                    arguments[1:],
-                    "archived",
-                    "archive",
-                )
+                self._archive(arguments[1:])
 
             elif command == "review":
 
@@ -112,6 +108,176 @@ class MemoryCLI:
         return True
 
     # ==================================================
+    # Archivio
+    # ==================================================
+
+    def _archive(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        if not arguments:
+
+            self.output(
+                "Uso: /memory archive <slug> "
+                "oppure /memory archive search|read ..."
+            )
+            return
+
+        subcommand = arguments[0].lower()
+
+        if subcommand == "search":
+
+            self._archive_search(arguments[1:])
+
+        elif subcommand == "read":
+
+            self._archive_read(arguments[1:])
+
+        else:
+
+            self._set_status(
+                arguments,
+                "archived",
+                "archive",
+            )
+
+    def _archive_search(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        query = " ".join(arguments).strip()
+
+        if not query:
+
+            self.output(
+                "Uso: /memory archive search <testo>"
+            )
+            return
+
+        results, total = self.store.search_archive(
+            query,
+            limit=10,
+        )
+
+        if not results:
+
+            self.output(
+                f"Nessun risultato nell'archivio per: {query}"
+            )
+            return
+
+        self.output(
+            f"Archivio: {len(results)} di {total} risultati"
+        )
+
+        for item in results:
+
+            project = (
+                f" · progetto {item['project']}"
+                if item.get("project")
+                else ""
+            )
+
+            self.output("")
+            self.output(
+                f"[{item['session']} · {item['turn']}] "
+                f"{item['timestamp']}{project}"
+            )
+            self.output(
+                f"Utente: {_clip(item['question'], 300)}"
+            )
+            self.output(
+                f"Hagar: {_clip(item['answer'], 500)}"
+            )
+
+        if total > len(results):
+
+            self.output("")
+            self.output(
+                "Altri risultati disponibili: "
+                "restringi la ricerca."
+            )
+
+    def _archive_read(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        if not arguments:
+
+            self.output(
+                "Uso: /memory archive read <session> "
+                "[offset] [limit]"
+            )
+            return
+
+        session = arguments[0]
+
+        try:
+
+            offset = (
+                int(arguments[1])
+                if len(arguments) > 1
+                else 0
+            )
+            limit = (
+                int(arguments[2])
+                if len(arguments) > 2
+                else 20
+            )
+
+        except ValueError as exc:
+
+            raise MemoryError(
+                "offset e limit devono essere numeri"
+            ) from exc
+
+        payload = self.store.read_archive(
+            session,
+            offset=offset,
+            limit=limit,
+        )
+
+        if payload is None:
+
+            self.output(
+                f"Sessione archiviata non trovata: {session}"
+            )
+            return
+
+        project = (
+            f" · progetto {payload['project']}"
+            if payload.get("project")
+            else ""
+        )
+
+        self.output(
+            f"Archivio sessione {payload['session']}"
+            f"{project} — "
+            f"{payload['total_turns']} turni"
+        )
+
+        for turn in payload["turns"]:
+
+            self.output("")
+            self.output(
+                f"[{turn['timestamp']} · {turn['turn']}]"
+            )
+            self.output(f"Utente: {turn['question']}")
+            self.output(f"Hagar: {turn['answer']}")
+
+        if payload["has_more"]:
+
+            self.output("")
+            self.output(
+                "Per continuare: /memory archive read "
+                f"{payload['session']} "
+                f"{payload['next_offset']} {payload['limit']}"
+            )
+
+    # ==================================================
     # Comandi
     # ==================================================
 
@@ -123,7 +289,9 @@ class MemoryCLI:
             "  /memory show <slug>\n"
             "  /memory review\n"
             "  /memory confirm <slug>\n"
-            "  /memory archive <slug>"
+            "  /memory archive <slug>\n"
+            "  /memory archive search <testo>\n"
+            "  /memory archive read <session> [offset] [limit]"
         )
 
     def _counts(self) -> dict[str, int]:

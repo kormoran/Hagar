@@ -210,6 +210,100 @@ class MemoryToolProvider:
             )
         )
 
+        registry.register(
+            ToolDefinition(
+                name="memory.archive_search",
+                description=(
+                    "Search archived chat transcripts for a "
+                    "keyword. Returns matching turns with "
+                    "session, timestamp, project and snippets. "
+                    "Use it when the summary is not enough."
+                ),
+                category="memory",
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="archive",
+                parameters=[
+                    ToolParameter(
+                        name="query",
+                        param_type="string",
+                        description=(
+                            "Keyword to search for."
+                        ),
+                    ),
+                    ToolParameter(
+                        name="limit",
+                        param_type="integer",
+                        description=(
+                            "Maximum results (default 10)."
+                        ),
+                        required=False,
+                        default=10,
+                    ),
+                    ToolParameter(
+                        name="offset",
+                        param_type="integer",
+                        description=(
+                            "Results offset (default 0)."
+                        ),
+                        required=False,
+                        default=0,
+                    ),
+                    ToolParameter(
+                        name="project",
+                        param_type="string",
+                        description=(
+                            "Optional project id filter."
+                        ),
+                        required=False,
+                        default="",
+                    ),
+                ],
+                handler=self.archive_search,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="memory.archive_read",
+                description=(
+                    "Read archived turns of one session, with "
+                    "offset/limit pagination. Use the session id "
+                    "returned by memory.archive_search."
+                ),
+                category="memory",
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="archive",
+                parameters=[
+                    ToolParameter(
+                        name="session",
+                        param_type="string",
+                        description=(
+                            "Archive session id."
+                        ),
+                    ),
+                    ToolParameter(
+                        name="offset",
+                        param_type="integer",
+                        description=(
+                            "Turn offset (default 0)."
+                        ),
+                        required=False,
+                        default=0,
+                    ),
+                    ToolParameter(
+                        name="limit",
+                        param_type="integer",
+                        description=(
+                            "Maximum turns (default 20)."
+                        ),
+                        required=False,
+                        default=20,
+                    ),
+                ],
+                handler=self.archive_read,
+            )
+        )
+
     # ==================================================
     # Handlers
     # ==================================================
@@ -288,6 +382,96 @@ class MemoryToolProvider:
 
         return json.dumps(
             [turn.as_dict() for turn in turns],
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def archive_search(
+        self,
+        query: str,
+        limit: Any = 10,
+        offset: Any = 0,
+        project: str = "",
+    ) -> str:
+
+        query_text = _optional(query)
+
+        if query_text is None:
+
+            return json.dumps(
+                {"error": "query is required"},
+                ensure_ascii=False,
+            )
+
+        results, total = self.store.search_archive(
+            query_text,
+            limit=_limit(limit, 10, 100),
+            offset=max(0, int(offset or 0)),
+            project=_optional(project),
+        )
+
+        return json.dumps(
+            {
+                "query": query_text,
+                "results": results,
+                "total": total,
+                "returned": len(results),
+                "offset": max(0, int(offset or 0)),
+                "has_more": (
+                    max(0, int(offset or 0))
+                    + len(results)
+                    < total
+                ),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def archive_read(
+        self,
+        session: str,
+        offset: Any = 0,
+        limit: Any = 20,
+    ) -> str:
+
+        session_id = _optional(session)
+
+        if session_id is None:
+
+            return json.dumps(
+                {"error": "session is required"},
+                ensure_ascii=False,
+            )
+
+        try:
+
+            payload = self.store.read_archive(
+                session_id,
+                offset=max(0, int(offset or 0)),
+                limit=_limit(limit, 20, 100),
+            )
+
+        except Exception as exc:
+
+            return json.dumps(
+                {"error": str(exc)},
+                ensure_ascii=False,
+            )
+
+        if payload is None:
+
+            return json.dumps(
+                {
+                    "error": (
+                        "archive session not found: "
+                        f"{session_id}"
+                    )
+                },
+                ensure_ascii=False,
+            )
+
+        return json.dumps(
+            payload,
             ensure_ascii=False,
             indent=2,
         )

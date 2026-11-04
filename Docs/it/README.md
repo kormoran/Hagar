@@ -359,6 +359,17 @@ if review is refused they stay `candidate` with `auto_saved: true`.
 Only the project index — summary and decision titles — is injected;
 details are read with `memory.project_context`.
 
+Archived transcripts can be searched and read on demand:
+
+```text
+/memory archive search <text>
+/memory archive read <session> [offset] [limit]
+```
+
+The tools are `memory.archive_search` and `memory.archive_read`.
+Archived entries carry their `project` in the frontmatter, so search can
+be filtered by project. The archive is never injected automatically.
+
 ```yaml
 memory:
   enabled: true

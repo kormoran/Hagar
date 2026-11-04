@@ -52,10 +52,12 @@ Realizzato:
   `candidate` con `auto_saved: true`;
 - contesto a indice con budget `max_context_chars` (caratteri, non
   token) e `memory.project_context` per i dettagli;
-- `project_max_active` per la richiesta di archiviazione del progetto.
+- `project_max_active` per la richiesta di archiviazione del progetto;
+- consultazione archivio con `memory.archive_search`,
+  `memory.archive_read`, `/memory archive search|read`, filtro per
+  progetto e transcript con `project` nel frontmatter.
 
-Restano: consultazione archivio, retention delle chat, ricerca
-semantica, GUI.
+Restano: retention delle chat, ricerca semantica, GUI.
 
 ## 2.1 Decisioni prese
 
@@ -192,8 +194,6 @@ memory:
 
 ## 2.6 Punti aperti
 
-- **Consultazione archivio**: i transcript sono in `archive/chat/`, ma
-  manca un comando/tool per cercarli e riaprirli.
 - **Retention chat**: quante sessioni conservare, se riassumere le
   vecchie; la 0.2.0 non cancella nulla.
 - **Ricerca**: indice (SQLite FTS) o embedding quando i volumi

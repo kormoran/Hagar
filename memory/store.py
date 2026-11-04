@@ -397,6 +397,7 @@ class MemoryStore:
 
     def archive_session(
         self,
+        project: str | None = None,
     ) -> list[str]:
 
         archived: list[str] = []
@@ -416,9 +417,214 @@ class MemoryStore:
 
             self.vault.move(relative, target)
 
+            try:
+
+                text = self.vault.read(target)
+                meta, body = _split_frontmatter(text)
+                meta["project"] = project
+
+                self.vault.write(
+                    target,
+                    _frontmatter(meta)
+                    + "\n"
+                    + body.lstrip("\n").rstrip()
+                    + "\n",
+                )
+
+            except OSError:
+
+                pass
+
             archived.append(str(target).replace("\\", "/"))
 
         return archived
+
+    def _archive_files(self) -> list[Path]:
+
+        return self.vault.list_files(
+            self.archive_chat_dir,
+            "*.md",
+        )
+
+    @staticmethod
+    def _archive_relative(
+        path: Path,
+        root: Path,
+    ) -> str:
+
+        try:
+
+            return str(
+                path.relative_to(root)
+            ).replace("\\", "/")
+
+        except ValueError:
+
+            return str(path).replace("\\", "/")
+
+    def search_archive(
+        self,
+        query: str,
+        limit: int = 10,
+        offset: int = 0,
+        project: str | None = None,
+        session: str | None = None,
+    ) -> tuple[list[dict[str, str]], int]:
+
+        needle = query.strip().lower()
+
+        if not needle:
+            return [], 0
+
+        hits: list[dict[str, str]] = []
+        root = self.vault.root.resolve()
+
+        for path in self._archive_files():
+
+            relative = self._archive_relative(path, root)
+
+            try:
+                text = self.vault.read(relative)
+
+            except OSError:
+                continue
+
+            meta, _ = _split_frontmatter(text)
+            item_project = meta.get("project")
+
+            if project is not None and str(
+                item_project or ""
+            ) != project:
+                continue
+
+            for turn in _parse_turns(text, path.stem):
+
+                if session is not None and turn.session != session:
+                    continue
+
+                if (
+                    needle not in turn.question.lower()
+                    and needle not in turn.answer.lower()
+                ):
+                    continue
+
+                hits.append(
+                    {
+                        "session": turn.session,
+                        "turn": turn.turn_id,
+                        "timestamp": turn.timestamp,
+                        "project": str(item_project or ""),
+                        "date": (
+                            str(meta.get("created") or "")
+                            or turn.timestamp[:10]
+                        ),
+                        "question": _clip(
+                            turn.question,
+                            400,
+                        ),
+                        "answer": _clip(
+                            turn.answer,
+                            700,
+                        ),
+                        "file": relative,
+                    }
+                )
+
+        hits.sort(
+            key=lambda item: item["timestamp"],
+            reverse=True,
+        )
+
+        total = len(hits)
+        start = max(0, int(offset))
+        amount = max(1, min(int(limit), 100))
+
+        return hits[start:start + amount], total
+
+    def read_archive(
+        self,
+        session: str,
+        offset: int = 0,
+        limit: int = 20,
+        project: str | None = None,
+    ) -> dict[str, Any] | None:
+
+        if (
+            not isinstance(session, str)
+            or not session.strip()
+            or not re.fullmatch(
+                r"[A-Za-z0-9._-]+",
+                session.strip(),
+            )
+        ):
+
+            raise MemoryError(
+                "invalid archive session id"
+            )
+
+        session = session.strip()
+        root = self.vault.root.resolve()
+        turns: list[Turn] = []
+        project_value = ""
+        files: list[str] = []
+
+        for path in self._archive_files():
+
+            if not (
+                path.stem == session
+                or path.stem.endswith(f"-{session}")
+            ):
+                continue
+
+            relative = self._archive_relative(path, root)
+
+            try:
+                text = self.vault.read(relative)
+
+            except OSError:
+                continue
+
+            meta, _ = _split_frontmatter(text)
+            item_project = str(meta.get("project") or "")
+
+            if project is not None and item_project != project:
+                continue
+
+            if not project_value:
+                project_value = item_project
+
+            files.append(relative)
+            turns.extend(
+                _parse_turns(text, path.stem)
+            )
+
+        if not files:
+            return None
+
+        turns.sort(key=lambda turn: turn.timestamp)
+
+        total = len(turns)
+        start = max(0, int(offset))
+        amount = max(1, min(int(limit), 100))
+        selected = turns[start:start + amount]
+
+        return {
+            "session": session,
+            "project": project_value,
+            "files": files,
+            "turns": [
+                turn.as_dict() for turn in selected
+            ],
+            "total_turns": total,
+            "offset": start,
+            "limit": amount,
+            "next_offset": (
+                start + len(selected)
+                if start + len(selected) < total
+                else None
+            ),
+            "has_more": start + len(selected) < total,
+        }
 
     def write_summary(
         self,

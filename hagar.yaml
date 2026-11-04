@@ -23,7 +23,7 @@ policy:
 
 vault:
   # Vault Obsidian separato dalla sandbox operativa.
-  path: I:/Vaults
+  path: I:\src\Hagar\testvault
 
 memory:
   enabled: true

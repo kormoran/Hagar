@@ -79,7 +79,9 @@ class SessionSummarizer:
                 + "…"
             )
 
-        archived = self.memory.archive_session()
+        archived = self.memory.archive_session(
+            project=self.project_id,
+        )
 
         digest = self._archived_digest(
             archived,
