@@ -40,6 +40,14 @@ from memory.cli import MemoryCLI
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
+from MCP_tools.calculator import Calculator
+from MCP_tools.feeder import Feeder
+from MCP_tools.statistics import Stats_calc
+from MCP_tools.unit_converter import UnitConverterToolProvider
+from MCP_tools.math_tools import MathToolsProvider
+from MCP_tools.unit_converter_tool import UnitConverterToolProvider
+from MCP_tools.feeder_tool import FeederToolProvider
+
 
 __version__ = "0.2.0"
 
@@ -345,6 +353,28 @@ def build_harness(
         )
 
         memory_provider.register_tools(registry)
+
+    # ==========================================
+    # Local MCP tools
+    # ==========================================
+
+    unit_conversions = UnitConverterToolProvider(
+        unit_converter
+    )
+    
+    unit_conversions.register_tools(registry)
+    
+    math_unit = MathToolsProvider(
+        Calculator, Stats_calc
+    )
+    
+    math_unit.register_tools(registry)
+    
+    feed_reader = FeederToolProvider(
+        Feeder
+    )
+    
+    feed_reader.register_tools(registry)
 
     # ==========================================
     # MCP servers

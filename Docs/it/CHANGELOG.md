@@ -149,6 +149,198 @@ retention dell'audit e packaging installabile.
 - `requires_confirmation` ora applicato come pavimento di ASK;
 - rimosso lo stub incompleto `PolicyRule` da `core/models.py`;
 
+## Filesystem v2, strumenti matematici e feed
+
+### Filesystem
+
+- `filesystem.list_dir`: elenco non ricorsivo del contenuto di una directory.
+- `filesystem.list_dir` restituisce metadati completi tramite `FileInfo` per ogni elemento trovato.
+- `filesystem.read_chunk`: lettura incrementale di file di grandi dimensioni tramite offset e lunghezza.
+- `filesystem.read_chunk` opera a livello di byte e restituisce `has_more` per consentire all'agente di continuare la lettura.
+- `filesystem.rename`: rinomina o sposta file all'interno della sandbox.
+- `filesystem.copy_file`: copia file con verifica dei permessi e dello spazio disponibile.
+- `filesystem.search`: ricerca ricorsiva tramite pattern glob (`*.py`, `*.md`, ecc.).
+- `filesystem.search` restituisce:
+  - numero totale di risultati trovati;
+  - numero di risultati restituiti;
+  - indicazione di troncamento (`truncated`);
+  - elenco dei risultati come `FileInfo`.
+- Migliorata l'esplorazione autonoma della sandbox: l'agente può ora enumerare directory, cercare file e leggere documenti molto grandi senza saturare la context window.
+
+### Calculator
+
+- Nuova classe `MCP_tools/calculator.py`.
+- Parsing tramite AST sicuro, senza utilizzo di `eval()`.
+- Supporto a:
+  - `+`
+  - `-`
+  - `*`
+  - `/`
+  - `//`
+  - `%`
+  - `**`
+  - parentesi.
+- Costanti matematiche:
+  - `pi`
+  - `e`
+- Funzioni supportate:
+  - `sqrt`
+  - `abs`
+  - `sin`
+  - `cos`
+  - `tan`
+  - `asin`
+  - `acos`
+  - `atan`
+  - `log`
+  - `log10`
+  - `exp`
+  - `floor`
+  - `ceil`
+  - `round`
+- Nuovo tool MCP:
+
+  `calculator.evaluate`
+  
+Tutte le operazioni vengono validate tramite whitelist di nodi AST, operatori e funzioni consentite.
+
+### Statistica
+
+Nuova classe MCP_tools/statistics.py.
+
+Nuovo tool MCP:
+
+`Stats_calc`
+
+Operazioni supportate:
+
+- mean
+- median
+- stdev
+- variance
+- min
+- max
+- sum
+- count
+
+Risultati strutturati con:
+
+- esito dell'operazione;
+- tipo di statistica richiesta;
+- numero di campioni elaborati;
+- risultato o errore.
+
+### Conversione unità
+
+Nuova classe `MCP_tools/unit_converter.py`.
+
+Nuovo tool MCP:
+
+`units.convert`
+
+Supporto alle categorie:
+
+Lunghezza
+
+- mm
+- cm
+- m
+- km
+
+Massa
+
+- mg
+- g
+- kg
+- t
+
+Tempo
+
+- ms
+- s
+- min
+- hour
+- day
+
+Temperatura
+
+- c
+- f
+- k
+
+Angolo
+
+- deg
+- rad
+
+Dimensione dati
+
+- b
+- kb
+- mb
+- gb
+- tb
+
+Sistema di alias e normalizzazione delle unità:
+
+meters → m
+kilometers → km
+hours → hour
+celsius → c
+fahrenheit → f
+degrees → deg
+ecc.
+
+Conversioni dedicate per:
+
+temperatura (con offset);
+angoli (gradi/radianti).
+
+Conversioni lineari per tutte le altre categorie.
+
+### Feed RSS e Atom
+
+Nuova classe `MCP_tools/feeder.py`.
+
+Nuovo tool MCP:
+
+`feed.read`
+
+Supporto trasparente a feed RSS e Atom tramite un'unica API.
+
+Parametro max_items con limite di sicurezza per evitare output eccessivi.
+
+Estrazione strutturata di:
+
+- titolo;
+- link;
+- data di pubblicazione;
+- autore;
+- sommario.
+
+Pulizia automatica dell'HTML presente nei feed e restituzione dei metadati del feed:
+
+- titolo;
+- descrizione;
+- link;
+- tipo (rss, atom, ecc.).
+
+Restituzione del numero totale di elementi disponibili, numero di elementi restituiti e indicazione di troncamento.
+
+### Note
+
+Questa iterazione amplia in modo significativo le capacità operative dell'agente. Oltre al filesystem sandboxato, Hagar dispone ora di strumenti affidabili per:
+
+esplorare e ricercare contenuti;
+leggere file molto grandi in modo incrementale;
+eseguire calcoli matematici deterministici;
+effettuare analisi statistiche;
+convertire unità di misura appartenenti a domini differenti;
+consumare fonti informative strutturate tramite feed RSS e Atom.
+
+L'obiettivo resta privilegiare strumenti deterministici, strutturati e facilmente utilizzabili dai modelli tramite tool calling nativo.
+
+
 ## Documentazione
 
 - `PROJECT_STATE.md` diviso in `ARCHITECTURE.md` (com'è il sistema),
