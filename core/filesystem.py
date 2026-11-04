@@ -89,6 +89,12 @@ class FileSystemSandbox:
 
     VIRTUAL_ROOT = "/home/ai"
 
+    CHUNK_SIZE = 4096
+
+    MAX_DIR_ENTRIES = 100
+
+    MAX_SEARCH_RESULTS = 1000
+
     def __init__(
         self,
         roots: dict[Path, DirectoryPermissions],
@@ -162,6 +168,46 @@ class FileSystemSandbox:
 
         return raw == self.VIRTUAL_ROOT
 
+    def _reject_symlinks(
+        self,
+        target: Path,
+    ) -> None:
+        """
+        I symlink non esistono per la sandbox.
+
+        Il controllo è lessicale, prima di ``resolve()``: se un
+        componente è un link (anche rotto), il percorso non esiste.
+        """
+
+        for root in sorted(
+            self.roots,
+            key=lambda item: len(item.parts),
+            reverse=True,
+        ):
+
+            try:
+                relative = target.relative_to(root)
+
+            except ValueError:
+                continue
+
+            current = root
+
+            for part in relative.parts:
+
+                current = current / part
+
+                try:
+                    if current.is_symlink():
+                        raise FileNotFoundError(
+                            "Path not found"
+                        )
+
+                except OSError:
+                    pass
+
+            return
+
     def resolve_path(
         self,
         path: str | Path | None,
@@ -171,6 +217,7 @@ class FileSystemSandbox:
             return self.current_directory
 
         raw = str(path).replace("\\", "/")
+        alias_root: Path | None = None
 
         if (
             raw == self.VIRTUAL_ROOT
@@ -199,26 +246,34 @@ class FileSystemSandbox:
                 )
 
             root = self.aliases[canonical]
+            alias_root = root
 
-            target = (root / suffix).resolve() if suffix else root
+            target = root / suffix if suffix else root
 
-            if (
-                target != root
-                and root not in target.parents
-            ):
+        else:
 
-                raise PermissionError(
-                    "Virtual path escapes its alias"
-                )
+            target = Path(path)
 
-            return target
+            if not target.is_absolute():
+                target = self.current_directory / target
 
-        path = Path(path)
+        target = Path(os.path.abspath(target))
 
-        if not path.is_absolute():
-            path = self.current_directory / path
+        self._reject_symlinks(target)
 
-        return path.resolve()
+        resolved = target.resolve()
+
+        if (
+            alias_root is not None
+            and resolved != alias_root
+            and alias_root not in resolved.parents
+        ):
+
+            raise PermissionError(
+                "Virtual path escapes its alias"
+            )
+
+        return resolved
 
     def virtual_path(
         self,
@@ -287,27 +342,6 @@ class FileSystemSandbox:
     ) -> bool:
 
         return self.resolve_path(path).exists()
-
-    def contains_symlink(
-        self,
-        path: str | Path,
-    ) -> bool:
-
-        target = self.resolve_path(path)
-
-        current = Path(target.anchor)
-
-        for part in target.parts[1:]:
-
-            current /= part
-
-            try:
-                if current.is_symlink():
-                    return True
-            except OSError:
-                pass
-
-        return False
 
     # ==================================================
     # Permission helpers
@@ -464,14 +498,6 @@ class FileSystemSandbox:
                 f"directory."
             )
 
-        if self.contains_symlink(target):
-
-            return (
-                f"Access denied: "
-                f"path '{self._display(target)}' "
-                f"contains a symbolic link."
-            )
-
         if operation == "read":
 
             if not permissions.read:
@@ -552,7 +578,14 @@ class FileSystemSandbox:
                 "choose an alias"
             )
 
-        target = self.resolve_path(path)
+        try:
+            target = self.resolve_path(path)
+
+        except FileNotFoundError as ex:
+
+            raise FileNotFoundError(
+                "Directory not found"
+            ) from ex
 
         error = self.FS_Guardian(
             "execute",
@@ -590,16 +623,18 @@ class FileSystemSandbox:
     def list_dir(
         self,
         path: str | Path = ".",
-    ) -> list[FileInfo]:
+    ) -> dict:
 
         if self.is_virtual_root(path):
 
-            entries: list[FileInfo] = []
-
-            for alias in sorted(
+            aliases = sorted(
                 self.aliases,
                 key=str.casefold,
-            ):
+            )
+            total = len(aliases)
+            entries: list[FileInfo] = []
+
+            for alias in aliases[: self.MAX_DIR_ENTRIES]:
 
                 try:
                     entries.append(
@@ -609,7 +644,10 @@ class FileSystemSandbox:
                 except PermissionError:
                     continue
 
-            return entries
+            return self._dir_listing(
+                entries,
+                total,
+            )
 
         target = self.resolve_path(path)
 
@@ -627,19 +665,62 @@ class FileSystemSandbox:
         if not target.is_dir():
             raise NotADirectoryError(self._display(target))
 
-        entries: list[FileInfo] = []
-
-        for entry in sorted(
-            target.iterdir(),
-            key=lambda p: (
-                not p.is_dir(),
-                p.name.lower(),
-            ),
-        ):
-            entries.append(
-                self.stat(entry)
+        visible = [
+            entry
+            for entry in sorted(
+                target.iterdir(),
+                key=lambda p: (
+                    not p.is_dir(),
+                    p.name.lower(),
+                ),
             )
-        return entries
+            if not entry.is_symlink()
+        ]
+
+        total = len(visible)
+        entries = []
+
+        for entry in visible[: self.MAX_DIR_ENTRIES]:
+
+            try:
+                entries.append(
+                    self.stat(entry)
+                )
+
+            except (
+                FileNotFoundError,
+                PermissionError,
+                OSError,
+            ):
+                continue
+
+        return self._dir_listing(
+            entries,
+            total,
+        )
+
+    def _dir_listing(
+        self,
+        entries: list[FileInfo],
+        total: int,
+    ) -> dict:
+
+        returned = len(entries)
+
+        limited = returned < total
+
+        return {
+            "entries": entries,
+            "total_entries": total,
+            "returned_entries": returned,
+            "truncated": limited,
+            "message": (
+                "voci: riportate solo le prime "
+                f"{returned} di {total}"
+                if limited
+                else None
+            ),
+        }
 
 
     # ==================================================
@@ -670,7 +751,10 @@ class FileSystemSandbox:
 
         max_results = max(
             1,
-            min(int(max_results), 5000),
+            min(
+                int(max_results),
+                self.MAX_SEARCH_RESULTS,
+            ),
         )
 
         if self.is_virtual_root(path):
@@ -710,6 +794,12 @@ class FileSystemSandbox:
                 "total_matches": total_matches,
                 "returned_matches": len(results),
                 "truncated": total_matches > max_results,
+                "message": (
+                    "voci: riportate solo le prime "
+                    f"{len(results)} di {total_matches}"
+                    if total_matches > max_results
+                    else None
+                ),
                 "results": results,
             }
 
@@ -738,6 +828,15 @@ class FileSystemSandbox:
             key=lambda p: str(p).lower(),
         ):
 
+            if entry.is_symlink():
+                continue
+
+            try:
+                self._reject_symlinks(entry)
+
+            except FileNotFoundError:
+                continue
+
             total_matches += 1
 
             if len(results) >= max_results:
@@ -749,7 +848,11 @@ class FileSystemSandbox:
                     self.stat(entry)
                 )
 
-            except (PermissionError, OSError):
+            except (
+                FileNotFoundError,
+                PermissionError,
+                OSError,
+            ):
                 continue
 
         return {
@@ -760,9 +863,65 @@ class FileSystemSandbox:
             "truncated": (
                 total_matches > max_results
             ),
+            "message": (
+                "voci: riportate solo le prime "
+                f"{len(results)} di {total_matches}"
+                if total_matches > max_results
+                else None
+            ),
             "results": results,
         }
 
+
+    def _utf8_start(
+        self,
+        file,
+        offset: int,
+    ) -> int:
+        """
+        Sposta l'offset indietro all'inizio del carattere UTF-8, se
+        cade su un byte di continuazione.
+        """
+
+        if offset <= 0:
+            return 0
+
+        lookback = min(3, offset)
+        file.seek(offset - lookback)
+        prefix = file.read(lookback)
+
+        file.seek(offset)
+        current = file.read(1)
+
+        if not current or (current[0] & 0xC0) != 0x80:
+            return offset
+
+        for index in range(len(prefix) - 1, -1, -1):
+
+            if (prefix[index] & 0xC0) != 0x80:
+
+                return offset - lookback + index
+
+        return offset
+
+    def _utf8_complete(
+        self,
+        data: bytes,
+    ) -> bytes:
+        """
+        Rimuove solo un'eventuale sequenza UTF-8 incompleta in coda.
+        """
+
+        try:
+            data.decode("utf-8")
+            return data
+
+        except UnicodeDecodeError as ex:
+
+            if ex.reason.startswith("unexpected end of data"):
+                return data[:ex.start]
+
+            return data
 
     def read_chunk(
         self,
@@ -805,23 +964,58 @@ class FileSystemSandbox:
             "rb",
         ) as f:
 
-            f.seek(offset)
+            start = self._utf8_start(f, offset)
 
-            data = f.read(length)
+            read_size = max(
+                length + 4,
+                4,
+            )
+
+            f.seek(start)
+            raw = f.read(read_size)
+
+        data = self._utf8_complete(raw)
+
+        #
+        # Se il chunk richiesto è più piccolo di un carattere, restituisci
+        # comunque il carattere completo invece di spezzarlo.
+        #
+
+        if len(data) > length:
+
+            candidate = self._utf8_complete(
+                data[:length]
+            )
+
+            if candidate:
+                data = candidate
+
+            else:
+
+                try:
+                    first_char = data.decode("utf-8")[0]
+                    data = first_char.encode("utf-8")
+
+                except (UnicodeDecodeError, IndexError):
+                    pass
+
+        if not data and start < file_size:
+
+            data = raw[:1]
 
         content = data.decode(
             "utf-8",
             errors="replace",
         )
 
+        next_offset = start + len(data)
+
         return {
             "path": self.virtual_path(target),
-            "offset": offset,
+            "offset": start,
             "length": len(data),
-            "has_more": (
-                offset + len(data)
-                < file_size
-            ),
+            "next_offset": next_offset,
+            "has_more": next_offset < file_size,
             "content": content,
         }
 
@@ -842,6 +1036,16 @@ class FileSystemSandbox:
 
         if not target.is_file():
             raise FileNotFoundError(self._display(target))
+
+        if target.stat().st_size > self.CHUNK_SIZE:
+
+            raise ValueError(
+                "File is larger than one chunk "
+                f"({self.CHUNK_SIZE} bytes); use "
+                "read_chunk() to read it incrementally, "
+                "because reading the whole file would "
+                "exceed the context window."
+            )
 
         return target.read_text(
             encoding="utf-8"

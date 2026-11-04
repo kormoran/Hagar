@@ -15,7 +15,7 @@ def test_list_dir_returns_metadata(sandbox, workspace):
     (workspace / "a.txt").write_text("a", encoding="utf-8")
     (workspace / "sub").mkdir()
 
-    entries = sandbox.list_dir(".")
+    entries = sandbox.list_dir(".")["entries"]
 
     assert [entry.path for entry in entries] == [
         "/home/ai/root/sub",
@@ -36,7 +36,7 @@ def test_list_dir_can_inspect_subdirectory(
         encoding="utf-8",
     )
 
-    entries = sandbox.list_dir("sub")
+    entries = sandbox.list_dir("sub")["entries"]
 
     assert [entry.path for entry in entries] == [
         "/home/ai/root/sub/a.txt"
@@ -58,6 +58,9 @@ def test_search_glob_and_truncation(sandbox, workspace):
     assert result["total_matches"] == 2
     assert result["returned_matches"] == 1
     assert result["truncated"] is True
+    assert result["message"] == (
+        "voci: riportate solo le prime 1 di 2"
+    )
     assert result["results"][0].path == "/home/ai/root/a.py"
 
 
@@ -238,7 +241,7 @@ def test_file_and_directory_names_can_contain_spaces(
         "/home/ai/root/my docs/my file.txt"
     )
 
-    entries = sandbox.list_dir("my docs")
+    entries = sandbox.list_dir("my docs")["entries"]
 
     assert [entry.path for entry in entries] == [
         "/home/ai/root/my docs/my file.txt"
@@ -318,7 +321,7 @@ def test_virtual_root_lists_aliases(tmp_path):
     assert info.kind == "directory"
     assert info.exists is True
 
-    entries = sandbox.list_dir("/home/ai")
+    entries = sandbox.list_dir("/home/ai")["entries"]
 
     assert [entry.path for entry in entries] == [
         "/home/ai/documenti",
@@ -442,3 +445,136 @@ def test_outside_error_does_not_expose_real_path(
         )
 
     assert str(workspace) not in str(exc.value)
+
+
+def test_read_chunk_preserves_utf8(
+    sandbox,
+    workspace,
+):
+    (workspace / "a.txt").write_text(
+        "èa",
+        encoding="utf-8",
+    )
+
+    first = sandbox.read_chunk("a.txt", 0, 1)
+
+    assert first["content"] == "è"
+    assert first["offset"] == 0
+    assert first["length"] == 2
+    assert first["next_offset"] == 2
+    assert first["has_more"] is True
+
+    second = sandbox.read_chunk(
+        "a.txt",
+        first["next_offset"],
+        1,
+    )
+
+    assert second["content"] == "a"
+    assert second["has_more"] is False
+
+
+def test_read_chunk_realigns_inside_utf8(
+    sandbox,
+    workspace,
+):
+    (workspace / "a.txt").write_text(
+        "è",
+        encoding="utf-8",
+    )
+
+    result = sandbox.read_chunk("a.txt", 1, 1)
+
+    assert result["offset"] == 0
+    assert result["length"] == 2
+    assert result["content"] == "è"
+    assert result["has_more"] is False
+
+
+def test_read_file_rejects_larger_than_one_chunk(
+    sandbox,
+    workspace,
+):
+    (workspace / "small.txt").write_text(
+        "a" * sandbox.CHUNK_SIZE,
+        encoding="utf-8",
+    )
+    (workspace / "large.txt").write_text(
+        "a" * (sandbox.CHUNK_SIZE + 1),
+        encoding="utf-8",
+    )
+
+    assert sandbox.read_file("small.txt") == (
+        "a" * sandbox.CHUNK_SIZE
+    )
+
+    with pytest.raises(ValueError, match="read_chunk"):
+        sandbox.read_file("large.txt")
+
+
+def test_list_dir_limit_and_message(sandbox, workspace):
+    for index in range(105):
+        (workspace / f"{index:03}.txt").write_text(
+            "x",
+            encoding="utf-8",
+        )
+
+    result = sandbox.list_dir(".")
+
+    assert result["total_entries"] == 105
+    assert result["returned_entries"] == sandbox.MAX_DIR_ENTRIES
+    assert result["truncated"] is True
+    assert result["message"] == (
+        "voci: riportate solo le prime 100 di 105"
+    )
+
+
+def test_symlinks_are_invisible(sandbox, workspace, tmp_path):
+    (workspace / "a.txt").write_text(
+        "dentro",
+        encoding="utf-8",
+    )
+    outside = tmp_path / "outside.txt"
+    outside.write_text("fuori", encoding="utf-8")
+
+    link = workspace / "link.txt"
+    linkdir = workspace / "linkdir"
+
+    try:
+        link.symlink_to(outside)
+        linkdir.symlink_to(
+            tmp_path,
+            target_is_directory=True,
+        )
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink non disponibili su questo sistema")
+
+    with pytest.raises(FileNotFoundError):
+        sandbox.stat("link.txt")
+
+    with pytest.raises(FileNotFoundError):
+        sandbox.read_file("link.txt")
+
+    with pytest.raises(FileNotFoundError):
+        sandbox.read_chunk("link.txt")
+
+    with pytest.raises(FileNotFoundError):
+        sandbox.delete_file("link.txt")
+
+    listing = sandbox.list_dir(".")
+
+    assert [
+        entry.path for entry in listing["entries"]
+    ] == ["/home/ai/root/a.txt"]
+
+    search = sandbox.search("*")
+
+    assert [
+        entry.path for entry in search["results"]
+    ] == ["/home/ai/root/a.txt"]
+
+    with pytest.raises(
+        FileNotFoundError,
+        match="Directory not found",
+    ):
+        sandbox.chdir("linkdir")

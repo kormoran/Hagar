@@ -415,11 +415,15 @@ class FileSystemToolProvider:
         path: str = ".",
     ) -> str:
 
+        result = self.fs.list_dir(path)
+
+        result["entries"] = [
+            asdict(item)
+            for item in result["entries"]
+        ]
+
         return json.dumps(
-            [
-                asdict(item)
-                for item in self.fs.list_dir(path)
-            ],
+            result,
             ensure_ascii=False,
             indent=2,
         )

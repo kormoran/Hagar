@@ -5,7 +5,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 632 test superati, 1 skip (symlink non disponibili senza Developer
+- 635 test superati, 2 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
   `./tools/run_tests.sh` (Linux/macOS); con `--live` si aggiungono i test
@@ -45,8 +45,10 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 - test alias: root listabile, path indipendenti, lookup
   case-insensitive, permessi per mount, `X` per `chdir`, ricerca tra
   alias, path e nomi con spazi;
+- test hardening: UTF-8 nei chunk, `read_file` oltre un chunk, limiti e
+  messaggi di `list_dir`/`search`, symlink invisibili;
 - capability `COMPUTE`/`NETWORK` e config `permissions.network`;
-- 632 test, 1 skip.
+- 635 test, 2 skip.
 
 ### 2026-11-04 — memoria v2 (0.2.0)
 

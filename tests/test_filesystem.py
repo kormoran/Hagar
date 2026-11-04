@@ -474,16 +474,8 @@ def test_symlink_is_hidden(tmp_path):
         delete=True,
     )
 
-    assert sandbox.contains_symlink("link.txt") is True
-
-    with pytest.raises(PermissionError):
+    with pytest.raises(FileNotFoundError):
         sandbox.read_file("link.txt")
-
-
-def test_regular_file_has_no_symlink(sandbox, workspace):
-    (workspace / "a.txt").write_text("x", encoding="utf-8")
-
-    assert sandbox.contains_symlink("a.txt") is False
 
 
 # =====================================================

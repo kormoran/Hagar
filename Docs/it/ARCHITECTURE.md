@@ -240,6 +240,12 @@ Un percorso fuori dalle radici è sempre `PermissionError`.
 creazione/modifica/accesso (ISO 8601 con offset locale) e i permessi
 **effettivi della sandbox**, non le ACL del sistema operativo.
 
+**I symlink non esistono per la sandbox.** Hagar non li mostra, non li
+legge, non li segue e non li cancella: `stat`, `list_dir` e `search` li
+ignorano; `read_file`, `read_chunk` e `delete_file` rispondono “not
+found”; `chdir` su un symlink risponde “Directory not found”. Un link
+rotto o verso l'esterno è indistinguibile da un percorso inesistente.
+
 La radice virtuale del sandbox è `/home/ai`; ogni directory configurata
 è esposta come `/home/ai/<alias>`. `stat`, `list_dir`, `search`,
 `read_chunk`, i messaggi di `write`/`create`/`mkdir`/`delete` e `chdir`
@@ -296,10 +302,21 @@ filesystem.stat
 ```
 
 `list_dir` restituisce metadati `FileInfo`; `read_chunk` legge per byte
-con `has_more`; `search` usa un glob ricorsivo con limite di risultati;
-`copy_file` richiede `create`; `rename` richiede `rename` sulla sorgente
-e `create` sulla destinazione. I percorsi restituiti sono sempre
-virtuali (`/home/ai/<alias>/...`). `chdir` richiede `X` sull'alias.
+con `has_more`, `next_offset` e confini UTF-8 completi; `search` usa un
+glob ricorsivo con limite di risultati; `copy_file` richiede `create`;
+`rename` richiede `rename` sulla sorgente e `create` sulla destinazione.
+I percorsi restituiti sono sempre virtuali (`/home/ai/<alias>/...`).
+`chdir` richiede `X` sull'alias.
+
+`list_dir` restituisce al massimo `MAX_DIR_ENTRIES` (100) voci e, se
+tronca, un campo `message` del tipo `voci: riportate solo le prime X di
+Y`. `search` è limitato a `MAX_SEARCH_RESULTS` (1000) e usa lo stesso
+messaggio. `read_file` accetta solo file fino a `CHUNK_SIZE` (4096
+byte); oltre, l'errore rimanda a `read_chunk()` perché leggere tutto il
+file supererebbe la context window.
+
+`list_dir` e `search` non mostrano i symlink; `read_file` e `read_chunk`
+li trattano come file inesistenti.
 
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
@@ -624,7 +641,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 632 test superati, 1 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 635 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
@@ -682,10 +699,16 @@ nel registry e vivono fuori dal core, in un package separato.
   limitate, non simboliche.
 - `stat().created_at` è `None` su Linux quando manca `st_birthtime`; non
   viene inventata una data di creazione.
+- **TOCTOU**: la sandbox è path-based; tra il controllo dei symlink e
+  l'operazione reale il filesystem può cambiare. Un attaccante locale con
+  accesso concorrente potrebbe sostituire un componente con un link. Non
+  è chiuso; servirebbero `openat`/`O_NOFOLLOW` e handle Windows.
+- **Mount e hard link**: la sandbox controlla i prefissi di path, non i
+  confini di volume. Un mount/junction dentro un alias può esporre un
+  altro filesystem e un hard link può rendere leggibile un file esterno.
+  È un limite noto, non gestito.
 - Due alias non possono puntare allo stesso path fisico: l'alias
-  identifica un mount e l'output virtuale deve restare univoco. Per una
-  vista in sola lettura usare un alias su una directory diversa o
-  cambiare i permessi dell'alias.
+  identifica un mount e l'output virtuale deve restare univoco.
 
 ---
 

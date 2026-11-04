@@ -366,6 +366,8 @@ Punti aperti:
 - DNS rebinding: la risoluzione viene validata, ma `requests` risolve
   di nuovo il nome al momento della connessione; serve un resolver
   pinnato o un adapter dedicato per chiudere il caso;
+- TOCTOU della sandbox path-based, mount/junction e hard link: non
+  chiusi, solo documentati;
 - il calcolatore è volutamente limitato (niente algebra simbolica);
 - valutare un limite di dimensione anche per gli altri output dei tool;
 - aggiungere CI Linux/macOS per symlink, permessi token e callback

@@ -34,6 +34,19 @@ riferimento al commit quando utile.
 - Filesystem con radice virtuale `/home/ai`: `stat`, `list_dir`,
   `search`, `read_chunk` e i messaggi dei tool non espongono più il
   percorso fisico; gli input `/home/ai/...` sono accettati.
+- `read_chunk` allinea i confini ai caratteri UTF-8 e restituisce
+  `next_offset`; non spezza più caratteri multibyte.
+- `read_file` rifiuta file oltre 4096 byte e rimanda a `read_chunk()`
+  per evitare di caricare tutto il file nella context window.
+- `list_dir` restituisce al massimo 100 voci e `search` al massimo
+  1000; quando troncano aggiungono
+  `voci: riportate solo le prime X di Y`.
+- I symlink non esistono per la sandbox: non sono mostrati, letti,
+  seguiti o cancellati; `chdir` su un link risponde
+  “Directory not found”. Decisione di progetto: restano invisibili
+  anche se il filesystem ospite li supporta.
+- Restano debiti tecnici dichiarati: TOCTOU path-based, mount/junction
+  e hard link non sono confinati.
 - `filesystem.allowed` sostituito da `filesystem.sandbox`: ogni voce ha
   `alias`, `path` e permessi `R`/`W`/`X`. L'agente vede
   `/home/ai/<alias>/...`; niente `hdN`, niente volumi o directory
@@ -47,7 +60,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 632 test superati, 1 skip.
+- 635 test superati, 2 skip.
 
 # 0.2.0 — 2026-11-04
 
