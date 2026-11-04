@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Docs/HAGAR.jpg">
+</p>
+
 ## H.A.G.A.R.
 
 Harness Agentico Generale per AI Resilienti (General Agentic Harness for Resilient AIs)
