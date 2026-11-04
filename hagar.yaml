@@ -39,6 +39,7 @@ permissions:
   read: true
   write: true
   shell: false
+  network: true
 
 rag:
   top_k: 8

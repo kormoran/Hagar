@@ -1,12 +1,44 @@
 from __future__ import annotations
 
 import re
+
 from html import unescape
+from urllib.parse import urlparse
 
 import feedparser
+import requests
 
 
 class Feeder:
+
+    MAX_BYTES = 5_000_000
+
+    TIMEOUT = 15
+
+    def _validate_url(
+        self,
+        url: str,
+    ) -> str:
+
+        if not isinstance(url, str) or not url.strip():
+
+            raise ValueError(
+                "url must be a non-empty string"
+            )
+
+        candidate = url.strip()
+
+        parsed = urlparse(candidate)
+
+        if parsed.scheme not in {"http", "https"}:
+            raise ValueError(
+                "feed URL must use http or https"
+            )
+
+        if not parsed.netloc:
+            raise ValueError("feed URL has no host")
+
+        return candidate
 
     def _strip_html(
         self,
@@ -33,19 +65,10 @@ class Feeder:
         entry,
     ) -> str | None:
 
-        if hasattr(
-            entry,
-            "published",
-        ):
-            return entry.published
-
-        if hasattr(
-            entry,
-            "updated",
-        ):
-            return entry.updated
-
-        return None
+        return (
+            getattr(entry, "published", None)
+            or getattr(entry, "updated", None)
+        )
 
     def read(
         self,
@@ -55,26 +78,47 @@ class Feeder:
 
         try:
 
+            url = self._validate_url(url)
+
+            if isinstance(max_items, bool):
+                raise ValueError(
+                    "max_items must be an integer"
+                )
+
             max_items = max(
                 1,
                 min(
-                    max_items,
+                    int(max_items),
                     100,
                 ),
             )
 
-            parsed = feedparser.parse(
-                url
+            response = requests.get(
+                url,
+                timeout=self.TIMEOUT,
+                headers={
+                    "User-Agent": "Hagar/0.2.0",
+                },
             )
 
-            if (
-                hasattr(
-                    parsed,
-                    "bozo"
+            response.raise_for_status()
+
+            content = response.content
+
+            if len(content) > self.MAX_BYTES:
+
+                raise ValueError(
+                    "feed is larger than "
+                    f"{self.MAX_BYTES} bytes"
                 )
-                and parsed.bozo
+
+            parsed = feedparser.parse(content)
+
+            if (
+                getattr(parsed, "bozo", False)
                 and not parsed.entries
             ):
+
                 raise ValueError(
                     "Invalid feed format."
                 )
@@ -124,7 +168,11 @@ class Feeder:
                     }
                 )
 
-            feed_info = parsed.feed
+            feed_info = getattr(
+                parsed,
+                "feed",
+                {},
+            )
 
             return {
                 "success": True,

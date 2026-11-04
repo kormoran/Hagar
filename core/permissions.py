@@ -37,6 +37,7 @@ class Capability(IntFlag):
     MEMORY_WRITE = auto()
     NETWORK = auto()
     MCP_CALL = auto()
+    COMPUTE = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -86,13 +87,15 @@ def capabilities_from_permissions(
     read: bool,
     write: bool,
     shell: bool,
+    network: bool = False,
 ) -> Capability:
     """
     Tetto di sistema derivato dalla configurazione attuale.
 
     ``permissions.write`` copre scrittura, creazione e cancellazione,
     come già fa la sandbox. La memoria segue gli stessi flag finché non
-    avrà una configurazione propria.
+    avrà una configurazione propria. ``permissions.network`` abilita i
+    tool che escono dalla macchina (feed, future API).
     """
 
     capabilities = Capability.NONE
@@ -113,6 +116,17 @@ def capabilities_from_permissions(
 
     if shell:
         capabilities |= Capability.FILESYSTEM_EXEC
+
+    if network:
+        capabilities |= Capability.NETWORK
+
+    #
+    # I calcoli locali non escono dalla macchina e non toccano il
+    # filesystem: sono sempre disponibili, ma la policy può comunque
+    # negarli per singolo tool.
+    #
+
+    capabilities |= Capability.COMPUTE
 
     #
     # I tool MCP esistono solo se configurati; la capability serve alla

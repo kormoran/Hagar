@@ -1,11 +1,11 @@
 # Hagar — Changelog della suite di test
 
 Questo file riguarda solo `tests/`. La storia del progetto è in
-`Docs/it/CHANGELOG.md` e `Docs/en/CHANGELOG.md`.
+`Docs/it/CHANGELOG.md`.
 
 ## Stato
 
-- 552 test superati, 1 skip (symlink non disponibili senza Developer
+- 586 test superati, 1 skip (symlink non disponibili senza Developer
   Mode).
 - Esecuzione: `.\tools\run_tests.ps1`; con `--live` si aggiungono i test
   che chiamano servizi reali (9 test).
@@ -18,8 +18,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 |---|---|
 | configurazione | `test_config.py` |
 | packaging e CLI | `test_packaging.py`, `test_hagar.py` |
-| sandbox filesystem | `test_filesystem.py` |
+| sandbox filesystem | `test_filesystem.py`, `test_filesystem_v2.py` |
 | tool filesystem | `test_filesystem_tools.py` |
+| tool locali MCP_tools | `test_mcp_tools.py` |
 | registry e definizioni | `test_tool_definition.py`, `test_tool_registry.py` |
 | agent e audit | `test_agent.py`, `test_audit.py` |
 | calling nativo | `test_native_tools.py`, `test_agent_native.py` |
@@ -32,6 +33,13 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | live (opt-in) | `tests/live/` |
 
 ## Storia
+
+### 2026-11-04 — filesystem v2 e MCP_tools
+
+- test per `list_dir`, `read_chunk`, `rename`, `copy_file`, `search`;
+- test per calculator, statistica, unità e feed (incluso RSS finto);
+- capability `COMPUTE`/`NETWORK` e config `permissions.network`;
+- 586 test, 1 skip.
 
 ### 2026-11-04 — memoria v2 (0.2.0)
 

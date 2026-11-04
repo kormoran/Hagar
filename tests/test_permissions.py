@@ -109,11 +109,14 @@ def test_capabilities_from_permissions():
     assert mask & Capability.MEMORY_READ
     assert not mask & Capability.FILESYSTEM_WRITE
     assert mask & Capability.MCP_CALL
+    assert mask & Capability.COMPUTE
+    assert not mask & Capability.NETWORK
 
     mask = capabilities_from_permissions(
         read=True,
         write=True,
         shell=True,
+        network=True,
     )
 
     assert mask & Capability.FILESYSTEM_WRITE
@@ -121,6 +124,7 @@ def test_capabilities_from_permissions():
     assert mask & Capability.FILESYSTEM_DELETE
     assert mask & Capability.MEMORY_WRITE
     assert mask & Capability.FILESYSTEM_EXEC
+    assert mask & Capability.NETWORK
 
 
 # =====================================================

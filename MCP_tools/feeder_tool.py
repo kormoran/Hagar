@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 
-from .core.permissions import Capability
-from .core.tool_definition import (
+from core.permissions import Capability
+from core.tool_definition import (
     ToolDefinition,
     ToolParameter,
 )
-from .core.tool_registry import (
+from core.tool_registry import (
     ToolRegistry,
 )
 

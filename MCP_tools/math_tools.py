@@ -2,29 +2,28 @@ from __future__ import annotations
 
 import json
 
-from .core.tool_definition import (
+from core.permissions import Capability
+from core.tool_definition import (
     ToolDefinition,
     ToolParameter,
 )
-from .core.tool_registry import ToolRegistry
-from .core.permissions import Capability
-from .calculator import Calculator
-from .statistics import Stats_calc
+from core.tool_registry import ToolRegistry
+
+from MCP_tools.calculator import Calculator
+from MCP_tools.statistics import Stats_calc
 
 
 class MathToolsProvider:
 
     def __init__(
         self,
-        Calculator,
-        Stats_calc,
+        calculator: Calculator,
+        statistics: Stats_calc,
     ) -> None:
 
         self.calculator = calculator
-        self.statistics = (
-            statistics_calculator
-        )
-        
+        self.statistics = statistics
+
     def register_tools(
         self,
         registry: ToolRegistry,
@@ -33,7 +32,7 @@ class MathToolsProvider:
         registry.register(
             ToolDefinition(
                 name="statistics.compute",
-                capabilities=Capability.CALCULATOR,
+                capabilities=Capability.COMPUTE,
                 description=(
                     "Compute statistics on "
                     "a collection of values."
@@ -62,11 +61,10 @@ class MathToolsProvider:
             )
         )
 
-
         registry.register(
             ToolDefinition(
                 name="calculator.evaluate",
-                capabilities=Capability.CALCULATOR,
+                capabilities=Capability.COMPUTE,
                 description=(
                     "Evaluate a mathematical "
                     "expression safely."
@@ -104,22 +102,20 @@ class MathToolsProvider:
             ensure_ascii=False,
             indent=2,
         )
-        
+
     def compute_statistics(
         self,
         operation: str,
         values: list,
     ) -> str:
 
-        result = (
-            self.statistics.compute(
-                operation,
-                values,
-            )
+        result = self.statistics.compute(
+            operation,
+            values,
         )
 
         return json.dumps(
             result,
             ensure_ascii=False,
             indent=2,
-        )        
+        )

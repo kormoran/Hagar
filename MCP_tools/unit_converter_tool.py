@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 
-from .core.tool_definition import (
+from core.permissions import Capability
+from core.tool_definition import (
     ToolDefinition,
     ToolParameter,
 )
-from .core.tool_registry import ToolRegistry
-from .core.permissions import Capability
+from core.tool_registry import ToolRegistry
 
 
 class UnitConverterToolProvider:
@@ -27,7 +27,7 @@ class UnitConverterToolProvider:
         registry.register(
             ToolDefinition(
                 name="units.convert",
-                capabilities=Capability.CALCULATOR,
+                capabilities=Capability.COMPUTE,
                 description=(
                     "Convert a value "
                     "between compatible "

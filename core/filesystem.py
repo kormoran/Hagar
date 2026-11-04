@@ -23,6 +23,7 @@ class DirectoryPermissions:
     read: bool | None = None
     write: bool | None = None
     create: bool | None = None
+    rename: bool | None = None
     delete: bool | None = None
     execute: bool | None = None
 
@@ -342,12 +343,13 @@ class FileSystemSandbox:
 
         elif operation == "rename":
 
-            if not permissions.write:
+            if not permissions.rename:
+
                 return (
                     f"Rename access denied: "
                     f"{target}"
-        )        
-        
+                )
+
         elif operation == "delete":
 
             if not permissions.delete:
@@ -426,6 +428,9 @@ class FileSystemSandbox:
         if error:
             raise PermissionError(error)
 
+        if not target.exists():
+            raise FileNotFoundError(target)
+
         if not target.is_dir():
             raise NotADirectoryError(target)
 
@@ -438,14 +443,16 @@ class FileSystemSandbox:
                 p.name.lower(),
             ),
         ):
-            relative = entry.relative_to(
-                self.current_directory
-            )
+            try:
+                display = entry.relative_to(
+                    self.current_directory
+                )
+            except ValueError:
+                display = entry
 
             entries.append(
-                self.stat(relative)
+                self.stat(display)
             )
-
         return entries
 
 
@@ -461,6 +468,25 @@ class FileSystemSandbox:
         max_results: int = 1000,
     ) -> dict:
 
+        if not isinstance(pattern, str) or not pattern.strip():
+
+            raise ValueError(
+                "pattern must be a non-empty string"
+            )
+
+        pattern_path = Path(pattern)
+
+        if pattern_path.is_absolute() or ".." in pattern_path.parts:
+
+            raise ValueError(
+                "pattern must stay inside the sandbox"
+            )
+
+        max_results = max(
+            1,
+            min(int(max_results), 5000),
+        )
+
         target = self.resolve_path(path)
 
         error = self.FS_Guardian(
@@ -470,6 +496,9 @@ class FileSystemSandbox:
 
         if error:
             raise PermissionError(error)
+
+        if not target.exists():
+            raise FileNotFoundError(target)
 
         if not target.is_dir():
             raise NotADirectoryError(target)
@@ -490,15 +519,18 @@ class FileSystemSandbox:
 
             try:
 
-                relative = entry.relative_to(
-                    self.current_directory
-                )
+                try:
+                    display = entry.relative_to(
+                        self.current_directory
+                    )
+                except ValueError:
+                    display = entry
 
                 results.append(
-                    self.stat(relative)
+                    self.stat(display)
                 )
 
-            except PermissionError:
+            except (PermissionError, OSError):
                 continue
 
         return {
@@ -519,6 +551,20 @@ class FileSystemSandbox:
         offset: int = 0,
         length: int = 4096,
     ) -> dict:
+
+        if offset < 0:
+
+            raise ValueError(
+                "offset must be >= 0"
+            )
+
+        if length <= 0:
+
+            raise ValueError(
+                "length must be > 0"
+            )
+
+        length = min(int(length), 1_048_576)
 
         target = self.resolve_path(path)
 
@@ -652,6 +698,14 @@ class FileSystemSandbox:
 
         if not src.exists():
             raise FileNotFoundError(src)
+
+        error = self.FS_Guardian(
+            "create",
+            dst,
+        )
+
+        if error:
+            raise PermissionError(error)
 
         if dst.exists():
             raise FileExistsError(dst)

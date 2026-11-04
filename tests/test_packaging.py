@@ -37,12 +37,17 @@ def test_declared_packages():
         "core",
         "llm",
         "memory",
+        "MCP_tools",
     }
 
 
 def test_dependencies_are_declared():
     dependencies = project()["project"]["dependencies"]
 
+    assert any(
+        item.startswith("feedparser")
+        for item in dependencies
+    )
     assert any(
         item.startswith("pyyaml")
         for item in dependencies

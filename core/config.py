@@ -354,6 +354,7 @@ class ConfigLoader:
             "read": True,
             "write": False,
             "shell": False,
+            "network": False,
         }
 
         values: dict[str, bool] = {}

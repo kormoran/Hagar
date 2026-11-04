@@ -39,6 +39,16 @@ subjects:
         effect: ask
         tools: ["mcp.*"]
 
+      # Calcoli locali: nessun accesso a filesystem o rete.
+      - capabilities: [COMPUTE]
+        effect: allow
+        tools: ["calculator.*", "statistics.*", "units.*"]
+
+      # Rete: chiedi sempre (feed e future API).
+      - capabilities: [NETWORK]
+        effect: ask
+        tools: ["feed.*"]
+
       # Memoria: lettura libera, scrittura con conferma.
       - capabilities: [MEMORY_READ]
         effect: allow

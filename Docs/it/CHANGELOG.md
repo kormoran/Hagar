@@ -5,6 +5,28 @@ riferimento al commit quando utile.
 
 ---
 
+# Non rilasciato
+
+## Strumenti locali e filesystem v2
+
+- Nuova directory `MCP_tools/` per i provider locali: calcolo, statistica,
+  conversione unità e feed. Non sono server MCP: registrano
+  `ToolDefinition` nel registry.
+- Tool aggiunti: `calculator.evaluate`, `statistics.compute`,
+  `units.convert`, `feed.read`.
+- Filesystem: `list_dir`, `read_chunk`, `rename`, `copy_file`, `search`.
+- Nuove capability `COMPUTE` (calcoli locali, sempre nel tetto) e
+  `NETWORK` (abilitata da `permissions.network: true`); `feed.read`
+  richiede `NETWORK`.
+- `permissions.network` in configurazione; policy: `COMPUTE` allow per
+  calculator/statistics/units, `NETWORK` ask per feed.
+- `feedparser` tra le dipendenze; il feed viene scaricato con
+  `requests`, timeout e limite di 5 MB, e solo da URL http/https.
+- Ripristinato il permesso `rename` della sandbox, perso durante
+  l'estensione; `filesystem.rename` richiede `rename` sulla sorgente e
+  `create` sulla destinazione.
+- 586 test superati, 1 skip.
+
 # 0.2.0 — 2026-11-04
 
 Prima release con memoria revisionabile, calling nativo, MCP auth/OAuth,
@@ -210,9 +232,10 @@ Nuova classe MCP_tools/statistics.py.
 
 Nuovo tool MCP:
 
-`Stats_calc`
+`statistics.compute`
 
-Operazioni supportate:
+La classe è `Stats_calc`; il tool esposto al modello è
+`statistics.compute`. Operazioni supportate:
 
 - mean
 - median

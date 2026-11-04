@@ -29,12 +29,21 @@ EXPECTED_TOOLS = {
     "filesystem.create_file",
     "filesystem.mkdir",
     "filesystem.chdir",
+    "filesystem.list_dir",
+    "filesystem.read_chunk",
+    "filesystem.rename",
+    "filesystem.copy_file",
     "filesystem.delete_file",
+    "filesystem.search",
     "filesystem.free_space",
     "filesystem.stat",
     "memory.create_skill",
     "memory.list_skills",
     "memory.get_context",
+    "calculator.evaluate",
+    "statistics.compute",
+    "units.convert",
+    "feed.read",
 }
 
 DEFAULT_POLICY = {
@@ -52,6 +61,8 @@ DEFAULT_POLICY = {
                         "MEMORY_READ",
                         "MEMORY_WRITE",
                         "MCP_CALL",
+                        "COMPUTE",
+                        "NETWORK",
                     ],
                     "effect": "allow",
                 }
@@ -575,6 +586,44 @@ def test_mcp_oauth_provider_is_passed(
     assert provider.resource_url == (
         "https://mcp.example.com/mcp"
     )
+
+
+def test_local_tools_execute_end_to_end(tmp_path):
+    path, _ = write_config(tmp_path)
+
+    harness = hagar.build_harness(
+        ConfigLoader.load(path)
+    )
+
+    calculator = json.loads(
+        harness.registry.execute(
+            "calculator.evaluate",
+            expression="2 + 3",
+        )
+    )
+
+    assert calculator["result"] == 5
+
+    units = json.loads(
+        harness.registry.execute(
+            "units.convert",
+            value=1,
+            from_unit="km",
+            to_unit="m",
+        )
+    )
+
+    assert units["result"] == 1000
+
+    stats = json.loads(
+        harness.registry.execute(
+            "statistics.compute",
+            operation="mean",
+            values=[2, 4],
+        )
+    )
+
+    assert stats["result"] == 3
 
 
 def test_resolve_config_defaults_to_cwd(tmp_path, monkeypatch):

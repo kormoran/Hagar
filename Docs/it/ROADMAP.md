@@ -342,3 +342,22 @@ Restano:
    retention, base URL, legacy).
 4. Calling nativo: v1 fatta; resta la misura col benchmark.
 5. Release 0.2.0: dichiarata con la memoria v2.
+
+---
+
+# 9. Tool locali
+
+Stato al 2026-11-04:
+
+- filesystem v2: `list_dir`, `read_chunk`, `rename`, `copy_file`,
+  `search`, oltre ai tool esistenti;
+- `MCP_tools/`: `calculator.evaluate`, `statistics.compute`,
+  `units.convert`, `feed.read` (provider locali, non server MCP);
+- capability `COMPUTE` sempre nel tetto, `NETWORK` controllata da
+  `permissions.network` e dalla policy (feed in `ask`).
+
+Punti aperti:
+
+- `feed.read` non blocca IP privati/localhost: serve una policy SSRF;
+- il calcolatore è volutamente limitato (niente algebra simbolica);
+- valutare un limite di dimensione anche per gli altri output dei tool.

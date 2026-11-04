@@ -6,6 +6,12 @@ import math
 
 class Calculator:
 
+    MAX_NODES = 200
+
+    MAX_POWER = 1000
+
+    MAX_EXPRESSION_CHARS = 1000
+
     _FUNCTIONS = {
         "abs": abs,
         "sqrt": math.sqrt,
@@ -50,10 +56,24 @@ class Calculator:
 
         try:
 
+            if not isinstance(expression, str) or not expression.strip():
+
+                raise ValueError(
+                    "expression must be a non-empty string"
+                )
+
+            if len(expression) > self.MAX_EXPRESSION_CHARS:
+
+                raise ValueError(
+                    "expression is too long"
+                )
+
             tree = ast.parse(
                 expression,
                 mode="eval",
             )
+
+            self._nodes = 0
 
             result = self._evaluate_node(
                 tree.body
@@ -76,6 +96,14 @@ class Calculator:
         node,
     ):
 
+        self._nodes += 1
+
+        if self._nodes > self.MAX_NODES:
+
+            raise ValueError(
+                "expression is too complex"
+            )
+
         #
         # Numeri
         #
@@ -84,24 +112,12 @@ class Calculator:
             ast.Constant,
         ):
 
-            if not isinstance(
-                node.value,
-                (int, float),
-            ):
+            if type(node.value) not in (int, float):
                 raise ValueError(
                     "Invalid constant."
                 )
 
             return node.value
-
-        #
-        # Compatibilità Python < 3.8
-        #
-        if isinstance(
-            node,
-            ast.Num,
-        ):
-            return node.n
 
         #
         # Costanti matematiche
@@ -150,7 +166,15 @@ class Calculator:
                 node.right
             )
 
-            return (
+            if isinstance(node.op, ast.Pow):
+
+                if abs(right) > self.MAX_POWER:
+
+                    raise ValueError(
+                        "exponent is too large"
+                    )
+
+            result = (
                 self._BINARY_OPERATORS[
                     operator_type
                 ](
@@ -158,6 +182,20 @@ class Calculator:
                     right,
                 )
             )
+
+            if type(result) not in (int, float):
+
+                raise ValueError(
+                    "result is not a real number"
+                )
+
+            if isinstance(result, float) and not math.isfinite(result):
+
+                raise ValueError(
+                    "result is not finite"
+                )
+
+            return result
 
         #
         # Operatori unari
@@ -210,6 +248,12 @@ class Calculator:
                     "Invalid function call."
                 )
 
+            if node.keywords:
+
+                raise ValueError(
+                    "Keyword arguments are not allowed."
+                )
+
             function_name = (
                 node.func.id
             )
@@ -231,9 +275,23 @@ class Calculator:
                 for arg in node.args
             ]
 
-            return function(
+            result = function(
                 *arguments
             )
+
+            if type(result) not in (int, float):
+
+                raise ValueError(
+                    "result is not a real number"
+                )
+
+            if isinstance(result, float) and not math.isfinite(result):
+
+                raise ValueError(
+                    "result is not finite"
+                )
+
+            return result
 
         raise ValueError(
             f"Unsupported expression: "

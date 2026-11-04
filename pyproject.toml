@@ -10,6 +10,7 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
+    "feedparser>=6",
     "pyyaml>=6",
     "requests>=2.31",
 ]
@@ -22,7 +23,7 @@ hagar = "hagar:main"
 
 [tool.setuptools]
 py-modules = ["hagar"]
-packages = ["core", "llm", "memory"]
+packages = ["core", "llm", "memory", "MCP_tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

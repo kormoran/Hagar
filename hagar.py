@@ -43,7 +43,7 @@ from memory.vault import Vault
 from MCP_tools.calculator import Calculator
 from MCP_tools.feeder import Feeder
 from MCP_tools.statistics import Stats_calc
-from MCP_tools.unit_converter import UnitConverterToolProvider
+from MCP_tools.unit_converter import UnitConverter
 from MCP_tools.math_tools import MathToolsProvider
 from MCP_tools.unit_converter_tool import UnitConverterToolProvider
 from MCP_tools.feeder_tool import FeederToolProvider
@@ -238,6 +238,7 @@ def build_harness(
             read=config.permissions.read,
             write=config.permissions.write,
             shell=config.permissions.shell,
+            network=config.permissions.network,
         )
     )
 
@@ -303,6 +304,7 @@ def build_harness(
         read=config.permissions.read,
         write=config.permissions.write,
         create=config.permissions.write,
+        rename=config.permissions.write,
         delete=config.permissions.write,
     )
 
@@ -359,21 +361,22 @@ def build_harness(
     # ==========================================
 
     unit_conversions = UnitConverterToolProvider(
-        unit_converter
+        UnitConverter()
     )
-    
+
     unit_conversions.register_tools(registry)
-    
-    math_unit = MathToolsProvider(
-        Calculator, Stats_calc
+
+    math_tools = MathToolsProvider(
+        Calculator(),
+        Stats_calc(),
     )
-    
-    math_unit.register_tools(registry)
-    
+
+    math_tools.register_tools(registry)
+
     feed_reader = FeederToolProvider(
-        Feeder
+        Feeder()
     )
-    
+
     feed_reader.register_tools(registry)
 
     # ==========================================
@@ -514,6 +517,7 @@ def build_harness(
             "read": config.permissions.read,
             "write": config.permissions.write,
             "shell": config.permissions.shell,
+            "network": config.permissions.network,
         },
         tools=registry.tool_names(),
         mcp_servers=mcp_status,

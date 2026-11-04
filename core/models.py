@@ -37,6 +37,7 @@ class PermissionConfig:
     read: bool
     write: bool
     shell: bool
+    network: bool = False
 
 
 @dataclass(slots=True)

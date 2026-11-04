@@ -122,7 +122,7 @@ Sezioni:
 | `model` | sì | provider, nome, host, max_tokens, api_key_env, native_tools |
 | `vault` | sì | percorso del vault Obsidian |
 | `filesystem` | sì | radici della sandbox (`allowed`) |
-| `permissions` | no | read, write, shell (default `true/false/false`) |
+| `permissions` | no | read, write, shell, network (default `true/false/false/false`) |
 | `rag` | no | `top_k` (default 8) |
 | `mcp_servers` | no | endpoint, namespace, auth (bearer/header/oauth) |
 | `audit` | no | enabled, path, max_field_chars, max_bytes, max_files, include_outputs |
@@ -249,9 +249,19 @@ filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
 filesystem.chdir
+filesystem.list_dir
+filesystem.read_chunk
+filesystem.rename
+filesystem.copy_file
+filesystem.search
 filesystem.free_space
 filesystem.stat
 ```
+
+`list_dir` restituisce metadati `FileInfo`; `read_chunk` legge per byte
+con `has_more`; `search` usa un glob ricorsivo con limite di risultati;
+`copy_file` richiede `create`; `rename` richiede `rename` sulla sorgente
+e `create` sulla destinazione.
 
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
@@ -375,8 +385,8 @@ Il modello è una matrice soggetto × oggetto:
 - **Capability** (`IntFlag`): cosa un'operazione può fare
   (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`, `FILESYSTEM_CREATE`,
   `FILESYSTEM_DELETE`, `FILESYSTEM_EXEC`, `MEMORY_READ`,
-  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`). Si combinano con `|`; la
-  verifica è sempre di sottoinsieme.
+  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`). Si combinano con `|`;
+  la verifica è sempre di sottoinsieme.
 - **Effect** (`IntEnum`): `ALLOW`, `ASK`, `DENY`. In caso di conflitto
   vince il valore più alto (`DENY > ASK > ALLOW`).
 - **Rule**: capability + effetto + filtri opzionali `tools` (glob),
@@ -415,6 +425,12 @@ subjects:
       - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
         effect: ask
         paths: ["note"]
+      - capabilities: [COMPUTE]
+        effect: allow
+        tools: ["calculator.*", "statistics.*", "units.*"]
+      - capabilities: [NETWORK]
+        effect: ask
+        tools: ["feed.*"]
 ```
 
 `policy.yaml` viene letto **prima** di costruire il LLM. Se non è
@@ -525,6 +541,27 @@ I test live sono esclusi dalla suite normale e si abilitano con
 `--live`: verificano Ollama e i provider remoti (questi ultimi solo se
 la chiave API è presente).
 
+## 3.13 Tool locali (`MCP_tools/`)
+
+Non sono server MCP: sono provider locali che registrano `ToolDefinition`
+nel registry e vivono fuori dal core, in un package separato.
+
+| modulo | tool | capability |
+|---|---|---|
+| `calculator` | `calculator.evaluate` | `COMPUTE` |
+| `statistics` | `statistics.compute` | `COMPUTE` |
+| `unit_converter` | `units.convert` | `COMPUTE` |
+| `feeder` | `feed.read` | `NETWORK` |
+
+- Il calcolatore usa una whitelist AST, non `eval()`, con limiti su
+  espressione, numero di nodi ed esponente.
+- `feed.read` scarica con `requests` (timeout 15 s, massimo 5 MB), accetta
+  solo URL http/https e usa `feedparser`; la policy `NETWORK` è `ask`.
+- `permissions.network: true` è necessario perché il tetto di sistema
+  conceda `NETWORK`; `COMPUTE` è sempre nel tetto ma la policy può negarlo.
+- `MCP_tools` è dichiarato in `pyproject.toml` e installato con il
+  progetto.
+
 ---
 
 # 4. Modello di sicurezza
@@ -543,7 +580,7 @@ la chiave API è presente).
 
 # 5. Sviluppo
 
-- Suite: `.\tools\run_tests.ps1` — 552 test superati, 1 skip (symlink
+- Suite: `.\tools\run_tests.ps1` — 586 test superati, 1 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `.\tools\run_tests.ps1 --live` — 9 test in più (Ollama;
@@ -575,6 +612,10 @@ la chiave API è presente).
   delle sessioni né un ancoraggio esterno della catena.
 - `chdir` espone il percorso assoluto della sandbox; da valutare
   percorsi virtuali (vedi AIsh in ROADMAP).
+- `feed.read` può raggiungere URL arbitrari (SSRF): la policy `NETWORK`
+  è `ask`, ma non c'è ancora un blocco per IP privati o localhost.
+- Il calcolatore non è un CAS: gestisce solo espressioni numeriche
+  limitate, non simboliche.
 
 ---
 
