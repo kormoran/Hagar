@@ -129,6 +129,9 @@ riferimento al commit quando utile.
 - Versione `0.3.0` in `pyproject.toml` e `hagar.py`.
 - CI GitHub Actions su Linux, macOS e Windows con Python 3.11, 3.12 e
   3.13; build del pacchetto, `twine check` e smoke test del wheel.
+- Action aggiornate a `checkout@v7`, `setup-python@v7` e
+  `upload-artifact@v7`, tutte su Node 24; rimosso il warning di
+  deprecazione di Node 20.
 - Workflow di release su tag `v*`: build sdist/wheel, verifica che il tag
   corrisponda alla versione e creazione della release GitHub.
 - `hagar.example.yaml` portabile; `hagar.yaml` locale e `testvault/` sono
