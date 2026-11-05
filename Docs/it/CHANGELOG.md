@@ -117,7 +117,11 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 683 test superati, 2 skip su Windows; 685 superati, 0 skip su Debian
+- Fix multipiattaforma dalla CI: `vault_subdir` rifiuta anche i path con
+  drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
+  inghiottito da `except OSError`, quindi il percorso non viene risolto
+  fuori dalla sandbox.
+- 684 test superati, 2 skip su Windows; 686 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

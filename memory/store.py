@@ -8,7 +8,7 @@ import unicodedata
 
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import yaml
@@ -325,8 +325,14 @@ class MemoryStore:
             )
 
         path = Path(subdir)
+        windows_path = PureWindowsPath(subdir)
 
-        if path.is_absolute() or ".." in path.parts:
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or windows_path.drive
+            or windows_path.root
+        ):
 
             raise MemoryError(
                 "vault_subdir must stay inside the vault"

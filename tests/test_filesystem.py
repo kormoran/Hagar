@@ -478,6 +478,31 @@ def test_symlink_is_hidden(tmp_path):
         sandbox.read_file("link.txt")
 
 
+def test_symlink_component_is_rejected_before_resolution(
+    tmp_path,
+    monkeypatch,
+):
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / "link.txt").write_text("x", encoding="utf-8")
+
+    link = root / "link.txt"
+    original = Path.is_symlink
+
+    def fake_is_symlink(self):
+        return self == link or original(self)
+
+    monkeypatch.setattr(Path, "is_symlink", fake_is_symlink)
+
+    sandbox = make_sandbox(
+        root,
+        read=True,
+    )
+
+    with pytest.raises(FileNotFoundError):
+        sandbox.read_file("link.txt")
+
+
 # =====================================================
 # Disk info
 # =====================================================

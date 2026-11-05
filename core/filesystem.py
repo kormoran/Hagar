@@ -204,13 +204,15 @@ class FileSystemSandbox:
                 current = current / part
 
                 try:
-                    if current.is_symlink():
-                        raise FileNotFoundError(
-                            "Path not found"
-                        )
+                    is_link = current.is_symlink()
 
                 except OSError:
-                    pass
+                    continue
+
+                if is_link:
+                    raise FileNotFoundError(
+                        "Path not found"
+                    )
 
             return
 

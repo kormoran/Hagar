@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import re
@@ -654,8 +654,14 @@ class ConfigLoader:
             )
 
         subdir_path = Path(memory_subdir)
+        windows_path = PureWindowsPath(memory_subdir)
 
-        if subdir_path.is_absolute() or ".." in subdir_path.parts:
+        if (
+            subdir_path.is_absolute()
+            or ".." in subdir_path.parts
+            or windows_path.drive
+            or windows_path.root
+        ):
 
             raise ConfigError(
                 "memory.vault_subdir must stay inside the vault"
