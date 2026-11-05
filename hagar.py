@@ -53,6 +53,10 @@ from local_tools.feeder import Feeder
 from local_tools.statistics import Stats_calc
 from local_tools.think import Think
 from local_tools.think_tool import ThinkToolProvider
+from local_tools.text_diff import TextDiff
+from local_tools.text_diff_tool import TextDiffToolProvider
+from local_tools.url_parse import UrlParser
+from local_tools.url_parse_tool import UrlParseToolProvider
 from local_tools.unit_converter import UnitConverter
 from local_tools.math_tools import MathToolsProvider
 from local_tools.unit_converter_tool import UnitConverterToolProvider
@@ -462,6 +466,14 @@ def build_harness(
 
     ThinkToolProvider(
         Think()
+    ).register_tools(registry)
+
+    TextDiffToolProvider(
+        TextDiff()
+    ).register_tools(registry)
+
+    UrlParseToolProvider(
+        UrlParser()
     ).register_tools(registry)
 
     math_tools = MathToolsProvider(

@@ -51,7 +51,7 @@ riferimento al commit quando utile.
   `ToolDefinition` nel registry.
 - Tool aggiunti: `calculator.evaluate`, `statistics.compute`,
   `units.convert`, `clock.now`, `calendar.date`, `think.echo`,
-  `feed.read`.
+  `text.diff`, `url.parse`, `feed.read`.
 - Filesystem: `list_dir`, `read_chunk`, `rename`, `copy_file`, `search`.
 - Nuove capability `COMPUTE` (calcoli locali, sempre nel tetto) e
   `NETWORK` (abilitata da `permissions.network: true`); `feed.read`
@@ -117,7 +117,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 677 test superati, 2 skip.
+- 683 test superati, 2 skip.
 
 ## Rilascio e multipiattaforma
 

@@ -50,6 +50,8 @@ EXPECTED_TOOLS = {
     "clock.now",
     "calendar.date",
     "think.echo",
+    "text.diff",
+    "url.parse",
     "feed.read",
 }
 

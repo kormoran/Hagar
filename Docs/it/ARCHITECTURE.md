@@ -527,6 +527,8 @@ subjects:
           - "clock.*"
           - "calendar.*"
           - "think.*"
+          - "text.*"
+          - "url.*"
       - capabilities: [NETWORK]
         effect: ask
         tools: ["feed.*"]
@@ -734,6 +736,8 @@ nel registry e vivono fuori dal core, in un package separato.
 | `clock` | `clock.now` | `COMPUTE` |
 | `calendar` | `calendar.date` | `COMPUTE` |
 | `think` | `think.echo` | `COMPUTE` |
+| `text` | `text.diff` | `COMPUTE` |
+| `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
 
 - `clock.now` restituisce ora locale, data, fuso, offset UTC ed epoch.
@@ -743,8 +747,14 @@ nel registry e vivono fuori dal core, in un package separato.
   un giorno da quelli basati sull'osservazione o su Umm al-Qura.
 - `think.echo` restituisce esattamente la stringa ricevuta; serve a
   esternalizzare un passaggio intermedio nelle catene di ragionamento.
-- `clock`, `calendar` e `think` non accedono a filesystem o rete, e
-  ricadono nella regola `COMPUTE` allow.
+- `text.diff` restituisce un diff unificato tra due testi, con input
+  massimo 20000 caratteri, output massimo 20000 e `context` 0..10. Non
+  applica il diff.
+- `url.parse` scompone scheme, host, porta, path, query e fragment senza
+  DNS o rete; limita l'URL a 4096 caratteri e i parametri a 100. Se
+  l'URL contiene credenziali, le redige nell'output.
+- `clock`, `calendar`, `think`, `text` e `url` non accedono a filesystem
+  o rete, e ricadono nella regola `COMPUTE` allow.
 - Il calcolatore usa una whitelist AST, non `eval()`, con limiti su
   espressione, numero di nodi ed esponente.
 - `feed.read` scarica con `requests` (timeout 15 s, massimo 5 MB), accetta
@@ -778,7 +788,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 677 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 683 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
