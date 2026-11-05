@@ -49,7 +49,7 @@ system security boundary.
 
 ## Local model servers
 
-Ollama and LM Studio are local services. Bind them to loopback unless
+Ollama and (forthcoming) LM Studio are local services. Bind them to loopback unless
 you intentionally want LAN access, and do not expose them to the
 internet. Hagar does not add authentication to those servers.
 
