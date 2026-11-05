@@ -32,6 +32,8 @@ policy:
 vault:
   # Memory is stored in ordinary Markdown files. Create this directory
   # before starting Hagar; if it is missing, memory is disabled.
+  # Security warning: do NOT put this directory in the filesystem section!
+  # Vault path MUST NOT be readable/writable from LLM
   path: ./vault
 
 memory:
@@ -48,7 +50,7 @@ memory:
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.
   # Permissions: R = read/list/search/stat, W = write/create/rename/
-  # copy/delete, X = chdir.
+  # copy/delete, X = chdir/execute (when exec() function will exist).
   sandbox:
     - alias: workspace
       path: .
