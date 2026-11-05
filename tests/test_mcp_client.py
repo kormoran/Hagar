@@ -138,13 +138,21 @@ def test_initialize(client, monkeypatch):
 
     assert result["protocolVersion"] == "2025-03-26"
     assert client._initialized is True
+    assert client._protocol_version == "2025-03-26"
 
     payload = http.calls[0]["payload"]
 
     assert payload["method"] == "initialize"
     assert payload["jsonrpc"] == "2.0"
     assert payload["id"] == 1
-    assert payload["params"]["protocolVersion"] == "2025-03-26"
+    assert (
+        payload["params"]["protocolVersion"]
+        == MCPClient.PROTOCOL_VERSION
+    )
+    assert (
+        http.calls[0]["headers"]["MCP-Protocol-Version"]
+        == MCPClient.PROTOCOL_VERSION
+    )
 
 
 def test_initialize_sends_initialized_notification(
@@ -421,15 +429,48 @@ def test_result_must_be_object(client, monkeypatch):
 
 
 def test_http_error_is_raised(client, monkeypatch):
-    http_error = FakeResponse({}, status_code=500)
+    http_error = FakeResponse(
+        {},
+        status_code=500,
+        text='{"error":"boom"}',
+    )
 
     def fake_post(url, json=None, headers=None, timeout=None):
         return http_error
 
     monkeypatch.setattr(requests, "post", fake_post)
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(RuntimeError, match="MCP HTTP 500"):
         client.initialize()
+
+
+def test_session_id_is_reused(client, monkeypatch):
+    session = FakeResponse(
+        {"result": {"protocolVersion": "2025-06-18"}},
+        headers={
+            "Content-Type": "application/json",
+            "Mcp-Session-Id": "session-123",
+        },
+    )
+    http = install(
+        monkeypatch,
+        session,
+        {},
+        {"result": {"tools": []}},
+    )
+
+    client.initialize()
+    client.list_tools()
+
+    assert http.calls[1]["headers"][
+        "Mcp-Session-Id"
+    ] == "session-123"
+    assert http.calls[2]["headers"][
+        "Mcp-Session-Id"
+    ] == "session-123"
+    assert http.calls[2]["headers"][
+        "MCP-Protocol-Version"
+    ] == "2025-06-18"
 
 
 def test_headers_and_timeout(client, monkeypatch):

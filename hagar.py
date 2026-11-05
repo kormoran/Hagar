@@ -45,8 +45,14 @@ from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
 from local_tools.calculator import Calculator
+from local_tools.clock import Clock
+from local_tools.clock_tool import ClockToolProvider
+from local_tools.calendar import Calendar
+from local_tools.calendar_tool import CalendarToolProvider
 from local_tools.feeder import Feeder
 from local_tools.statistics import Stats_calc
+from local_tools.think import Think
+from local_tools.think_tool import ThinkToolProvider
 from local_tools.unit_converter import UnitConverter
 from local_tools.math_tools import MathToolsProvider
 from local_tools.unit_converter_tool import UnitConverterToolProvider
@@ -446,6 +452,18 @@ def build_harness(
 
     unit_conversions.register_tools(registry)
 
+    ClockToolProvider(
+        Clock()
+    ).register_tools(registry)
+
+    CalendarToolProvider(
+        Calendar()
+    ).register_tools(registry)
+
+    ThinkToolProvider(
+        Think()
+    ).register_tools(registry)
+
     math_tools = MathToolsProvider(
         Calculator(),
         Stats_calc(),
@@ -661,7 +679,7 @@ def build_harness(
     )
 
 
-def main(
+def _main(
     argv: list[str] | None = None,
 ) -> None:
 
@@ -967,6 +985,25 @@ def _interactive_loop(
         print()
         print(answer)
         print()
+
+
+def main(
+    argv: list[str] | None = None,
+) -> None:
+    """Entry point con uscita pulita su Ctrl-C."""
+
+    try:
+
+        _main(argv)
+
+    except KeyboardInterrupt:
+
+        print(
+            "\nOperazione interrotta.",
+            file=sys.stderr,
+        )
+
+        raise SystemExit(130) from None
 
 
 if __name__ == "__main__":

@@ -363,10 +363,13 @@ conversione automatica dei tool in `ToolDefinition` e registrazione con
 namespace `mcp.<namespace>`.
 
 Supporta anche risposte `text/event-stream` (streamable HTTP) e invia
-la notifica `notifications/initialized` dopo l'handshake. I risultati
-dei tool vengono normalizzati a testo: blocchi `text`, altrimenti
-`structuredContent` o JSON; un risultato con `isError` diventa un
-errore del tool.
+la notifica `notifications/initialized` dopo l'handshake. Usa
+`MCP-Protocol-Version` (default `2025-06-18`, con fallback) e riusa
+`Mcp-Session-Id` quando il server lo restituisce. Gli errori HTTP
+includono il corpo della risposta per rendere diagnosticabili i 400.
+I risultati dei tool vengono normalizzati a testo: blocchi `text`,
+altrimenti `structuredContent` o JSON; un risultato con `isError`
+diventa un errore del tool.
 
 Autenticazione per server:
 
@@ -394,17 +397,23 @@ auth:
     # client_id: ...          # senza, dynamic registration
     # client_secret_env: MCP_CLIENT_SECRET
     scopes: [mcp.read]
+    audience: api.atlassian.com  # opzionale, per provider 3LO
     redirect_port: 8765       # 0 = porta casuale
     token_cache: ~/.hagar/oauth/example.json
     timeout: 300
 ```
 
-Flusso authorization code + PKCE, con callback su `127.0.0.1` e apertura
-del browser. I metadata vengono scoperti da `.well-known` (RFC 9728 per la
-risorsa, RFC 8414 per l'authorization server); se `client_id` manca si usa
-la registrazione dinamica. I token sono in un file locale con permessi
-ristretti (`0600` dove il sistema li supporta), con refresh automatico e
-retry una volta su `401`.
+Flusso authorization code + PKCE, con callback su
+`http://localhost:<port>/oauth/callback` e apertura del browser. Se lo
+scope contiene `offline_access`, viene aggiunto `prompt=consent`.
+I metadata vengono scoperti da `.well-known` (RFC 9728 per la
+risorsa, RFC 8414 per l'authorization server); se `client_id` manca si
+usa la registrazione dinamica. I token sono in un file locale con
+permessi ristretti (`0600` dove il sistema li supporta), con refresh
+automatico e retry una volta su `401`.
+
+Ctrl-C durante l'attesa del callback chiude il server locale ed esce
+con codice 130, senza traceback.
 
 Limiti: niente device flow, DPoP, mTLS o client assertion; il browser deve
 poter raggiungere il callback locale. Se il callback non arriva, il
@@ -511,7 +520,13 @@ subjects:
         paths: ["note"]
       - capabilities: [COMPUTE]
         effect: allow
-        tools: ["calculator.*", "statistics.*", "units.*"]
+        tools:
+          - "calculator.*"
+          - "statistics.*"
+          - "units.*"
+          - "clock.*"
+          - "calendar.*"
+          - "think.*"
       - capabilities: [NETWORK]
         effect: ask
         tools: ["feed.*"]
@@ -716,8 +731,20 @@ nel registry e vivono fuori dal core, in un package separato.
 | `calculator` | `calculator.evaluate` | `COMPUTE` |
 | `statistics` | `statistics.compute` | `COMPUTE` |
 | `unit_converter` | `units.convert` | `COMPUTE` |
+| `clock` | `clock.now` | `COMPUTE` |
+| `calendar` | `calendar.date` | `COMPUTE` |
+| `think` | `think.echo` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
 
+- `clock.now` restituisce ora locale, data, fuso, offset UTC ed epoch.
+- `calendar.date` converte la data locale, o una data ISO opzionale, nel
+  calendario giuliano prolepticico o in quello islamico tabellare
+  (Kuwaiti algorithm). Il calendario islamico tabellare può differire di
+  un giorno da quelli basati sull'osservazione o su Umm al-Qura.
+- `think.echo` restituisce esattamente la stringa ricevuta; serve a
+  esternalizzare un passaggio intermedio nelle catene di ragionamento.
+- `clock`, `calendar` e `think` non accedono a filesystem o rete, e
+  ricadono nella regola `COMPUTE` allow.
 - Il calcolatore usa una whitelist AST, non `eval()`, con limiti su
   espressione, numero di nodi ed esponente.
 - `feed.read` scarica con `requests` (timeout 15 s, massimo 5 MB), accetta
@@ -751,7 +778,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows) — 668 test superati, 2 skip (symlink
+  `.\tools\run_tests.ps1` (Windows) — 677 test superati, 2 skip (symlink
   non disponibili senza Developer Mode). Dettagli e motivazione dello
   shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure

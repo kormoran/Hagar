@@ -77,6 +77,14 @@ class MCPClient:
         tools/call
     """
 
+    PROTOCOL_VERSION = "2025-06-18"
+
+    PROTOCOL_FALLBACKS = (
+        "2025-06-18",
+        "2025-11-25",
+        "2025-03-26",
+    )
+
     def __init__(
         self,
         endpoint: str,
@@ -114,6 +122,26 @@ class MCPClient:
         self._request_id = 0
 
         self._initialized = False
+
+        self._session_id: str | None = None
+
+        self._protocol_version = self.PROTOCOL_VERSION
+
+    @staticmethod
+    def _http_error(
+        response,
+        method: str,
+    ) -> RuntimeError:
+
+        body = (response.text or "").strip()
+
+        if len(body) > 1000:
+            body = body[:1000] + "…"
+
+        return RuntimeError(
+            f"MCP HTTP {response.status_code} "
+            f"during {method}: {body}"
+        )
 
     # ==================================================
     # JSON-RPC
@@ -163,7 +191,16 @@ class MCPClient:
                 timeout=self.timeout,
             )
 
-        response.raise_for_status()
+        if response.status_code >= 400:
+
+            raise self._http_error(response, method)
+
+        session_id = response.headers.get(
+            "Mcp-Session-Id"
+        )
+
+        if session_id:
+            self._session_id = session_id
 
         body = self._decode(
             response,
@@ -208,6 +245,16 @@ class MCPClient:
     def _headers(self) -> dict[str, str]:
 
         headers = dict(self.headers)
+
+        headers["MCP-Protocol-Version"] = (
+            self._protocol_version
+        )
+
+        if self._session_id:
+
+            headers["Mcp-Session-Id"] = (
+                self._session_id
+            )
 
         if self.token_provider is not None:
 
@@ -311,7 +358,16 @@ class MCPClient:
                 timeout=self.timeout,
             )
 
-        response.raise_for_status()
+        if response.status_code >= 400:
+
+            raise self._http_error(response, method)
+
+        session_id = response.headers.get(
+            "Mcp-Session-Id"
+        )
+
+        if session_id:
+            self._session_id = session_id
 
     # ==================================================
     # MCP lifecycle
@@ -321,30 +377,68 @@ class MCPClient:
         self,
     ) -> dict[str, Any]:
 
-        result = self._request(
-            "initialize",
-            {
-                "protocolVersion":
-                    "2025-03-26",
-                "capabilities": {},
-                "clientInfo": {
-                    "name":
-                        "local-harness",
-                    "version":
-                        "0.1.0",
-                },
-            },
+        last_error: RuntimeError | None = None
+
+        versions = [
+            version
+            for version in self.PROTOCOL_FALLBACKS
+            if version
+        ]
+
+        for version in versions:
+
+            self._protocol_version = version
+
+            try:
+
+                result = self._request(
+                    "initialize",
+                    {
+                        "protocolVersion":
+                            version,
+                        "capabilities": {},
+                        "clientInfo": {
+                            "name":
+                                "local-harness",
+                            "version":
+                                "0.1.0",
+                        },
+                    },
+                )
+
+            except RuntimeError as exc:
+
+                last_error = exc
+
+                if "HTTP 400" in str(exc):
+                    continue
+
+                raise
+
+            negotiated = result.get(
+                "protocolVersion"
+            )
+
+            if isinstance(negotiated, str) and negotiated:
+                self._protocol_version = negotiated
+
+            #
+            # Notifica richiesta dal protocollo prima di
+            # usare i tool.
+            #
+
+            self._notify("notifications/initialized")
+
+            self._initialized = True
+
+            return result
+
+        if last_error is not None:
+            raise last_error
+
+        raise RuntimeError(
+            "MCP: nessuna versione di protocollo disponibile"
         )
-
-        #
-        # Notifica richiesta dal protocollo prima di usare i tool.
-        #
-
-        self._notify("notifications/initialized")
-
-        self._initialized = True
-
-        return result
 
     def ensure_initialized(
         self,

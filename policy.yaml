@@ -39,10 +39,16 @@ subjects:
         effect: ask
         tools: ["mcp.*"]
 
-      # Calcoli locali: nessun accesso a filesystem o rete.
+      # Calcoli e servizi locali senza accesso a filesystem o rete.
       - capabilities: [COMPUTE]
         effect: allow
-        tools: ["calculator.*", "statistics.*", "units.*"]
+        tools:
+          - "calculator.*"
+          - "statistics.*"
+          - "units.*"
+          - "clock.*"
+          - "calendar.*"
+          - "think.*"
 
       # Rete: chiedi sempre (feed e future API).
       - capabilities: [NETWORK]

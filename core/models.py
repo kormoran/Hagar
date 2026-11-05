@@ -142,6 +142,7 @@ class MCPOAuthConfig:
     client_id: str | None = None
     client_secret_env: str | None = None
     scopes: list[str] = field(default_factory=list)
+    audience: str | None = None
     redirect_port: int = 8765
     token_cache: Path | None = None
     timeout: int = 300

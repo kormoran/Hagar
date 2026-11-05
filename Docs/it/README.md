@@ -204,7 +204,7 @@ hagar.py            entry point and harness wiring
 core/               config, agent, audit log, registry, sandbox and tools
 llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), MCP client
 memory/             vault access
-local_tools/        local tools (calculator, statistics, units, feed)
+local_tools/        local tools (calculator, statistics, units, clock, calendar, think, feed)
 tests/              pytest suite
 tools/              development helpers (test runner, sandbox shim, model benchmark)
 ```

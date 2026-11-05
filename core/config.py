@@ -871,6 +871,12 @@ class ConfigLoader:
                             "oauth.client_secret_env",
                         ),
                         scopes=scopes,
+                        audience=_optional_text(
+                            oauth_data,
+                            "audience",
+                            f"mcp_servers[{index}].auth."
+                            "oauth.audience",
+                        ),
                         redirect_port=redirect_port,
                         token_cache=(
                             Path(

@@ -47,6 +47,9 @@ EXPECTED_TOOLS = {
     "calculator.evaluate",
     "statistics.compute",
     "units.convert",
+    "clock.now",
+    "calendar.date",
+    "think.echo",
     "feed.read",
 }
 
@@ -1097,6 +1100,33 @@ def test_main_cli_overrides(tmp_path, monkeypatch):
         "memory": False,
         "native": False,
     }
+
+
+def test_main_keyboard_interrupt_is_clean(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    path, _ = write_config(tmp_path)
+
+    def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        hagar,
+        "build_harness",
+        interrupted,
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        hagar.main(["--config", str(path)])
+
+    assert excinfo.value.code == 130
+
+    captured = capsys.readouterr()
+
+    assert "Operazione interrotta." in captured.err
+    assert "Traceback" not in captured.err
 
 
 def test_main_version(capsys):

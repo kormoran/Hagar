@@ -29,7 +29,7 @@ import requests
 
 from core.models import MCPOAuthConfig
 
-CALLBACK_PATH = "/callback"
+CALLBACK_PATH = "/oauth/callback"
 
 DEFAULT_TIMEOUT = 300
 
@@ -440,7 +440,7 @@ class LoopbackServer:
         self.port = self._httpd.server_address[1]
 
         self.redirect_uri = (
-            f"http://127.0.0.1:{self.port}"
+            f"http://localhost:{self.port}"
             f"{CALLBACK_PATH}"
         )
 
@@ -889,6 +889,9 @@ class OAuthProvider:
                     ],
                     "response_types": ["code"],
                     "token_endpoint_auth_method": "none",
+                    "scope": " ".join(
+                        self.config.scopes
+                    ),
                 },
                 headers={"Accept": "application/json"},
                 timeout=30,
@@ -1013,6 +1016,16 @@ class OAuthProvider:
                     self.config.scopes
                 )
 
+                if "offline_access" in self.config.scopes:
+
+                    params["prompt"] = "consent"
+
+            if self.config.audience:
+
+                params["audience"] = (
+                    self.config.audience
+                )
+
             endpoint = self._metadata[
                 "authorization_endpoint"
             ]
@@ -1132,6 +1145,12 @@ class OAuthProvider:
         payload = dict(data)
 
         payload["client_id"] = self._client.client_id
+
+        if self.config.audience:
+
+            payload["audience"] = (
+                self.config.audience
+            )
 
         secret = self._client_secret()
 

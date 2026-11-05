@@ -34,13 +34,24 @@ riferimento al commit quando utile.
   filtro per progetto e transcript che conserva `project` nel
   frontmatter. L'archivio non viene mai iniettato automaticamente.
 
+## MCP, OAuth e uscita pulita
+
+- Client MCP aggiornato a `MCP-Protocol-Version` `2025-06-18` con
+  fallback, riuso di `Mcp-Session-Id` e corpo HTTP negli errori.
+- OAuth: `audience` opzionale, `prompt=consent` con `offline_access`,
+  callback `http://localhost:<port>/oauth/callback`, scope nella
+  dynamic registration.
+- Ctrl-C durante OAuth o un turno chiude il callback locale ed esce con
+  codice 130, senza traceback.
+
 ## Strumenti locali e filesystem v2
 
 - Nuova directory `local_tools/` per i provider locali: calcolo, statistica,
-  conversione unità e feed. Non sono server MCP: registrano
+  conversione unità, ora/data e feed. Non sono server MCP: registrano
   `ToolDefinition` nel registry.
 - Tool aggiunti: `calculator.evaluate`, `statistics.compute`,
-  `units.convert`, `feed.read`.
+  `units.convert`, `clock.now`, `calendar.date`, `think.echo`,
+  `feed.read`.
 - Filesystem: `list_dir`, `read_chunk`, `rename`, `copy_file`, `search`.
 - Nuove capability `COMPUTE` (calcoli locali, sempre nel tetto) e
   `NETWORK` (abilitata da `permissions.network: true`); `feed.read`
@@ -106,7 +117,7 @@ riferimento al commit quando utile.
   possono contenere spazi; l'alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` e lo shim restano
   specifici della sandbox Windows. Aggiornati i comandi di benchmark.
-- 668 test superati, 2 skip.
+- 677 test superati, 2 skip.
 
 ## Rilascio e multipiattaforma
 

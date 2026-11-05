@@ -158,6 +158,7 @@ def test_interactive_flow_and_cache(
 
     def fake_browser(url):
         query = parse_qs(urlparse(url).query)
+        seen["browser_query"] = query
 
         redirect = query["redirect_uri"][0]
         state = query["state"][0]
@@ -174,6 +175,8 @@ def test_interactive_flow_and_cache(
     config = MCPOAuthConfig(
         authorization_server="https://auth.test",
         client_id="client-1",
+        audience="api.atlassian.com",
+        scopes=["read:me", "offline_access"],
         redirect_port=0,
         token_cache=tmp_path / "tokens.json",
         timeout=5,
@@ -194,6 +197,14 @@ def test_interactive_flow_and_cache(
     )
     assert seen["data"]["code"] == "code-1"
     assert seen["data"]["code_verifier"]
+    assert seen["data"]["audience"] == "api.atlassian.com"
+    assert seen["browser_query"]["audience"] == [
+        "api.atlassian.com"
+    ]
+    assert seen["browser_query"]["prompt"] == ["consent"]
+    assert seen["browser_query"]["scope"] == [
+        "read:me offline_access"
+    ]
 
     cache = json.loads(
         (tmp_path / "tokens.json").read_text(
