@@ -412,6 +412,8 @@ confirmation). See ARCHITECTURE §3.11 for the vault layout.
 
 # 4. Documentation
 
+- [MANUAL.md](MANUAL.md) — manuale utente: comandi, CLI, configurazione,
+  policy, default e comportamento in caso di errore.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — how the harness works today:
   components, security model, known limits.
 - [ROADMAP.md](ROADMAP.md) — planned work, decisions already taken and

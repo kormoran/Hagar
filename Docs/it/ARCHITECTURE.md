@@ -788,9 +788,9 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 684 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 691 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (686 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (693 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
@@ -896,6 +896,7 @@ rilevati né bloccati da questa versione.
 
 # 7. Mappa della documentazione
 
+- `MANUAL.md` — manuale utente: comandi, configurazione, policy, default.
 - `ARCHITECTURE.md` — questo documento: com'è il sistema oggi.
 - `ROADMAP.md` — cosa fare, decisioni prese e punti aperti.
 - `CHANGELOG.md` — storia delle versioni.

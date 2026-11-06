@@ -34,6 +34,20 @@ riferimento al commit quando utile.
   filtro per progetto e transcript che conserva `project` nel
   frontmatter. L'archivio non viene mai iniettato automaticamente.
 
+## Comandi console e manuale
+
+- Nuovi comandi di chat: `/help`, `/tools [categoria]`, `/status`, `/mcp`,
+  `/audit [n]`.
+- `/tools` raggruppa i tool per categoria e mostra le capability.
+- `/status` riporta modello, calling, progetto, memoria, audit e
+  filesystem.
+- `/mcp` elenca server configurati, endpoint e tool importati.
+- `/audit` legge gli ultimi eventi del log corrente, senza esporre i
+  campi non selezionati.
+- I comandi `/` sconosciuti non vengono inviati al modello.
+- Nuovo `Docs/it/MANUAL.md` con comandi, CLI, `hagar.yaml`,
+  `policy.yaml`, default e comportamenti in caso di errore.
+
 ## MCP, OAuth e uscita pulita
 
 - Client MCP aggiornato a `MCP-Protocol-Version` `2025-06-18` con
@@ -121,7 +135,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 684 test superati, 2 skip su Windows; 686 superati, 0 skip su Debian
+- 691 test superati, 2 skip su Windows; 693 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

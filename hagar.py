@@ -12,6 +12,7 @@ from typing import Callable
 from core.agent import Agent
 from core.audit import AuditLog
 from core.config import ConfigError, ConfigLoader
+from core.console_commands import ConsoleCommands
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -934,6 +935,8 @@ def _interactive_loop(
         else None
     )
 
+    console_commands = ConsoleCommands(harness)
+
     while True:
 
         try:
@@ -990,6 +993,11 @@ def _interactive_loop(
                 memory_cli.handle(stripped)
                 print()
 
+            continue
+
+        if console_commands.handle(stripped):
+
+            print()
             continue
 
         answer = harness.agent.ask(question)
