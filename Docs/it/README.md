@@ -133,9 +133,11 @@ Il native tool calling è l'impostazione predefinita per tutti i backend. Se un 
 
 `chatgpt` è un alias di `openai`. L'abbonamento ChatGPT non dà accesso all'API: servono una chiave OpenAI e credito API. LM Studio deve avere il server locale attivo e un modello caricato; l'endpoint predefinito è `http://localhost:1234/v1`. Se il server LM Studio richiede una chiave, si può impostare `LMSTUDIO_API_KEY` o `model.api_key_env`; altrimenti non serve.
 
+Con LM Studio il tool calling nativo dipende dal modello e dal suo template: alcuni modelli accettano la richiesta ma rispondono in testo invece di emettere `tool_calls`. In quel caso usare `model.native_tools: false` (protocollo JSON testuale) o un modello tool-capable.
+
 I nomi dei modelli attualmente supportati per DeepSeek sono `deepseek-flash` (predefinito) e `deepseek-v4-pro`; il vecchio `deepseek-chat` non è più accettato. Il live test usa `deepseek-flash`, a meno che non venga sovrascritto dalla variabile `HAGAR_LIVE_DEEPSEEK_MODEL`. Lo script `tools/diagnose_deepseek.py` consente di verificare il DNS, il formato della chiave e l'endpoint, senza mostrare la chiave stessa.
 
-Le chiavi vengono lette solo da variabili d'ambiente e mai dal file YAML. Se il nome predefinito della variabile non è adatto alle proprie esigenze, si può specificarne un altro con `model.api_key_env`. Il parametro `model.host` indica l'URL di base del provider (con un valore predefinito specifico per ciascuno; ad esempio, Ollama usa `http://localhost:11434` e LM Studio `http://localhost:1234/v1`), mentre `model.max_tokens` si applica solo a Claude (con un valore predefinito di 1024).
+Le chiavi vengono lette solo da variabili d'ambiente e mai dal file YAML. Se il nome predefinito della variabile non è adatto alle proprie esigenze, si può specificarne un altro con `model.api_key_env`. Il parametro `model.host` indica l'URL di base del provider (con un valore predefinito specifico per ciascuno; ad esempio, Ollama usa `http://localhost:11434` e LM Studio `http://localhost:1234/v1`), `model.timeout` è il timeout HTTP in secondi (default 120) e `model.max_tokens` si applica solo a Claude (con un valore predefinito di 1024).
 
 ```yaml
 model:

@@ -121,7 +121,7 @@ Sezioni:
 
 | sezione | obbligatoria | contenuto |
 |---|---|---|
-| `model` | sì | provider, nome, host, max_tokens, api_key_env, native_tools |
+| `model` | sì | provider, nome, host, timeout, max_tokens, api_key_env, native_tools |
 | `vault` | sì | percorso del vault Obsidian |
 | `filesystem` | sì | `sandbox`: lista di `{alias, path, permissions}`; `limits`: budget di scrittura |
 | `permissions` | no | read, write, shell, network (default `true/false/false/false`) |
@@ -173,7 +173,8 @@ Il testo resta il fallback per modelli che non supportano i tool nativi;
 
 La chiave si legge solo dall'ambiente; `model.api_key_env` sovrascrive il
 nome predefinito. `model.host` è la base URL di tutti i provider (con un
-default per provider), `model.max_tokens` è usato solo da Claude.
+default per provider), `model.timeout` è il timeout HTTP (default 120),
+`model.max_tokens` è usato solo da Claude.
 `llm/factory.py` costruisce il client e rifiuta provider sconosciuti o
 chiavi mancanti. LM Studio non richiede chiave salvo configurazione del
 server; OpenAI richiede una chiave API, non un abbonamento ChatGPT.
@@ -794,7 +795,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 703 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 710 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

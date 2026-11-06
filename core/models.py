@@ -18,6 +18,7 @@ class ModelConfig:
     name: str
     host: str | None = None
     max_tokens: int = 1024
+    timeout: int = 120
     api_key_env: str | None = None
     native_tools: bool = True
 

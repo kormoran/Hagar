@@ -193,6 +193,18 @@ def test_factory_can_disable_native_tools():
     assert llm.native_tools is False
 
 
+def test_factory_passes_model_timeout():
+    llm = create_llm(
+        ModelConfig(
+            provider="lmstudio",
+            name="m",
+            timeout=300,
+        )
+    )
+
+    assert llm.timeout == 300
+
+
 def test_provider_is_case_insensitive():
     llm = create_llm(
         ModelConfig(provider="OLLAMA", name="m")

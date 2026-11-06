@@ -288,6 +288,12 @@ class ConfigLoader:
                 "model.max_tokens",
                 1024,
             ),
+            timeout=_positive_int(
+                model_data,
+                "timeout",
+                "model.timeout",
+                120,
+            ),
             api_key_env=_optional_text(
                 model_data,
                 "api_key_env",

@@ -16,6 +16,7 @@ model:
   host: http://localhost:11434
   name: llama3.1:latest
   native_tools: true
+  # timeout: 120
   # max_tokens: 1024
   # api_key_env: DEEPSEEK_API_KEY
 

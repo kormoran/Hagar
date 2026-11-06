@@ -188,6 +188,7 @@ filesystem:
 | `host` | default provider | base URL dell’API |
 | `native_tools` | `true` | se `false`, usa il protocollo JSON testuale |
 | `max_tokens` | `1024` | usato solo da Claude |
+| `timeout` | `120` | timeout HTTP in secondi per ogni chiamata |
 | `api_key_env` | nome standard | variabile d’ambiente della chiave |
 
 Provider e chiavi:
@@ -206,6 +207,11 @@ non viene costruito e l’avvio fallisce con un errore esplicito. LM Studio
 non richiede chiave, salvo che il server locale sia configurato per
 richiederla. `chatgpt` è un alias di `openai`: l’abbonamento ChatGPT non
 dà accesso all’API, servono una chiave OpenAI e credito API.
+
+Con LM Studio il tool calling nativo dipende dal modello e dal suo
+template. Se il modello accetta la richiesta ma risponde in testo invece
+di emettere `tool_calls`, Hagar non può eseguire il tool: usare
+`model.native_tools: false` o un modello tool-capable.
 
 Con il calling nativo attivo, Hagar usa gli strumenti strutturati del
 provider. Se il provider rifiuta lo schema (HTTP 400/404/422), al primo

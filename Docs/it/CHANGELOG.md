@@ -16,6 +16,8 @@ riferimento al commit quando utile.
   Completions, chiave `OPENAI_API_KEY`, base URL configurabile.
 - I due backend condividono il client OpenAI-compatibile, con native
   tool calling e fallback JSON testuale su HTTP 400/404/422.
+- `model.timeout` configurabile (default 120 s) e passato a tutti i
+  backend; utile per modelli locali grandi.
 - `hagar.example.yaml` e la documentazione italiana aggiornati.
 
 # 0.3.0 — 2026-11-05
@@ -148,7 +150,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 703 test superati, 2 skip su Windows; 705 superati, 0 skip su Debian
+- 710 test superati, 2 skip su Windows; 712 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

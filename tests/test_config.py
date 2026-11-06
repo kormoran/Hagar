@@ -793,6 +793,38 @@ def test_model_max_tokens_is_validated(tmp_path, value):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_model_timeout_default(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.model.timeout == 120
+
+
+def test_model_timeout_custom(tmp_path):
+    data = base_config(tmp_path)
+    data["model"]["timeout"] = 300
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.model.timeout == 300
+
+
+@pytest.mark.parametrize(
+    "value",
+    [0, -1, "120", True],
+)
+def test_model_timeout_is_validated(tmp_path, value):
+    data = base_config(tmp_path)
+    data["model"]["timeout"] = value
+
+    with pytest.raises(
+        ConfigError,
+        match="model.timeout",
+    ):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 def test_model_native_tools_defaults_to_true(tmp_path):
     cfg = ConfigLoader.load(
         write_yaml(tmp_path, base_config(tmp_path))

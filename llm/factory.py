@@ -111,6 +111,7 @@ def create_llm(
             OllamaClient(
                 model=config.name,
                 host=config.host,
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
@@ -133,6 +134,7 @@ def create_llm(
                 model=config.name,
                 host=config.host,
                 api_key=api_key,
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
@@ -148,6 +150,7 @@ def create_llm(
                     config.host
                     or OpenAIClient.DEFAULT_BASE_URL
                 ),
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
@@ -163,6 +166,7 @@ def create_llm(
                     config.host
                     or DeepSeekClient.DEFAULT_BASE_URL
                 ),
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
@@ -179,6 +183,7 @@ def create_llm(
                     config.host
                     or ClaudeClient.DEFAULT_BASE_URL
                 ),
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
@@ -194,6 +199,7 @@ def create_llm(
                     config.host
                     or GeminiClient.DEFAULT_BASE_URL
                 ),
+                timeout=config.timeout,
                 audit=audit,
             ),
             config,
