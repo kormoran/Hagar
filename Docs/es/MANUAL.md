@@ -57,33 +57,33 @@ modelo**: Hagar responde `Comando sconosciuto` y sugiere `/help`.
 
 ## 2.1 Comandos globales
 
-| Comando | Comportamiento |
-|---|---|
-| `/help` o `/?` | enumera los comandos disponibles |
-| `/tools [categoría]` | enumera las herramientas y las capability; el filtro es opcional |
-| `/status` | muestra modelo, proyecto, memoria, auditoría y sandbox |
-| `/mcp` | enumera servidores MCP, endpoint y herramientas importadas |
-| `/audit [n]` | muestra los últimos `n` eventos; por defecto 10, máximo 50 |
-| `exit` | sale |
-| `quit` | sale |
-| `Ctrl-D` | sale |
-| `Ctrl-C` | interrumpe; durante OAuth sale con código 130 |
+| Comando 			  | Comportamiento 													|
+|---------------------|-----------------------------------------------------------------|
+| `/help` o `/?` 	  | enumera los comandos disponibles 								|
+| `/tools [categoría]`| enumera las herramientas y las capability; el filtro es opcional|
+| `/status` 		  | muestra modelo, proyecto, memoria, auditoría y sandbox 			|
+| `/mcp` 			  | enumera servidores MCP, endpoint y herramientas importadas 		|
+| `/audit [n]` 		  | muestra los últimos `n` eventos; por defecto 10, máximo 50 		|
+| `exit` 			  | sale 															|
+| `quit` 			  | sale 															|
+| `Ctrl-D` 			  | sale 															|
+| `Ctrl-C` 			  | interrumpe; durante OAuth sale con código 130 					|
 
 `/status` y `/audit` son comandos humanos: no pasan por el modelo y no
 consumen tool call.
 
 ## 2.2 Proyecto
 
-| Comando | Comportamiento |
-|---|---|
-| `/project` o `/project list` o `/project ls` | enumera los proyectos activos |
-| `/project new <nombre>` | crea un proyecto y lo selecciona |
-| `/project select <id>` o `/project use <id>` | selecciona un proyecto activo |
-| `/project free` o `/project none` | pasa a actividad libre |
-| `/project status` o `/project current` | muestra el proyecto actual |
-| `/project archive <id>` | archiva un proyecto |
-| `/project unarchive <id>` | reactiva un proyecto archivado |
-| `/project help` | ayuda |
+| Comando 									   | Comportamiento 				 |
+|----------------------------------------------|---------------------------------|
+| `/project` o `/project list` o `/project ls` | enumera los proyectos activos 	 |
+| `/project new <nombre>` 					   | crea un proyecto y lo selecciona|
+| `/project select <id>` o `/project use <id>` | selecciona un proyecto activo   |
+| `/project free` o `/project none` 		   | pasa a actividad libre 		 |	
+| `/project status` o `/project current` 	   | muestra el proyecto actual 	 |
+| `/project archive <id>` 					   | archiva un proyecto 			 |
+| `/project unarchive <id>` 				   | reactiva un proyecto archivado  |
+| `/project help` 							   | ayuda 							 |
 
 `select` y `archive` usan el **id** del proyecto, no el título.
 
@@ -92,16 +92,16 @@ el resumen y las skill siguen disponibles.
 
 ## 2.3 Memoria
 
-| Comando | Comportamiento |
-|---|---|
-| `/memory` o `/memory help` o `/memory ?` | ayuda |
-| `/memory list [candidate\|confirmed\|archived]` | enumera las skill y los recuentos |
-| `/memory show <slug>` | muestra una skill |
-| `/memory review` | revisión interactiva de las candidatas |
-| `/memory confirm <slug>` | confirma una skill |
-| `/memory archive <slug>` | archiva una skill |
-| `/memory archive search <texto>` | busca en los transcript archivados |
-| `/memory archive read <session> [offset] [limit]` | lee un transcript archivado |
+| Comando 											| Comportamiento 						|
+|---------------------------------------------------|---------------------------------------|
+| `/memory` o `/memory help` o `/memory ?` 			| ayuda 								|
+| `/memory list [candidate\|confirmed\|archived]`   | enumera las skill y los recuentos 	|
+| `/memory show <slug>` 							| muestra una skill 					|
+| `/memory review` 									| revisión interactiva de las candidatas|
+| `/memory confirm <slug>` 							| confirma una skill 					|
+| `/memory archive <slug>` 							| archiva una skill 					|
+| `/memory archive search <texto>` 					| busca en los transcript archivados 	|
+| `/memory archive read <session> [offset] [limit]` | lee un transcript archivado 			|
 
 Las palabras `search` y `read` están reservadas: un slug de skill llamado
 exactamente `search` o `read` no se puede archivar con este comando.
@@ -123,15 +123,15 @@ La única excepción son los comandos informativos `/tools`, `/status`, `/mcp`,
 hagar [opciones]
 ```
 
-| Opción | Efecto |
-|---|---|
-| `--config PATH` | usa un archivo de configuración explícito |
-| `--model NAME` | sobrescribe `model.name` |
-| `--project NAME` | selecciona un proyecto activo al arrancar |
-| `--free` | arranca en actividad libre |
-| `--no-memory` | desactiva memoria y proyectos para la sesión |
-| `--no-native-tools` | fuerza el protocolo JSON textual |
-| `--version` | imprime la versión |
+| Opción 			  | Efecto 										|
+|---------------------|---------------------------------------------|
+| `--config PATH` 	  | usa un archivo de configuración explícito   |
+| `--model NAME` 	  | sobrescribe `model.name` 				    |
+| `--project NAME`    | selecciona un proyecto activo al arrancar 	|
+| `--free` 			  | arranca en actividad libre 					|
+| `--no-memory` 	  | desactiva memoria y proyectos para la sesión|
+| `--no-native-tools` | fuerza el protocolo JSON textual 			|
+| `--version` 		  | imprime la versión 							|
 
 `--project` y `--free` son mutuamente excluyentes.
 
@@ -149,11 +149,11 @@ directorio desde el que lanzas Hagar.
 
 ## 3.2 Códigos de salida
 
-| Código | Significado |
-|---|---|
-| `0` | salida normal o `--version` |
-| `1` | error de configuración o proyecto no válido |
-| `130` | interrupción con Ctrl-C |
+| Código | Significado 								  |
+|--------|--------------------------------------------|
+| `0` 	 | salida normal o `--version` 				  |
+| `1` 	 | error de configuración o proyecto no válido|
+| `130`  | interrupción con Ctrl-C 					  |
 
 Un error MCP no cambia el código de salida: se registra y el
 harness continúa.
@@ -182,22 +182,22 @@ filesystem:
 ## 4.1 `model`
 
 | Campo | Default | Notas |
-|---|---|---|
-| `provider` | obligatorio | `ollama`, `deepseek`, `claude`, `gemini` |
-| `name` | obligatorio | nombre del modelo en el proveedor |
-| `host` | default del proveedor | URL base de la API |
-| `native_tools` | `true` | si es `false`, usa el protocolo JSON textual |
-| `max_tokens` | `1024` | usado solo por Claude |
-| `api_key_env` | nombre estándar | variable de entorno de la clave |
+|---------------|-----------------------|---------------------------------------------|
+| `provider` 	| obligatorio 			| `ollama`, `deepseek`, `claude`, `gemini` 	  |
+| `name` 		| obligatorio 			| nombre del modelo en el proveedor 		  |
+| `host` 		| default del proveedor | URL base de la API 						  |
+| `native_tools`| `true` 				| si es `false`, usa el protocolo JSON textual|
+| `max_tokens` 	| `1024` 		 		| usado solo por Claude 					  |
+| `api_key_env` | nombre estándar		| variable de entorno de la clave 			  |
 
 Proveedores y claves:
 
-| Proveedor | Clave estándar |
-|---|---|
-| `ollama` | ninguna |
+| Proveedor  | Clave estándar 	  |
+|------------|--------------------|
+| `ollama`   | ninguna 			  |
 | `deepseek` | `DEEPSEEK_API_KEY` |
-| `claude` | `ANTHROPIC_API_KEY` |
-| `gemini` | `GEMINI_API_KEY` |
+| `claude`   | `ANTHROPIC_API_KEY`|
+| `gemini`   | `GEMINI_API_KEY`   |
 
 Las claves nunca deben escribirse en el YAML. Si falta una clave, el cliente
 no se construye y el arranque falla con un error explícito.
@@ -219,14 +219,14 @@ audit:
   include_outputs: true
 ```
 
-| Campo | Default | Efecto |
-|---|---|---|
-| `enabled` | `true` | activa/desactiva el registro |
-| `path` | `logs/audit.jsonl` | archivo JSON Lines |
-| `max_field_chars` | `2000` | trunca los campos |
-| `max_bytes` | `5000000` | umbral de rotación |
-| `max_files` | `100` | archivos rotados que se conservan |
-| `include_outputs` | `true` | si es `false`, redacta la salida de las herramientas |
+| Campo 			| Default   		 | Efecto 											   |
+|-------------------|--------------------|-----------------------------------------------------|
+| `enabled` 		| `true`    		 | activa/desactiva el registro 					   |
+| `path` 			| `logs/audit.jsonl` | archivo JSON Lines 								   |
+| `max_field_chars` | `2000` 			 | trunca los campos 								   |
+| `max_bytes` 		| `5000000` 		 | umbral de rotación 								   |
+| `max_files` 		| `100` 			 | archivos rotados que se conservan 				   |
+| `include_outputs` | `true` 			 | si es `false`, redacta la salida de las herramientas|
 
 La auditoría contiene datos sensibles: salidas de archivos, respuestas y textos. Debe
 protegerse como el workspace. `/audit` muestra solo los eventos del archivo
@@ -279,17 +279,17 @@ memory:
   max_skill_chars: 4000
 ```
 
-| Campo | Default | Efecto |
-|---|---|---|
-| `enabled` | `true` | activa la memoria |
-| `vault_subdir` | `Hagar` | subdirectorio dentro del Vault |
-| `context_turns` | `10` | turnos recientes inyectados; `0` desactiva |
-| `context_skills` | `3` | skill confirmadas inyectadas |
-| `context_project_memories` | `10` | títulos de decisiones activas |
-| `max_context_chars` | `6000` | presupuesto del bloque de memoria |
-| `project_max_active` | `200` | umbral de mantenimiento del proyecto |
-| `summary_max_chars` | `4000` | longitud máxima del resumen |
-| `max_skill_chars` | `4000` | longitud máxima de una skill |
+| Campo 			   		| Default | Efecto 									  |
+|---------------------------|---------|-------------------------------------------|
+| `enabled` 		   		| `true`  | activa la memoria 						  |
+| `vault_subdir` 	   		| `Hagar` | subdirectorio dentro del Vault 			  |
+| `context_turns` 	   		| `10`    | turnos recientes inyectados; `0` desactiva|
+| `context_skills` 	   		| `3` 	  | skill confirmadas inyectadas 			  |
+| `context_project_memories`| `10` 	  | títulos de decisiones activas 			  |
+| `max_context_chars` 		| `6000`  | presupuesto del bloque de memoria 		  |
+| `project_max_active`		| `200`   | umbral de mantenimiento del proyecto 	  |
+| `summary_max_chars` 		| `4000`  | longitud máxima del resumen 			  |
+| `max_skill_chars` 		| `4000`  | longitud máxima de una skill 			  |
 
 `vault_subdir` debe permanecer dentro del Vault: rutas absolutas, `..`,
 `I:/...` y otras unidades de Windows se rechazan incluso en Linux.
@@ -314,19 +314,19 @@ filesystem:
 
 Cada entrada:
 
-| Campo | Obligatorio | Notas |
-|---|---|---|
-| `alias` | sí | un solo segmento, único sin distinguir mayúsculas |
-| `path` | sí | directorio existente del sistema anfitrión |
-| `permissions` | no | default `R`; letras `R`, `W`, `X` |
+| Campo 		| Obligatorio | Notas 											  |
+|---------------|-------------|---------------------------------------------------|
+| `alias` 		| sí 		  | un solo segmento, único sin distinguir mayúsculas |
+| `path` 		| sí          | directorio existente del sistema anfitrión 		  |
+| `permissions` | no          | default `R`; letras `R`, `W`, `X` 				  |
 
 Permisos:
 
-| Letra | Cubre |
-|---|---|
-| `R` | leer, listar, buscar, `stat` |
-| `W` | escribir, crear, renombrar, copiar, borrar |
-| `X` | `chdir` en el directorio |
+| Letra | Cubre 									|
+|-------|-------------------------------------------|
+| `R`   | leer, listar, buscar, `stat` 				|
+| `W`   | escribir, crear, renombrar, copiar, borrar|
+| `X`   | `chdir` en el directorio 					|
 
 El agente ve `/home/ai/<alias>/...`. `/home/ai` enumera los alias pero no
 es un directorio físico y no es posible entrar en él con `chdir`.
@@ -340,12 +340,12 @@ Restricciones:
 
 Límites de escritura:
 
-| Campo | Efecto |
-|---|---|
-| `max_write_bytes` | máximo por operación individual |
-| `min_free_bytes` | espacio libre mínimo restante |
-| `session_write_bytes` | máximo acumulado por sesión |
-| `ask_over_bytes` | por encima de este umbral pide confirmación |
+| Campo 				| Efecto 									  |
+|-----------------------|---------------------------------------------|
+| `max_write_bytes` 	| máximo por operación individual 			  |
+| `min_free_bytes` 		| espacio libre mínimo restante 			  |
+| `session_write_bytes` | máximo acumulado por sesión 				  |
+| `ask_over_bytes` 		| por encima de este umbral pide confirmación |
 
 `0` desactiva el límite individual. Los límites son invariantes: un
 exceso es un error de la herramienta, no un aviso.
@@ -362,12 +362,12 @@ permissions:
 
 Son el **techo del sistema**. Default: `read=true`, los demás `false`.
 
-| Campo | Concede |
-|---|---|
-| `read` | filesystem read, memory read |
-| `write` | filesystem write/create/delete, memory write |
-| `shell` | `FILESYSTEM_EXEC` |
-| `network` | `NETWORK` |
+| Campo 	| Concede 									  |
+|-----------|---------------------------------------------|
+| `read` 	| filesystem read, memory read 				  |
+| `write`	| filesystem write/create/delete, memory write|
+| `shell`	| `FILESYSTEM_EXEC` 						  |
+| `network` | `NETWORK` 								  |
 
 `COMPUTE` y `MCP_CALL` están siempre dentro del techo, pero la política puede denegarlos.
 Si el techo no concede una capability, la política no puede concederla.
@@ -395,11 +395,11 @@ mcp_servers:
 
 Campos:
 
-| Campo | Notas |
-|---|---|
-| `endpoint` | URL HTTP/JSON-RPC del servidor MCP |
-| `namespace` | prefijo de las herramientas importadas: `mcp.<namespace>.*` |
-| `auth` | opcional: `bearer`, `header` u `oauth` |
+| Campo 	  | Notas 													   |
+|-------------|------------------------------------------------------------|
+| `endpoint`  | URL HTTP/JSON-RPC del servidor MCP 						   |
+| `namespace` | prefijo de las herramientas importadas: `mcp.<namespace>.*`|
+| `auth` 	  | opcional: `bearer`, `header` u `oauth` 					   |
 
 Bearer/header:
 
@@ -482,11 +482,11 @@ subjects:
 
 ## 5.1 Efectos
 
-| Efecto | Significado |
-|---|---|
-| `allow` | la herramienta puede ejecutarse |
-| `ask` | hace falta una confirmación humana |
-| `deny` | la herramienta no se ejecuta |
+| Efecto | Significado 						  |
+|--------|------------------------------------|
+| `allow`| la herramienta puede ejecutarse 	  |
+| `ask`  | hace falta una confirmación humana |
+| `deny` | la herramienta no se ejecuta 	  |
 
 Orden de gravedad: `DENY > ASK > ALLOW`. Con varias capability solicitadas
 vale el AND: gana el efecto peor.
@@ -496,18 +496,18 @@ muestra `lo faccio? (y/N)` y el default es `N`.
 
 ## 5.2 Capability
 
-| Nombre | Uso |
-|---|---|
-| `FILESYSTEM_READ` | lectura, listado, búsqueda, stat |
-| `FILESYSTEM_WRITE` | modificación |
-| `FILESYSTEM_CREATE` | creación, copia, rename en destino |
-| `FILESYSTEM_DELETE` | borrado |
-| `FILESYSTEM_EXEC` | entrada/ejecución en la sandbox |
-| `MEMORY_READ` | lectura de memoria |
-| `MEMORY_WRITE` | escritura de memoria |
-| `NETWORK` | acceso de red |
-| `MCP_CALL` | llamada a herramientas MCP |
-| `COMPUTE` | cálculo local sin red ni sistema de archivos |
+| Nombre 			  | Uso 										|
+|---------------------|---------------------------------------------|
+| `FILESYSTEM_READ`   | lectura, listado, búsqueda, stat 			|
+| `FILESYSTEM_WRITE`  | modificación 								|
+| `FILESYSTEM_CREATE` | creación, copia, rename en destino 			|
+| `FILESYSTEM_DELETE` | borrado 									|
+| `FILESYSTEM_EXEC`   | entrada/ejecución en la sandbox 			|
+| `MEMORY_READ` 	  | lectura de memoria 							|
+| `MEMORY_WRITE`	  | escritura de memoria 						|
+| `NETWORK`		 	  | acceso de red 								|
+| `MCP_CALL`		  | llamada a herramientas MCP 					|
+| `COMPUTE`			  | cálculo local sin red ni sistema de archivos|
 
 ## 5.3 Reglas y especificidad
 
@@ -539,33 +539,33 @@ existe:
 
 # 6. Comportamientos por defecto
 
-| Situación | Comportamiento |
-|---|---|
-| Ningún `hagar.yaml` | error de configuración, salida 1 |
-| YAML inválido | error de configuración, salida 1 |
-| Política inválida | DENY total, harness arrancado |
-| Vault ausente/no escribible | memoria desactivada, harness arrancado |
-| `projects` no escribible | proyectos deshabilitados, memoria activa |
-| Ningún proyecto activo | actividad libre |
-| Arranque no interactivo | actividad libre, salvo `--project`/`--free` |
-| `--project` inexistente | error, salida 1 |
-| Servidor MCP inalcanzable | `mcp.failed`, servidor omitido |
-| Modelo/Ollama inalcanzable | error del turno, el harness sigue activo |
-| Clave API ausente | cliente no construido, error al arrancar |
-| Herramienta denegada | resultado de error al modelo, sin ejecución |
-| Herramienta en `ASK` sin confirmación | rechazo |
-| Límite de escritura superado | error de la herramienta, sin escritura |
-| Archivo de más de 4096 bytes con `read_file` | error, usar `read_chunk` |
-| Página por encima del límite | `has_more`/`next_offset` |
-| Symlink | invisible; operación como ruta inexistente |
-| Hard links/mounts/junctions | no detectados; responsabilidad del usuario |
-| Race TOCTOU | no controlada; responsabilidad del usuario |
-| Memoria ausente durante el turno | `memory.failed`, el turno continúa |
-| Fin de sesión con turnos | resumen, archivo, revisión del proyecto |
-| Revisión rechazada | decisiones candidatas con `auto_saved: true` |
-| Proyecto por encima de `project_max_active` | solicitud de archivado |
-| Ctrl-C durante OAuth | callback cerrado, salida 130 |
-| Comando `/` desconocido | mensaje, no enviado al modelo |
+| Situación 								  | Comportamiento 								|
+|---------------------------------------------|---------------------------------------------|
+| Ningún `hagar.yaml` 						  | error de configuración, salida 1 			|
+| YAML inválido 							  | error de configuración, salida 1 			|
+| Política inválida 						  | DENY total, harness arrancado 				|
+| Vault ausente/no escribible 				  | memoria desactivada, harness arrancado 		|
+| `projects` no escribible 					  | proyectos deshabilitados, memoria activa 	|
+| Ningún proyecto activo 					  | actividad libre 							|
+| Arranque no interactivo 					  | actividad libre, salvo `--project`/`--free` |
+| `--project` inexistente 					  | error, salida 1 							|
+| Servidor MCP inalcanzable 				  | `mcp.failed`, servidor omitido 				|
+| Modelo/Ollama inalcanzable 				  | error del turno, el harness sigue activo 	|
+| Clave API ausente 						  | cliente no construido, error al arrancar 	|
+| Herramienta denegada 						  | resultado de error al modelo, sin ejecución |
+| Herramienta en `ASK` sin confirmación 	  | rechazo 									|
+| Límite de escritura superado 				  | error de la herramienta, sin escritura 		|
+| Archivo de más de 4096 bytes con `read_file`| error, usar `read_chunk` 					|
+| Página por encima del límite 				  | `has_more`/`next_offset` 					|
+| Symlink 									  | invisible; operación como ruta inexistente  |
+| Hard links/mounts/junctions 				  | no detectados; responsabilidad del usuario  |
+| Race TOCTOU 								  | no controlada; responsabilidad del usuario  |
+| Memoria ausente durante el turno 			  | `memory.failed`, el turno continúa 			|
+| Fin de sesión con turnos 					  | resumen, archivo, revisión del proyecto 	|
+| Revisión rechazada 						  | decisiones candidatas con `auto_saved: true`|
+| Proyecto por encima de `project_max_active` | solicitud de archivado 						|
+| Ctrl-C durante OAuth 						  | callback cerrado, salida 130 				|
+| Comando `/` desconocido 					  | mensaje, no enviado al modelo 				|
 
 ## 6.1 Fin de sesión
 
@@ -606,19 +606,19 @@ Si no hay turnos no se crea ningún resumen.
 
 # 8. Solución de problemas
 
-| Síntoma | Comprobación |
-|---|---|
-| `Policy: DENY ALL` | validar `policy.yaml` y `policy.path` |
-| `Memory: disabled` | ¿existe `vault.path`? ¿es escribible? |
-| `Projects: disabled` | ¿existe `vault.path/Hagar/projects`? |
-| `Failed to load MCP server` | endpoint, token, `/mcp` |
-| `MCP auth token missing` | variable indicada por `token_env` |
-| `MCP HTTP 401` | credenciales/header Basic u OAuth |
-| `MCP HTTP 400` | protocolo, sesión o parámetros del servidor |
-| `read_file` demasiado grande | usar `read_chunk` |
-| `PermissionError` | política, permisos `R/W/X`, ruta fuera de la sandbox |
-| Herramienta no listada | servidor MCP fallido o herramienta no registrada |
-| Comando no reconocido | `/help` |
+| Síntoma 					  | Comprobación 										|
+|-----------------------------|-----------------------------------------------------|
+| `Policy: DENY ALL` 		  | validar `policy.yaml` y `policy.path` 				|
+| `Memory: disabled`		  | ¿existe `vault.path`? ¿es escribible? 				|
+| `Projects: disabled`		  | ¿existe `vault.path/Hagar/projects`? 				|
+| `Failed to load MCP server` | endpoint, token, `/mcp` 							|
+| `MCP auth token missing` 	  | variable indicada por `token_env` 					|
+| `MCP HTTP 401` 		 	  | credenciales/header Basic u OAuth 					|
+| `MCP HTTP 400`			  | protocolo, sesión o parámetros del servidor 		|
+| `read_file` demasiado grande| usar `read_chunk` 									|	
+| `PermissionError` 		  | política, permisos `R/W/X`, ruta fuera de la sandbox|
+| Herramienta no listada 	  | servidor MCP fallido o herramienta no registrada 	|
+| Comando no reconocido 	  | `/help` 											|
 
 Ante un error de configuración, Hagar sale con código 1 e imprime el
 detalle en stderr. Ante un error de turno, el modelo recibe el

@@ -246,12 +246,12 @@ estructurados.
 
 ## 3.3 Transporte por proveedor
 
-| proveedor | petición | resultado de la herramienta |
-|---|---|---|
-| `ollama` | `tools` en `/api/chat` | mensaje con rol `tool` |
-| `deepseek` | `tools` (OpenAI) | rol `tool` + `tool_call_id` |
-| `claude` | `tools` + bloques `tool_use` | bloque `tool_result` |
-| `gemini` | `tools.functionDeclarations` | `functionResponse` |
+| proveedor | petición 					   | resultado de la herramienta |
+|-----------|------------------------------|-----------------------------|
+| `ollama`  | `tools` en `/api/chat` 	   | mensaje con rol `tool` 	 |
+| `deepseek`| `tools` (OpenAI) 			   | rol `tool` + `tool_call_id` |
+| `claude`  | `tools` + bloques `tool_use` | bloque `tool_result` 		 |
+| `gemini`  | `tools.functionDeclarations` | `functionResponse` 		 |
 
 ## 3.4 Riesgos
 

@@ -90,11 +90,11 @@ Still missing: chat retention, semantic search, GUI.
 
 Names implemented in the `memory.*` namespace:
 
-| tool | who calls it | what it does |
-|---|---|---|
-| `memory.create_skill` | LLM | creates a **candidate** semantic memory |
-| `memory.list_skills` | LLM | lists the available memories |
-| `memory.get_context` | LLM | retrieves past chat turns |
+| tool 				   | who calls it | what it does 							|
+|----------------------|--------------|-----------------------------------------|
+| `memory.create_skill`| LLM	   	  | creates a **candidate** semantic memory |
+| `memory.list_skills` | LLM 	      | lists the available memories 			|
+| `memory.get_context` | LLM	      | retrieves past chat turns 				|
 
 Signatures implemented:
 
@@ -246,12 +246,12 @@ results.
 
 ## 3.3 Transport per provider
 
-| provider | request | tool result |
-|---|---|---|
-| `ollama` | `tools` in `/api/chat` | message with role `tool` |
-| `deepseek` | `tools` (OpenAI) | role `tool` + `tool_call_id` |
-| `claude` | `tools` + `tool_use` blocks | `tool_result` block |
-| `gemini` | `tools.functionDeclarations` | `functionResponse` |
+| provider   | request					   | tool result 				  |
+|------------|-----------------------------|------------------------------|
+| `ollama`   | `tools` in `/api/chat` 	   | message with role `tool` 	  |
+| `deepseek` | `tools` (OpenAI) 		   | role `tool` + `tool_call_id` |
+| `claude`   | `tools` + `tool_use` blocks | `tool_result` block 		  |
+| `gemini`   | `tools.functionDeclarations`| `functionResponse` 		  |
 
 ## 3.4 Risks
 

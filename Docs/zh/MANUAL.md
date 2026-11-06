@@ -57,17 +57,17 @@ hagar --config hagar.yaml
 
 ## 2.1 全局命令
 
-| 命令 | 行为 |
-|---|---|
-| `/help` 或 `/?` | 列出可用命令 |
-| `/tools [类别]` | 列出工具和 capability；过滤器是可选的 |
-| `/status` | 显示模型、项目、记忆、审计和 sandbox |
-| `/mcp` | 列出 MCP 服务器、端点和已导入的工具 |
-| `/audit [n]` | 显示最近 `n` 个事件；默认 10，最多 50 |
-| `exit` | 退出 |
-| `quit` | 退出 |
-| `Ctrl-D` | 退出 |
-| `Ctrl-C` | 中断；在 OAuth 过程中以代码 130 退出 |
+| 命令 			| 行为 							|
+|---------------|-------------------------------|
+| `/help` 或 `/?`| 列出可用命令 					|
+| `/tools [类别]` | 列出工具和 capability；过滤器是可选的|
+| `/status` 	| 显示模型、项目、记忆、审计和 sandbox 	|
+| `/mcp` 		| 列出 MCP 服务器、端点和已导入的工具 	|
+| `/audit [n]`  | 显示最近 `n` 个事件；默认 10，最多 50 |
+| `exit` 		| 退出 							|
+| `quit` 		| 退出 							|
+| `Ctrl-D` 		| 退出 							|
+| `Ctrl-C` 		| 中断；在 OAuth 过程中以代码 130 退出 |
 
 `/status` 和 `/audit` 是面向人的命令：它们不经过模型，也不
 消耗工具调用。
@@ -75,15 +75,15 @@ hagar --config hagar.yaml
 ## 2.2 项目
 
 | 命令 | 行为 |
-|---|---|
-| `/project` 或 `/project list` 或 `/project ls` | 列出活动项目 |
-| `/project new <名称>` | 创建一个项目并选中它 |
-| `/project select <id>` 或 `/project use <id>` | 选择一个活动项目 |
-| `/project free` 或 `/project none` | 切换到自由活动 |
-| `/project status` 或 `/project current` | 显示当前项目 |
-| `/project archive <id>` | 归档一个项目 |
-| `/project unarchive <id>` | 重新激活一个已归档项目 |
-| `/project help` | 帮助 |
+|-----------------------------------------------|-------------------|
+| `/project` 或 `/project list` 或 `/project ls` | 列出活动项目 		|
+| `/project new <名称>` 							| 创建一个项目并选中它 	|
+| `/project select <id>` 或 `/project use <id>` 	| 选择一个活动项目 		|
+| `/project free` 或 `/project none` 			| 切换到自由活动 		|
+| `/project status` 或 `/project current` 		| 显示当前项目 		|
+| `/project archive <id>` 						| 归档一个项目 		|
+| `/project unarchive <id>` 					| 重新激活一个已归档项目 	|
+| `/project help` 								| 帮助 				|
 
 `select` 和 `archive` 使用项目的 **id**，而不是标题。
 
@@ -92,16 +92,16 @@ hagar --config hagar.yaml
 
 ## 2.3 记忆
 
-| 命令 | 行为 |
-|---|---|
-| `/memory` 或 `/memory help` 或 `/memory ?` | 帮助 |
-| `/memory list [candidate\|confirmed\|archived]` | 列出 skill 及数量 |
-| `/memory show <slug>` | 显示一个 skill |
-| `/memory review` | 对 candidate 进行交互式复核 |
-| `/memory confirm <slug>` | 确认一个 skill |
-| `/memory archive <slug>` | 归档一个 skill |
-| `/memory archive search <文本>` | 在已归档的 transcript 中搜索 |
-| `/memory archive read <session> [offset] [limit]` | 读取一个已归档的 transcript |
+| 命令 											  	| 行为 					   |
+|---------------------------------------------------|--------------------------|
+| `/memory` 或 `/memory help` 或 `/memory ?` 	  	| 帮助 					   |
+| `/memory list [candidate\|confirmed\|archived]` 	| 列出 skill 及数量 		   |
+| `/memory show <slug>` 						  	| 显示一个 skill 			   |
+| `/memory review` 								  	| 对 candidate 进行交互式复核  |
+| `/memory confirm <slug>` 					 	  	| 确认一个 skill 			   |
+| `/memory archive <slug>` 						  	| 归档一个 skill 			   |
+| `/memory archive search <文本>` 				  	| 在已归档的 transcript 中搜索 |
+| `/memory archive read <session> [offset] [limit]` | 读取一个已归档的 transcript  |
 
 `search` 和 `read` 是保留字：名为
 `search` 或 `read` 的 skill slug 无法通过该命令归档。
@@ -123,15 +123,15 @@ hagar --config hagar.yaml
 hagar [opzioni]
 ```
 
-| 选项 | 效果 |
-|---|---|
-| `--config PATH` | 使用显式的配置文件 |
-| `--model NAME` | 覆盖 `model.name` |
-| `--project NAME` | 在启动时选择一个活动项目 |
-| `--free` | 以自由活动方式启动 |
-| `--no-memory` | 为该会话禁用记忆和项目 |
-| `--no-native-tools` | 强制使用文本 JSON 协议 |
-| `--version` | 打印版本 |
+| 选项 				  | 效果 				|	
+|---------------------|---------------------|
+| `--config PATH` 	  | 使用显式的配置文件 		|
+| `--model NAME` 	  | 覆盖 `model.name` 	|
+| `--project NAME` 	  | 在启动时选择一个活动项目 	|
+| `--free` 			  | 以自由活动方式启动 		|
+| `--no-memory`  	  | 为该会话禁用记忆和项目 	|
+| `--no-native-tools` | 强制使用文本 JSON 协议 	|
+| `--version` 		  | 打印版本 				|
 
 `--project` 与 `--free` 互斥。
 
@@ -149,11 +149,11 @@ hagar [opzioni]
 
 ## 3.2 退出代码
 
-| 代码 | 含义 |
-|---|---|
-| `0` | 正常退出或 `--version` |
-| `1` | 配置错误或项目无效 |
-| `130` | 通过 Ctrl-C 中断 |
+| 代码   | 含义 					|
+|-------|-----------------------|
+| `0`   | 正常退出或 `--version` 	|
+| `1`   | 配置错误或项目无效 		|
+| `130` | 通过 Ctrl-C 中断 		|
 
 MCP 错误不会改变退出代码：它会被记录，harness
 继续运行。
@@ -181,23 +181,23 @@ filesystem:
 
 ## 4.1 `model`
 
-| 字段 | 默认值 | 说明 |
-|---|---|---|
-| `provider` | 必填 | `ollama`、`deepseek`、`claude`、`gemini` |
-| `name` | 必填 | 模型在 provider 处的名称 |
-| `host` | provider 默认值 | API 的 base URL |
-| `native_tools` | `true` | 若为 `false`，使用文本 JSON 协议 |
-| `max_tokens` | `1024` | 仅由 Claude 使用 |
-| `api_key_env` | 标准名称 | 密钥所在的环境变量 |
+| 字段 				| 默认值 			| 说明 									|
+|-------------------|---------------|---------------------------------------|
+| `provider` 		| 必填 			| `ollama`、`deepseek`、`claude`、`gemini` |
+| `name` 			| 必填 			| 模型在 provider 处的名称 					|
+| `host` 			| provider 默认值	| API 的 base URL 						|
+| `native_tools` 	| `true` 		| 若为 `false`，使用文本 JSON 协议 			|
+| `max_tokens` 		| `1024` 		| 仅由 Claude 使用 						|
+| `api_key_env` 	| 标准名称 		| 密钥所在的环境变量 						|
 
 Provider 与密钥：
 
-| Provider | 标准密钥 |
-|---|---|
-| `ollama` | 无 |
-| `deepseek` | `DEEPSEEK_API_KEY` |
-| `claude` | `ANTHROPIC_API_KEY` |
-| `gemini` | `GEMINI_API_KEY` |
+| Provider 	| 标准密钥 				|
+|-----------|-----------------------|
+| `ollama` 	| 无 					|
+| `deepseek`| `DEEPSEEK_API_KEY` 	|
+| `claude` 	| `ANTHROPIC_API_KEY` 	|
+| `gemini` 	| `GEMINI_API_KEY` 		|
 
 密钥绝不应写入 YAML。如果缺少密钥，客户端
 不会被构建，启动会以明确的错误失败。
@@ -219,14 +219,14 @@ audit:
   include_outputs: true
 ```
 
-| 字段 | 默认值 | 效果 |
-|---|---|---|
-| `enabled` | `true` | 启用/禁用日志 |
-| `path` | `logs/audit.jsonl` | JSON Lines 文件 |
-| `max_field_chars` | `2000` | 截断字段 |
-| `max_bytes` | `5000000` | 轮转阈值 |
-| `max_files` | `100` | 保留的轮转文件数量 |
-| `include_outputs` | `true` | 若为 `false`，对工具输出脱敏 |
+| 字段 				| 默认值 				| 效果 						|
+|-------------------|-------------------|---------------------------|
+| `enabled` 		| `true` 			| 启用/禁用日志 				|
+| `path` 			| `logs/audit.jsonl`| JSON Lines 文件 			|
+| `max_field_chars`	| `2000` 			| 截断字段 					|
+| `max_bytes` 		| `5000000` 		| 轮转阈值 					|
+| `max_files` 		| `100` 			| 保留的轮转文件数量 			|
+| `include_outputs`	| `true` 			| 若为 `false`，对工具输出脱敏	|
 
 审计包含敏感数据：文件输出、回答和文本。必须
 像保护工作区一样保护它。`/audit` 只显示当前文件的
@@ -280,16 +280,16 @@ memory:
 ```
 
 | 字段 | 默认值 | 效果 |
-|---|---|---|
-| `enabled` | `true` | 启用记忆 |
-| `vault_subdir` | `Hagar` | Vault 内的子目录 |
-| `context_turns` | `10` | 注入的最近轮次；`0` 表示禁用 |
-| `context_skills` | `3` | 注入的已确认 skill 数量 |
-| `context_project_memories` | `10` | 活动决策的标题数量 |
-| `max_context_chars` | `6000` | 记忆块的字符预算 |
-| `project_max_active` | `200` | 项目维护阈值 |
-| `summary_max_chars` | `4000` | 摘要的最大长度 |
-| `max_skill_chars` | `4000` | 单个 skill 的最大长度 |
+|---------------------------|--------|----------------------|
+| `enabled` 				| `true` | 启用记忆 				|
+| `vault_subdir` 			| `Hagar`| Vault 内的子目录 		|
+| `context_turns` 			| `10`   | 注入的最近轮次；`0` 表示禁用|
+| `context_skills` 			| `3`    | 注入的已确认 skill 数量 	|
+| `context_project_memories`| `10`   | 活动决策的标题数量 		|
+| `max_context_chars` 		| `6000` | 记忆块的字符预算 		|
+| `project_max_active` 		| `200`  | 项目维护阈值 			|
+| `summary_max_chars` 		| `4000` | 摘要的最大长度 			|
+| `max_skill_chars` 		| `4000` | 单个 skill 的最大长度 	|
 
 `vault_subdir` 必须留在 Vault 内部：绝对路径、`..`、
 `I:/...` 以及其他 Windows 驱动器即使在 Linux 上也会被拒绝。
@@ -314,19 +314,19 @@ filesystem:
 
 每个条目：
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `alias` | 是 | 单个路径段，大小写不敏感地唯一 |
-| `path` | 是 | 宿主系统中已存在的目录 |
-| `permissions` | 否 | 默认 `R`；字母 `R`、`W`、`X` |
+| 字段 			| 必填 	| 说明 					 |
+|---------------|-------|------------------------|
+| `alias` 		| 是   	| 单个路径段，大小写不敏感地唯一 |
+| `path` 		| 是   	| 宿主系统中已存在的目录 		 |
+| `permissions` | 否		| 默认 `R`；字母 `R`、`W`、`X`|
 
 权限：
 
-| 字母 | 涵盖 |
-|---|---|
-| `R` | 读取、列出、搜索、`stat` |
-| `W` | 写入、创建、重命名、复制、删除 |
-| `X` | 在该目录中 `chdir` |
+| 字母 | 涵盖 				|
+|-----|---------------------|
+| `R` | 读取、列出、搜索、`stat` 	|
+| `W` | 写入、创建、重命名、复制、删除|
+| `X` | 在该目录中 `chdir` 	|
 
 智能体看到的是 `/home/ai/<alias>/...`。`/home/ai` 会列出别名，但它
 不是物理目录，无法用 `chdir` 进入。
@@ -340,12 +340,12 @@ filesystem:
 
 写入限制：
 
-| 字段 | 效果 |
-|---|---|
-| `max_write_bytes` | 单次操作的最大值 |
-| `min_free_bytes` | 必须保留的最小剩余空间 |
-| `session_write_bytes` | 每个会话的累计上限 |
-| `ask_over_bytes` | 超过该阈值时请求确认 |
+| 字段 					| 效果 				|
+|-----------------------|-------------------|
+| `max_write_bytes` 	| 单次操作的最大值 		|
+| `min_free_bytes` 		| 必须保留的最小剩余空间 	|
+| `session_write_bytes`	| 每个会话的累计上限 	|
+| `ask_over_bytes` 		| 超过该阈值时请求确认 	|
 
 `0` 表示禁用该项限制。这些限制是不变式：超限属于
 工具错误，而不是警告。
@@ -362,12 +362,12 @@ permissions:
 
 它们是**系统上限**。默认：`read=true`，其余为 `false`。
 
-| 字段 | 授予 |
-|---|---|
-| `read` | 文件系统读取、记忆读取 |
-| `write` | 文件系统写入/创建/删除、记忆写入 |
-| `shell` | `FILESYSTEM_EXEC` |
-| `network` | `NETWORK` |
+| 字段 		| 授予 						|
+|-----------|---------------------------|
+| `read` 	| 文件系统读取、记忆读取 			|
+| `write` 	| 文件系统写入/创建/删除、记忆写入	|
+| `shell` 	| `FILESYSTEM_EXEC` 		|
+| `network`	| `NETWORK` 				|
 
 `COMPUTE` 和 `MCP_CALL` 始终在上限之内，但策略可以拒绝它们。
 如果上限不授予某项 capability，策略也无法授予。
@@ -395,11 +395,11 @@ mcp_servers:
 
 字段：
 
-| 字段 | 说明 |
-|---|---|
-| `endpoint` | MCP 服务器的 HTTP/JSON-RPC URL |
-| `namespace` | 导入工具的前缀：`mcp.<namespace>.*` |
-| `auth` | 可选：`bearer`、`header` 或 `oauth` |
+| 字段 			| 说明 |
+|---------------|-----------------------------------|
+| `endpoint` 	| MCP 服务器的 HTTP/JSON-RPC URL 		|
+| `namespace` 	| 导入工具的前缀：`mcp.<namespace>.*` 	|
+| `auth` 		| 可选：`bearer`、`header` 或 `oauth` 	|
 
 Bearer/header：
 
@@ -482,11 +482,11 @@ subjects:
 
 ## 5.1 效果
 
-| 效果 | 含义 |
-|---|---|
-| `allow` | 工具可以执行 |
-| `ask` | 需要人工确认 |
-| `deny` | 工具不执行 |
+| 效果 	  | 含义 		|
+|---------|-------------|
+| `allow` | 工具可以执行 	|
+| `ask`	  | 需要人工确认 	|
+| `deny`  | 工具不执行 	|
 
 严重程度顺序：`DENY > ASK > ALLOW`。当要求多项 capability 时，
 适用 AND 逻辑：最差的效果胜出。
@@ -497,17 +497,17 @@ subjects:
 ## 5.2 Capability
 
 | 名称 | 用途 |
-|---|---|
-| `FILESYSTEM_READ` | 读取、列出、搜索、stat |
-| `FILESYSTEM_WRITE` | 修改 |
-| `FILESYSTEM_CREATE` | 创建、复制、重命名到目标位置 |
-| `FILESYSTEM_DELETE` | 删除 |
-| `FILESYSTEM_EXEC` | 进入/在 sandbox 中执行 |
-| `MEMORY_READ` | 读取记忆 |
-| `MEMORY_WRITE` | 写入记忆 |
-| `NETWORK` | 网络访问 |
-| `MCP_CALL` | 调用 MCP 工具 |
-| `COMPUTE` | 无需网络/文件系统的本地计算 |
+|-----------------------|-----------------------|
+| `FILESYSTEM_READ` 	| 读取、列出、搜索、stat 		|
+| `FILESYSTEM_WRITE`	| 修改 					|
+| `FILESYSTEM_CREATE`	| 创建、复制、重命名到目标位置 	|
+| `FILESYSTEM_DELETE` 	| 删除 					|
+| `FILESYSTEM_EXEC` 	| 进入/在 sandbox 中执行 	|
+| `MEMORY_READ` 		| 读取记忆 				|
+| `MEMORY_WRITE` 		| 写入记忆 				|
+| `NETWORK` 			| 网络访问 				|
+| `MCP_CALL` 			| 调用 MCP 工具 			|
+| `COMPUTE` 			| 无需网络/文件系统的本地计算	|
 
 ## 5.3 规则与特异性
 
@@ -539,33 +539,33 @@ subjects:
 
 # 6. 默认行为
 
-| 情形 | 行为 |
-|---|---|
-| 没有 `hagar.yaml` | 配置错误，退出 1 |
-| YAML 无效 | 配置错误，退出 1 |
-| 策略无效 | 全部 DENY，harness 仍启动 |
-| Vault 缺失/不可写 | 记忆禁用，harness 仍启动 |
-| `projects` 不可写 | 项目禁用，记忆仍启用 |
-| 没有活动项目 | 自由活动 |
-| 非交互式启动 | 自由活动，除非使用 `--project`/`--free` |
-| `--project` 不存在 | 错误，退出 1 |
-| MCP 服务器不可达 | `mcp.failed`，服务器被跳过 |
-| 模型/Ollama 不可达 | 轮次错误，harness 保持运行 |
-| 缺少 API 密钥 | 客户端未构建，启动时出错 |
-| 工具被拒绝 | 向模型返回错误结果，不执行 |
-| 工具处于 `ASK` 且无确认 | 拒绝 |
-| 超过写入限制 | 工具错误，不写入 |
-| `read_file` 读取超过 4096 字节的文件 | 错误，请使用 `read_chunk` |
-| 分页超出限制 | `has_more`/`next_offset` |
-| Symlink | 不可见；操作视为路径不存在 |
-| 硬链接/挂载/junction | 不检测；由用户负责 |
-| TOCTOU 竞态 | 不检查；由用户负责 |
-| 轮次进行中记忆缺失 | `memory.failed`，轮次继续 |
-| 会话结束时存在轮次 | 摘要、归档、项目复核 |
-| 复核被拒绝 | 决策成为 candidate 并带 `auto_saved: true` |
-| 项目超过 `project_max_active` | 请求归档 |
-| OAuth 期间 Ctrl-C | 关闭回调，退出 130 |
-| 未知 `/` 命令 | 显示消息，不发送给模型 |
+| 情形 								| 行为 									|
+|-----------------------------------|---------------------------------------|
+| 没有 `hagar.yaml` 					| 配置错误，退出 1 							|
+| YAML 无效 							| 配置错误，退出 1 							|
+| 策略无效 							| 全部 DENY，harness 仍启动 				|
+| Vault 缺失/不可写 					| 记忆禁用，harness 仍启动 					|
+| `projects` 不可写 					| 项目禁用，记忆仍启用 						|
+| 没有活动项目 						| 自由活动 								|
+| 非交互式启动 						| 自由活动，除非使用 `--project`/`--free`	|
+| `--project` 不存在 					| 错误，退出 1 							|
+| MCP 服务器不可达 					| `mcp.failed`，服务器被跳过 				|
+| 模型/Ollama 不可达 					| 轮次错误，harness 保持运行 				|
+| 缺少 API 密钥 						| 客户端未构建，启动时出错 					|
+| 工具被拒绝 							| 向模型返回错误结果，不执行 					|
+| 工具处于 `ASK` 且无确认 				| 拒绝 									|
+| 超过写入限制 						| 工具错误，不写入 							|
+| `read_file` 读取超过 4096 字节的文件 	| 错误，请使用 `read_chunk` 				|
+| 分页超出限制 						| `has_more`/`next_offset` 				|
+| Symlink 							| 不可见；操作视为路径不存在 					|
+| 硬链接/挂载/junction 				| 不检测；由用户负责 						|
+| TOCTOU 竞态 						| 不检查；由用户负责 						|
+| 轮次进行中记忆缺失 					| `memory.failed`，轮次继续 				|
+| 会话结束时存在轮次 					| 摘要、归档、项目复核 						|
+| 复核被拒绝 							| 决策成为 candidate 并带 `auto_saved: true`|
+| 项目超过 `project_max_active` 		| 请求归档 								|
+| OAuth 期间 Ctrl-C 					| 关闭回调，退出 130 						|
+| 未知 `/` 命令 						| 显示消息，不发送给模型 						|
 
 ## 6.1 会话结束
 
@@ -606,19 +606,19 @@ subjects:
 
 # 8. 故障排查
 
-| 症状 | 检查 |
-|---|---|
-| `Policy: DENY ALL` | 验证 `policy.yaml` 和 `policy.path` |
-| `Memory: disabled` | `vault.path` 是否存在？是否可写？ |
-| `Projects: disabled` | `vault.path/Hagar/projects` 是否存在？ |
-| `Failed to load MCP server` | 端点、token、`/mcp` |
-| `MCP auth token missing` | `token_env` 指定的变量 |
-| `MCP HTTP 401` | Basic 或 OAuth 的凭据/header |
-| `MCP HTTP 400` | 服务器的协议、会话或参数 |
-| `read_file` 文件过大 | 请使用 `read_chunk` |
-| `PermissionError` | 策略、`R/W/X` 权限、路径是否在 sandbox 之外 |
-| 工具未列出 | MCP 服务器失败或工具未注册 |
-| 命令无法识别 | `/help` |
+| 症状 							| 检查 									|
+|-------------------------------|---------------------------------------|
+| `Policy: DENY ALL` 			| 验证 `policy.yaml` 和 `policy.path` 	|
+| `Memory: disabled` 			| `vault.path` 是否存在？是否可写？ 			|
+| `Projects: disabled` 			| `vault.path/Hagar/projects` 是否存在？	|
+| `Failed to load MCP server`	| 端点、token、`/mcp` 						|
+| `MCP auth token missing` 		| `token_env` 指定的变量 					|
+| `MCP HTTP 401` 				| Basic 或 OAuth 的凭据/header 			|
+| `MCP HTTP 400` 				| 服务器的协议、会话或参数 					|
+| `read_file` 文件过大 			| 请使用 `read_chunk` 					|
+| `PermissionError` 			| 策略、`R/W/X` 权限、路径是否在 sandbox 之外 	|
+| 工具未列出 						| MCP 服务器失败或工具未注册 					|
+| 命令无法识别 						| `/help` 								|
 
 对于配置错误，Hagar 以代码 1 退出，并把
 详细信息打印到 stderr。对于轮次错误，模型会收到
