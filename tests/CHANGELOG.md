@@ -5,9 +5,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 710 test superati, 2 skip su Windows (symlink non disponibili senza
+- 717 test superati, 2 skip su Windows (symlink non disponibili senza
   Developer Mode).
-- 712 test superati, 0 skip su Debian Linux (2026-11-06); i due test
+- 719 test superati, 0 skip su Debian Linux (2026-11-06); i due test
   symlink girano davvero. Questo è il primo controllo multipiattaforma
   reale prima della release.
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
@@ -25,6 +25,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | sandbox filesystem | `test_filesystem.py`, `test_filesystem_v2.py` |
 | tool filesystem | `test_filesystem_tools.py` |
 | comandi console | `test_console_commands.py` |
+| service layer | `test_service.py` |
 | tool locali | `test_local_tools.py`, `test_time_tools.py`, `test_text_url_tools.py` |
 | registry e definizioni | `test_tool_definition.py`, `test_tool_registry.py` |
 | agent e audit | `test_agent.py`, `test_audit.py` |

@@ -19,6 +19,7 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from core.models import AppConfig
+from core.service import HarnessService
 from core.permissions import (
     ConfirmationProvider,
     ConsoleConfirmation,
@@ -41,7 +42,6 @@ from memory.cli import MemoryCLI
 from memory.projects import ProjectStore
 from memory.project_cli import ProjectCLI
 from memory.project_tools import ProjectToolProvider
-from memory.session import SessionSummarizer
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
@@ -727,6 +727,8 @@ def _main(
 
         raise SystemExit(1) from exc
 
+    service = HarnessService(harness)
+
     # ==========================================
     # Console
     # ==========================================
@@ -809,10 +811,7 @@ def _main(
         project_cli = ProjectCLI(
             harness.project_store,
             lambda: harness.project_id,
-            lambda project_id: _set_project(
-                harness,
-                project_id,
-            ),
+            service.set_project,
             max_active=(
                 config.memory.project_max_active
             ),
@@ -852,11 +851,15 @@ def _main(
 
     try:
 
-        _interactive_loop(harness, project_cli)
+        _interactive_loop(
+            harness,
+            project_cli,
+            service,
+        )
 
     finally:
 
-        _finish_session(harness)
+        _finish_session(harness, service)
 
         harness.audit.record(
             "harness.stop",
@@ -869,62 +872,30 @@ def _set_project(
     project_id: str | None,
 ) -> None:
 
-    harness.project_id = project_id
-
-    if harness.project_state is not None:
-        harness.project_state["id"] = project_id
-
-    harness.agent.project_id = project_id
+    HarnessService(harness).set_project(project_id)
 
 
 def _finish_session(
     harness: Harness,
+    service: HarnessService | None = None,
 ) -> None:
 
-    if getattr(harness, "memory", None) is None:
-        return
+    if service is None:
+        service = HarnessService(harness)
 
-    interactive = sys.stdin.isatty()
-
-    try:
-
-        SessionSummarizer(
-            harness.memory,
-            projects=getattr(
-                harness,
-                "project_store",
-                None,
-            ),
-            project_id=getattr(
-                harness,
-                "project_id",
-                None,
-            ),
-            llm=harness.llm,
-            audit=harness.audit,
-            input_func=(
-                input
-                if interactive
-                else (lambda _prompt: "")
-            ),
-            summary_max_chars=(
-                harness.config.memory.summary_max_chars
-            ),
-        ).finish()
-
-    except Exception as exc:
-
-        harness.audit.record(
-            "memory.failed",
-            stage="session_end",
-            error=str(exc),
-        )
+    service.finish_session(
+        interactive=sys.stdin.isatty(),
+    )
 
 
 def _interactive_loop(
     harness: Harness,
     project_cli: ProjectCLI | None = None,
+    service: HarnessService | None = None,
 ) -> None:
+
+    if service is None:
+        service = HarnessService(harness)
 
     memory_cli = (
         MemoryCLI(
@@ -1000,7 +971,7 @@ def _interactive_loop(
             print()
             continue
 
-        answer = harness.agent.ask(question)
+        answer = service.ask(question)
 
         print()
         print(answer)

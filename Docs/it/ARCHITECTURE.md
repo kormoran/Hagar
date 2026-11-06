@@ -696,6 +696,23 @@ disattivata con un avviso in chat e `memory.disabled` nell'audit; gli
 altri componenti continuano a funzionare. Le scritture di memoria sono
 soggette alle policy (`MEMORY_READ`/`MEMORY_WRITE`).
 
+## 3.11.1 Service layer (`core/service.py`)
+
+`HarnessService` è l'API stabile sopra il `Harness`: non legge da
+`input()`, non scrive su stdout e non conosce la CLI. Espone:
+
+- `ask(question)` con eventi `turn.start`, `turn.answer`, `turn.error`;
+- `status()` con modello, progetto, memoria, audit, policy e tool;
+- `list_projects()`, `current_project()`, `set_project()`,
+  `clear_project()`, `create_project()`;
+- `finish_session()`.
+
+Gli eventi sono `ServiceEvent(type, data, ts)` e possono essere consumati
+da un sink (CLI, GUI, test). La CLI attuale usa il service per i turni, la
+selezione progetto e la chiusura sessione; i comandi interattivi
+`/project` e `/memory` restano adapter temporanei. La GUI userà la stessa
+API senza duplicare la logica dell'agente.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -795,7 +812,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 710 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 717 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

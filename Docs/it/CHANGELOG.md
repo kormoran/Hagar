@@ -20,6 +20,14 @@ riferimento al commit quando utile.
   backend; utile per modelli locali grandi.
 - `hagar.example.yaml` e la documentazione italiana aggiornati.
 
+## Service layer
+
+- Nuovo `core/service.py` con `HarnessService`: turni, stato, progetto,
+  fine sessione ed eventi strutturati (`ServiceEvent`).
+- `hagar.py` usa il service per `ask`, selezione progetto e chiusura
+  sessione; la CLI resta un adapter.
+- Base per la futura GUI, senza `input()` o `print()` nel service.
+
 # 0.3.0 — 2026-11-05
 
 ## Memoria di progetto, summary e archivio
@@ -150,7 +158,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 710 test superati, 2 skip su Windows; 712 superati, 0 skip su Debian
+- 717 test superati, 2 skip su Windows; 719 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma
