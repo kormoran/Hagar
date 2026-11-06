@@ -8,6 +8,8 @@ import uuid
 
 from typing import Any
 
+from core.events import EventSink
+from core.events import emit
 from core.tool_call import ToolCall
 from core.tool_result import ToolResult
 from llm.base import NativeToolsUnavailable
@@ -27,11 +29,14 @@ class Agent:
         project_id: str | None = None,
         max_context_chars: int = 6000,
         context_project_memories: int = 10,
+        event_sink: EventSink | None = None,
     ) -> None:
 
         self.llm = llm
         self.tools = tool_registry
         self.vault = vault
+
+        self.event_sink = event_sink
 
         self.max_tool_calls = (
             max_tool_calls
@@ -520,6 +525,15 @@ class Agent:
             arguments=tool_call.arguments,
         )
 
+        emit(
+            self.event_sink,
+            "tool.call",
+            turn=turn,
+            index=index,
+            tool=tool_call.tool,
+            arguments=tool_call.arguments,
+        )
+
         started = time.perf_counter()
 
         tool_result = self._execute_tool(
@@ -556,6 +570,27 @@ class Agent:
             success=tool_result.success,
             duration_ms=duration_ms,
             output=output,
+            error=tool_result.error,
+        )
+
+        event_output = output
+
+        if len(event_output) > 8000:
+
+            event_output = (
+                event_output[:8000]
+                + f"\n… [truncated {len(output) - 8000} chars]"
+            )
+
+        emit(
+            self.event_sink,
+            "tool.result",
+            turn=turn,
+            index=index,
+            tool=tool_call.tool,
+            success=tool_result.success,
+            duration_ms=duration_ms,
+            output=event_output,
             error=tool_result.error,
         )
 

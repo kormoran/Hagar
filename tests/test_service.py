@@ -6,7 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
+from core.agent import Agent
+from core.permissions import Capability
+from core.permissions import Effect
 from core.service import HarnessService
+from core.tool_call import ToolCall
+from core.tool_definition import ToolDefinition
+from core.tool_registry import ToolRegistry
 from memory.projects import ProjectError
 
 
@@ -212,3 +218,103 @@ def test_list_projects_returns_plain_dicts():
             "active_decisions": 2,
         }
     ]
+
+
+# =====================================================
+# Event bridge: Agent e ToolRegistry
+# =====================================================
+
+
+class ToolLLM:
+    def __init__(self):
+        self.calls = [
+            ToolCall(tool="demo.echo", arguments={"text": "x"})
+        ]
+
+    def request_tool_call(self, messages, registry):
+        if self.calls:
+            return self.calls.pop(0)
+        return ToolCall(tool=None, arguments={})
+
+    def chat(self, messages):
+        return "fatto"
+
+
+def test_agent_tool_events_reach_service_sink():
+    registry = ToolRegistry()
+
+    registry.register(
+        ToolDefinition(
+            name="demo.echo",
+            description="Echo",
+            category="demo",
+            capabilities=Capability.COMPUTE,
+            handler=lambda **kwargs: "output",
+        )
+    )
+
+    agent = Agent(
+        ToolLLM(),
+        registry,
+        vault=None,
+    )
+
+    harness = make_harness()
+    harness.agent = agent
+    harness.registry = registry
+
+    events = []
+    service = HarnessService(harness, events.append)
+
+    assert service.ask("usa il tool") == "fatto"
+
+    types = [event.type for event in events]
+
+    assert types == [
+        "turn.start",
+        "tool.call",
+        "tool.result",
+        "turn.answer",
+    ]
+    assert events[1].data["tool"] == "demo.echo"
+    assert events[2].data["output"] == "output"
+    assert events[2].data["success"] is True
+
+
+class FakeEvaluator:
+    def evaluate(self, subject, resource, scope):
+        return SimpleNamespace(
+            effect=Effect.ALLOW,
+            reason="ok",
+            rule=None,
+        )
+
+
+def test_registry_permission_event_reaches_service_sink():
+    events = []
+    registry = ToolRegistry(
+        evaluator=FakeEvaluator(),
+        subject=SimpleNamespace(name="assistant"),
+        event_sink=events.append,
+    )
+
+    registry.register(
+        ToolDefinition(
+            name="demo.echo",
+            description="Echo",
+            category="demo",
+            capabilities=Capability.COMPUTE,
+            handler=lambda **kwargs: "output",
+        )
+    )
+
+    assert registry.execute("demo.echo") == "output"
+
+    permission = [
+        event for event in events
+        if event.type == "permission.decision"
+    ]
+
+    assert len(permission) == 1
+    assert permission[0].data["tool"] == "demo.echo"
+    assert permission[0].data["effect"] == "ALLOW"

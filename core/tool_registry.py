@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .events import EventSink
+from .events import emit
 from .permissions import (
     ConfirmationProvider,
     ConfirmationRequest,
@@ -39,6 +41,7 @@ class ToolRegistry:
         subject: Subject | None = None,
         confirmation: ConfirmationProvider | None = None,
         audit: Any = None,
+        event_sink: EventSink | None = None,
     ) -> None:
 
         self._tools: dict[
@@ -50,6 +53,7 @@ class ToolRegistry:
         self.subject = subject
         self.confirmation = confirmation
         self.audit = audit
+        self.event_sink = event_sink
 
     # ==================================================
     # Registration
@@ -342,6 +346,25 @@ class ToolRegistry:
             ),
         )
 
+        emit(
+            self.event_sink,
+            "permission.decision",
+            subject=self.subject.name,
+            tool=tool.name,
+            capabilities=capability_names(
+                resource.capabilities
+            ),
+            path=scope.path,
+            namespace=scope.namespace,
+            effect=effect.name,
+            reason=reason,
+            rule=(
+                decision.rule.reason
+                if decision.rule is not None
+                else None
+            ),
+        )
+
         if effect is Effect.DENY:
 
             raise PermissionDenied(
@@ -371,6 +394,14 @@ class ToolRegistry:
                 )
 
             self._record(
+                "permission.confirmation",
+                subject=self.subject.name,
+                tool=tool.name,
+                approved=approved,
+            )
+
+            emit(
+                self.event_sink,
                 "permission.confirmation",
                 subject=self.subject.name,
                 tool=tool.name,

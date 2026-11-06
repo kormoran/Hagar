@@ -26,6 +26,9 @@ riferimento al commit quando utile.
   fine sessione ed eventi strutturati (`ServiceEvent`).
 - `hagar.py` usa il service per `ask`, selezione progetto e chiusura
   sessione; la CLI resta un adapter.
+- Eventi `tool.call`, `tool.result`, `permission.decision` e
+  `permission.confirmation` inoltrati da `Agent` e `ToolRegistry` al
+  sink del service; l'output dei tool è troncato negli eventi.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -158,7 +161,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 717 test superati, 2 skip su Windows; 719 superati, 0 skip su Debian
+- 719 test superati, 2 skip su Windows; 721 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

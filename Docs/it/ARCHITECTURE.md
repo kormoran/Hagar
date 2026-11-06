@@ -702,6 +702,9 @@ soggette alle policy (`MEMORY_READ`/`MEMORY_WRITE`).
 `input()`, non scrive su stdout e non conosce la CLI. Espone:
 
 - `ask(question)` con eventi `turn.start`, `turn.answer`, `turn.error`;
+- eventi tool e permessi inoltrati da `Agent` e `ToolRegistry`:
+  `tool.call`, `tool.result`, `permission.decision`,
+  `permission.confirmation`;
 - `status()` con modello, progetto, memoria, audit, policy e tool;
 - `list_projects()`, `current_project()`, `set_project()`,
   `clear_project()`, `create_project()`;
@@ -812,7 +815,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 717 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 719 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

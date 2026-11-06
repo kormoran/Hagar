@@ -4,25 +4,14 @@ from __future__ import annotations
 
 import time
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 from typing import Callable
 
+from core.events import EventSink
+from core.events import ServiceEvent
+from core.events import emit
 from memory.projects import ProjectError
 from memory.session import SessionSummarizer
-
-
-@dataclass(frozen=True)
-class ServiceEvent:
-    """Evento osservabile da CLI, GUI o futuri subagenti."""
-
-    type: str
-    data: dict[str, Any] = field(default_factory=dict)
-    ts: str = ""
-
-
-EventSink = Callable[[ServiceEvent], None]
 
 
 class HarnessService:
@@ -42,9 +31,32 @@ class HarnessService:
         self.harness = harness
         self._event_sink = event_sink or (lambda event: None)
 
+        # Instrada anche gli eventi generati da Agent e ToolRegistry.
+        if getattr(self.harness, "agent", None) is not None:
+            self.harness.agent.event_sink = self._emit_event
+
+        registry = getattr(self.harness, "registry", None)
+
+        if registry is not None and hasattr(
+            registry,
+            "event_sink",
+        ):
+            registry.event_sink = self._emit_event
+
     # ==================================================
     # Eventi
     # ==================================================
+
+    def _emit_event(
+        self,
+        event: ServiceEvent,
+    ) -> None:
+
+        try:
+            self._event_sink(event)
+        except Exception:
+            # Un sink guasto non deve interrompere il turno.
+            pass
 
     def _emit(
         self,
@@ -52,17 +64,11 @@ class HarnessService:
         **data: Any,
     ) -> None:
 
-        event = ServiceEvent(
-            type=event_type,
-            data=data,
-            ts=datetime.now(timezone.utc).isoformat(),
+        emit(
+            self._emit_event,
+            event_type,
+            **data,
         )
-
-        try:
-            self._event_sink(event)
-        except Exception:
-            # Un sink guasto non deve interrompere il turno.
-            pass
 
     # ==================================================
     # Turni
