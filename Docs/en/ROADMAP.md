@@ -1,70 +1,102 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.2.0 (in sviluppo)
-Ultimo aggiornamento: 2026-11-03
+Current version: 0.2.0 (in development)
+Last updated: 2026-11-03
 
-Le decisioni prese sono indicate come tali; i punti ancora aperti sono
-elencati alla fine di ogni area.
-
----
-
-# 1. Direzione
-
-Hagar è passato da "idea" a "sistema funzionante" (v0.1) e poi a un
-harness con audit, backend multipli e suite di test (v0.2 in corso). Il
-prossimo salto non è aggiungere tool: è dare al sistema una **memoria** e
-un modo di chiamare i tool meno fragile del JSON testuale.
-
-Ordine deciso:
-
-1. memoria su Vault;
-2. calling nativo per i provider che lo supportano;
-3. PermissionEvaluator — **v1 fatta** (policy.yaml, ASK, audit);
-4. igiene (audit, MCP, packaging, test live).
+The decisions already made are marked as such; the points still open are
+listed at the end of each area.
 
 ---
 
-# 2. Priorità 1 — Memoria su Vault
+# 1. Direction
 
-## 2.0 Stato: v1 implementata (2026-11-03)
+Hagar has gone from "idea" to "working system" (v0.1) and then to a
+harness with audit, multiple backends and a test suite (v0.2 in progress). The
+next leap is not adding tools: it is giving the system a **memory** and
+a way of calling tools that is less fragile than textual JSON.
 
-Realizzato:
+Decided order:
 
-- episodica scritta dall'harness, una nota per sessione;
-- iniezione automatica degli ultimi `context_turns` turni;
-- tool `memory.create_skill`, `memory.list_skills`, `memory.get_context`;
-- provenance (`source_session`, `source_turn`, `model`), stato
-  `candidate`, deduplicazione per slug;
-- policy `MEMORY_READ`/`MEMORY_WRITE` e namespace `chat` / `skills`;
-- vault assente → memoria disattivata con avviso, harness attivo.
+1. memory on Vault;
+2. native calling for the providers that support it;
+3. PermissionEvaluator — **v1 done** (policy.yaml, ASK, audit);
+4. hygiene (audit, MCP, packaging, live tests).
 
-Restano: revisione delle skill, retention, ricerca semantica, GUI.
+---
 
-## 2.1 Decisioni prese
+# 2. Priority 1 — Memory on Vault
 
-- **Episodica scritta dall'harness.** I turni di chat vengono registrati
-  dal harness di default: è un verbale meccanico, non un giudizio del
-  modello. Nessun turno mancante, nessuna memoria inventata.
-- **Semantica scritta dal LLM, su richiesta.** Il modello può proporre
-  una memoria (skill) solo attraverso un tool dedicato. La proposta è
-  esplicita, attribuibile e rivedibile — la Prima Legge vieta di
-  trattarla come verità.
-- **Solo Vault Obsidian.** Nessuna scrittura sul filesystem reale per la
-  memoria (per ora). Il `filesystem.allowed` resta la sandbox operativa.
-- **Il Vault non si riscrive.** I tool aggiungono note o sezioni; non
-  sovrascrivono note curate dall'utente.
+## 2.0 Status: v2 implemented (2026-11-04)
 
-## 2.2 Tool previsti
+Done:
 
-Nomi implementati nel namespace `memory.*`:
+- episodic memory written by the harness, one note per session;
+- automatic injection of the latest `context_turns` turns;
+- tools `memory.create_skill`, `memory.list_skills`, `memory.get_context`;
+- provenance (`source_session`, `source_turn`, `model`), `candidate`
+  status, deduplication by slug;
+- `MEMORY_READ`/`MEMORY_WRITE` policy and `chat` / `skills` namespace;
+- missing vault → memory disabled with a warning, harness active;
+- lifecycle `candidate` → `confirmed` → `archived` with human review
+  from the CLI (`/memory review`, `confirm`, `archive`);
+- automatic injection of confirmed skills only, top 3 by lexical
+  match;
+- retention option A: no automatic deletion, archive only;
+- project memory separate from skills: decisions, alternatives,
+  rationale, state and provenance;
+- project selection at start-up, `--project`/`--free`, `/project`
+  commands;
+- end-of-session summary with fallback, transcript in `archive/chat/`
+  and link/hash in the summary;
+- review of the decisions at the end of the session; if refused, they remain
+  `candidate` with `auto_saved: true`;
+- index-based context with a `max_context_chars` budget (characters, not
+  tokens) and `memory.project_context` for the details;
+- `project_max_active` for the project archiving request;
+- archive consultation with `memory.archive_search`,
+  `memory.archive_read`, `/memory archive search|read`, filter by
+  project and transcript with `project` in the frontmatter.
 
-| tool | chi lo chiama | cosa fa |
+Still missing: chat retention, semantic search, GUI.
+
+## 2.1 Decisions made
+
+- **Episodic memory written by the harness.** Chat turns are recorded
+  by the harness by default: it is a mechanical record, not a judgement of the
+  model. No missing turn, no invented memory.
+- **Semantic memory written by the LLM, on request.** The model can propose
+  a memory (skill) only through a dedicated tool. The proposal is
+  explicit, attributable and reviewable — the First Law forbids
+  treating it as truth.
+- **Obsidian Vault only.** No writing to the real filesystem for
+  memory (for now). The `filesystem.sandbox` remains the operational sandbox.
+- **The Vault is not rewritten.** The tools add notes or sections; they do not
+  overwrite notes curated by the user.
+- **Explicit projects.** The project is chosen at start-up from the list
+  of active projects, or with `--project`; `--free` and “free
+  activity” have no project memory.
+- **Project decisions.** They are separate from skills: they record
+  decisions, alternatives and rationale. They are proposed as `candidate`
+  and reviewed at the end of the session; if the review is refused they remain
+  candidates with `auto_saved: true`, they do not become automatic truth.
+- **No token quotas.** The context is limited by construction:
+  project index, decision titles, summary and
+  `max_context_chars` in characters. The model's context window is not
+  measured.
+- **Archive, not deletion.** Archived transcripts and decisions
+  stay in the Vault; archiving a project is reversible.
+
+## 2.2 Planned tools
+
+Names implemented in the `memory.*` namespace:
+
+| tool | who calls it | what it does |
 |---|---|---|
-| `memory.create_skill` | LLM | crea una memoria semantica **candidata** |
-| `memory.list_skills` | LLM | elenca le memorie disponibili |
-| `memory.get_context` | LLM | recupera turni di chat passati |
+| `memory.create_skill` | LLM | creates a **candidate** semantic memory |
+| `memory.list_skills` | LLM | lists the available memories |
+| `memory.get_context` | LLM | retrieves past chat turns |
 
-Firme implementate:
+Signatures implemented:
 
 ```text
 memory.create_skill(title, content, kind="procedure", tags=None)
@@ -77,27 +109,27 @@ memory.get_context(limit=5, query=None, session=None)
     -> [{session, turn, timestamp, question, answer}]
 ```
 
-Comportamenti:
+Behaviours:
 
-- `create_skill`: slug dal titolo, deduplicazione per slug, limite di
-  lunghezza (`max_skill_chars`), frontmatter con `status: candidate`,
-  `source_session`, `source_turn`, `model`, `created_at`; se esiste già
-  uno slug uguale restituisce l'id esistente invece di duplicare.
-- `list_skills`: legge solo il frontmatter, non i corpi; filtrabile per
-  `kind` (`fact` / `procedure`) e `status`.
-- `get_context`: senza `session` cerca in tutte le sessioni; con `query`
-  cerca per parole chiave nei turni passati; `limit` viene limitato a
-  1..50 per non riversare tutto il Vault nel contesto.
+- `create_skill`: slug from the title, deduplication by slug, length limit
+  (`max_skill_chars`), frontmatter with `status: candidate`,
+  `source_session`, `source_turn`, `model`, `created_at`; if an identical
+  slug already exists it returns the existing id instead of duplicating.
+- `list_skills`: reads frontmatter and body (needed for recall), filterable
+  by `kind` (`fact` / `procedure`) and `status`.
+- `get_context`: without `session` it searches all sessions; with `query`
+  it searches by keywords in the past turns; `limit` is clamped to
+  1..50 so as not to pour the whole Vault into the context.
 
-## 2.3 Struttura nel Vault
+## 2.3 Vault structure
 
 ```text
 <Vault>/Hagar/
-  chat/2026-11-03-<session>.md      # una nota per sessione, turni in append
-  skills/<slug>.md                  # una nota per memoria
+  chat/2026-11-03-<session>.md      # one note per session, turns appended
+  skills/<slug>.md                  # one note per memory
 ```
 
-Episodica (una nota per sessione, turni aggiunti in coda):
+Episodic memory (one note per session, turns appended at the end):
 
 ```markdown
 ---
@@ -110,16 +142,16 @@ created: 2026-11-03T00:12:44+01:00
 
 ## 2026-11-03T00:12:44+01:00 · 7f3a
 
-**Utente:** ...
+**User:** ...
 **Hagar:** ...
 ```
 
-Semantica (una nota per skill):
+Semantic memory (one note per skill):
 
 ```markdown
 ---
 id: usa-uv-per-python
-title: Usare uv per i progetti Python
+title: Using uv for Python projects
 kind: procedure
 status: candidate
 tags: [python, tooling]
@@ -129,147 +161,152 @@ model: llama3.1:latest
 created_at: 2026-11-03T00:15:02+01:00
 ---
 
-Passi / contenuto proposto dal modello.
+Steps / content proposed by the model.
 ```
 
-## 2.4 Configurazione
+## 2.4 Configuration
 
 ```yaml
 vault:
-  path: <percorso reale>
+  path: <real path>
 
 memory:
   enabled: true
   vault_subdir: Hagar
   context_turns: 10
+  context_skills: 3
   max_skill_chars: 4000
 ```
 
-## 2.5 Comportamento dell'harness
+## 2.5 Harness behaviour
 
-- A fine turno: aggiunge domanda e risposta alla nota di sessione (solo
-  conversazione, **non** output dei tool: quelli restano nell'audit).
-- All'inizio del turno: inietta gli ultimi `context_turns` turni nel
-  prompt, senza aspettare che il modello chiami `get_context`.
-- Ogni scrittura di memoria produce un evento di audit
+- At the end of the turn: appends question and answer to the session note (only
+  conversation, **not** tool output: those remain in the audit).
+- At the start of the turn: injects the latest `context_turns` turns and up to
+  `context_skills` relevant **confirmed** skills (lexical match),
+  without waiting for the model to call `get_context`.
+- Every memory write or review produces an audit event
   (`memory.enabled`, `memory.disabled`, `memory.context`, `memory.turn`,
-  `memory.failed`); un Vault mancante o non scrivibile non ferma il
-  harness.
-- La memoria episodica è separata dall'audit: l'audit resta forense e
-  contiene anche i dati dei tool.
+  `memory.review`, `memory.status`, `memory.failed`); a missing or
+  non-writable Vault does not stop the harness.
+- The episodic memory is separate from the audit: the audit stays forensic and
+  also contains the tool data.
 
-## 2.6 Punti aperti
+## 2.6 Open points
 
-- **Retention**: quante sessioni conservare, se riassumere le vecchie.
-- **Revisione**: chi promuove una skill da `candidate` a `confirmed`
-  (utente via comando, o un passo di consolidamento).
-- **Ricerca**: indice (SQLite FTS) o embedding quando i volumi
-  cresceranno; oggi è per parola chiave.
-- **GUI**: conferma ASK con dialog modale anche per le scritture di
-  memoria.
-- **Selezione del contesto**: oggi vengono iniettati gli ultimi turni
-  globali, senza rilevanza semantica.
+- **Chat retention**: how many sessions to keep, whether to summarize the
+  old ones; 0.2.0 deletes nothing.
+- **Search**: index (SQLite FTS) or embeddings when the volumes
+  grow; today it is by keyword.
+- **GUI**: ASK confirmation with a modal dialog also for the memory
+  writes and for the review.
+- **Context selection**: today recent global turns, project index
+  and top 3 confirmed skills by lexical match, without semantic
+  relevance.
+- **Decision consolidation**: the project can exceed
+  `project_max_active`; today Hagar proposes archiving, not the
+  merge of duplicate decisions.
 
-## 2.7 Non obiettivi (per ora)
+## 2.7 Non-goals (for now)
 
-- scrittura di memorie sul filesystem reale;
-- modifica di note esistenti dell'utente;
-- embedding / ChromaDB / ricerca semantica (dopo, se i volumi lo
-  giustificano);
-- scrittura autonoma di memorie fuori dal flusso esplicito.
+- writing memories to the real filesystem;
+- modifying existing notes of the user;
+- embeddings / ChromaDB / semantic search (later, if the volumes
+  justify it);
+- autonomous writing of memories outside the explicit flow.
 
 ---
 
-# 3. Priorità 2 — Calling nativo (v1, fatta)
+# 3. Priority 2 — Native calling (v1, done)
 
-**Stato:** implementato il 2026-11-03. `native_step()` per i quattro
-provider, schema dei parametri da `ToolDefinition`, messaggi canonici
-`tool`, più chiamate per turno, fallback automatico su HTTP 400/404/422
-e `--no-native-tools`. Verificato live su Ollama e DeepSeek; Claude e
-Gemini restano da provare. Misurato con `tools/bench_native.py`: nessun
-protocollo vince su tutti i modelli (nativo più veloce, testo a volte più
-preciso). Resta da affinare per i modelli locali che ignorano i tool.
+**Status:** implemented on 2026-11-03. `native_step()` for the four
+providers, parameter schema from `ToolDefinition`, canonical `tool`
+messages, several calls per turn, automatic fallback on HTTP 400/404/422
+and `--no-native-tools`. Verified live on Ollama and DeepSeek; Claude and
+Gemini remain to be tried. Measured with `tools/bench_native.py`: no
+protocol wins on all models (native faster, text sometimes more
+accurate). It remains to be refined for the local models that ignore the tools.
 
-## 3.1 Obiettivo
+## 3.1 Goal
 
-Eliminare la fragilità del protocollo JSON testuale: niente più
-riparazioni, argomenti validati dallo schema del provider, risultati
-strutturati.
+Eliminate the fragility of the textual JSON protocol: no more
+repairs, arguments validated by the provider schema, structured
+results.
 
-## 3.2 Approccio
+## 3.2 Approach
 
-- Mantenere il protocollo testuale come **fallback** per i modelli che
-  non supportano il calling nativo o lo fanno male.
-- Aggiungere a `LLMClient` una capacità dichiarata
-  (`supports_native_tools`) e un percorso nativo.
-- L'`Agent` deve gestire entrambi: `ToolCall` testuale oppure chiamata
-  nativa con id; il risultato torna nel formato atteso dal provider.
-- Il benchmark misura il miglioramento (riparazioni per turno,
-  correttezza degli argomenti).
+- Keep the textual protocol as a **fallback** for the models that
+  do not support native calling or do it badly.
+- Add to `LLMClient` a declared capability
+  (`supports_native_tools`) and a native path.
+- The `Agent` must handle both: textual `ToolCall` or native call
+  with id; the result goes back in the format expected by the provider.
+- The benchmark measures the improvement (repairs per turn,
+  correctness of the arguments).
 
-## 3.3 Trasporto per provider
+## 3.3 Transport per provider
 
-| provider | richiesta | risultato tool |
+| provider | request | tool result |
 |---|---|---|
-| `ollama` | `tools` in `/api/chat` | messaggio con ruolo `tool` |
-| `deepseek` | `tools` (OpenAI) | ruolo `tool` + `tool_call_id` |
-| `claude` | `tools` + blocchi `tool_use` | blocco `tool_result` |
+| `ollama` | `tools` in `/api/chat` | message with role `tool` |
+| `deepseek` | `tools` (OpenAI) | role `tool` + `tool_call_id` |
+| `claude` | `tools` + `tool_use` blocks | `tool_result` block |
 | `gemini` | `tools.functionDeclarations` | `functionResponse` |
 
-## 3.4 Rischi
+## 3.4 Risks
 
-- I modelli locali piccoli spesso non usano bene il calling nativo: serve
-  il fallback automatico.
-- Cambia il plumbing dei messaggi: test per provider e per il percorso di
-  fallback sono obbligatori.
-- Alcuni modelli restituiscono più chiamate nello stesso turno: l'Agent
-  le esegue tutte, nel limite del turno.
+- Small local models often do not use native calling well: the automatic
+  fallback is needed.
+- The message plumbing changes: tests per provider and for the fallback
+  path are mandatory.
+- Some models return several calls in the same turn: the Agent
+  executes them all, within the turn limit.
 
 ---
 
-# 4. Priorità 3 — PermissionEvaluator
+# 4. Priority 3 — PermissionEvaluator
 
-## 4.1 Stato: v1 implementata
+## 4.1 Status: v1 implemented
 
-Realizzato:
+Done:
 
-- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` e
+- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` and
   `PermissionEvaluator` in `core/permissions.py`;
-- `policy.yaml` letto **prima** del LLM, con fallback a `DENY` totale e
-  warning su audit e chat;
-- tetto di sistema derivato da `permissions.read/write/shell`;
-- scope per `tools` (glob), `paths` e `namespaces` (prefissi);
-- `ASK` con `ConsoleConfirmation` (`lo faccio? (y/N)`, default N);
-- applicazione in `ToolRegistry.execute` e audit di
+- `policy.yaml` read **before** the LLM, with fallback to total `DENY` and
+  a warning on audit and chat;
+- system ceiling derived from `permissions.read/write/shell`;
+- scope for `tools` (glob), `paths` and `namespaces` (prefixes);
+- `ASK` with `ConsoleConfirmation` (`lo faccio? (y/N)`, default N);
+- enforcement in `ToolRegistry.execute` and audit of
   `permission.decision` / `permission.confirmation`;
-- `ToolDefinition.capabilities` per tutti i tool (filesystem e MCP);
-- `requires_confirmation` applicato come pavimento di ASK;
-- 347 test raccolti, 1 skip.
+- `ToolDefinition.capabilities` for all tools (filesystem and MCP);
+- `requires_confirmation` applied as an ASK floor;
+- 347 tests collected, 1 skipped.
 
-## 4.2 Restano da fare
+## 4.2 Still to do
 
-- `ConfirmationProvider` per la GUI (dialog modale) e per l'esecuzione
-  non interattiva (deny di default);
-- policy dinamiche per task/ruolo, con sola riduzione a runtime (un
-  agente può ridursi i permessi, mai allargarli da solo);
-- capability dei tool MCP assegnate dalla configurazione, non
-  dichiarate dal server;
-- più soggetti in esecuzione contemporanea (più agenti con policy
-  diverse);
-- oggetti-risorsa per memoria e percorsi, non solo tool.
+- `ConfirmationProvider` for the GUI (modal dialog) and for non-interactive
+  execution (deny by default);
+- dynamic policies per task/role, with runtime reduction only (an
+  agent can reduce its own permissions, never widen them by itself);
+- capabilities of the MCP tools assigned by the configuration, not
+  declared by the server;
+- several subjects running at the same time (several agents with different
+  policies);
+- resource objects for memory and paths, not only tools.
 
 ---
 
-# 5. Priorità 4 — AIsh
+# 5. Priority 4 — AIsh
 
-Shell dedicata agli LLM, concettualmente simile a Bash ma senza alcun
-accesso alla shell reale:
+A shell dedicated to LLMs, conceptually similar to Bash but without any
+access to the real shell:
 
-- nessuna esecuzione di comandi host;
-- utilizzo esclusivo di tool registrati;
-- filesystem simulato e percorsi virtuali (`workspace://`);
-- integrazione con tool MCP;
-- pipe e comandi virtuali.
+- no execution of host commands;
+- exclusive use of registered tools;
+- simulated filesystem and virtual paths (`workspace://`);
+- integration with MCP tools;
+- pipes and virtual commands.
 
 ```text
 ls workspace://
@@ -277,56 +314,103 @@ cat workspace://project/readme.md
 find *.py
 ```
 
-I percorsi virtuali risolverebbero anche l'esposizione dei percorsi
-assoluti della sandbox.
+Virtual paths would also solve the exposure of the sandbox's absolute
+paths.
 
 ---
 
-# 6. Igiene e robustezza
+# 6. Hygiene and robustness
 
-Fatta (2026-11-03):
+Done (2026-11-03):
 
-- **MCP**: risposte `text/event-stream`, notifica
-  `notifications/initialized`, normalizzazione dei risultati a testo
-  (blocchi `text`, `structuredContent`, errori `isError`).
-- **MCP auth**: bearer o header personalizzato, token solo da ambiente,
-  server saltato con `mcp.failed` se il token manca.
-- **Audit**: rotazione a `max_bytes`, catena di hash verificabile con
-  `verify_chain`, redazione dell'output dei tool con
+- **MCP**: `text/event-stream` responses, `notifications/initialized`
+  notification, normalization of the results to text
+  (`text` blocks, `structuredContent`, `isError` errors).
+- **MCP auth**: bearer or custom header, token only from the environment,
+  server skipped with `mcp.failed` if the token is missing.
+- **MCP OAuth**: authorization code + PKCE flow with browser, RFC 9728/8414
+  discovery, dynamic registration, token cache, refresh and 401 retry.
+- **Audit**: rotation at `max_bytes`, hash chain verifiable with
+  `verify_chain`, redaction of the tool output with
   `include_outputs: false`.
-- **Test live**: marker `live`, esclusi di default, `--live` per Ollama
-  e provider remoti (questi ultimi skippati senza chiave).
-- **Packaging**: metadati completi, entry point `hagar`, `--config`,
-  `--model`, `--no-memory`, `--version`, versione unica.
-- **URL base**: `model.host` vale per tutti i provider.
-- **Legacy**: rimossi `tools/filesystem.py` e `llm/tool_result.py`.
+- **Audit retention**: timestamped backups and `audit.max_files` (default
+  100, includes the active file) with pruning of the oldest.
+- **Live tests**: `live` marker, excluded by default, `--live` for Ollama
+  and remote providers (the latter skipped without a key).
+- **Packaging**: complete metadata, entry point `hagar`, `--config`,
+  `--model`, `--no-memory`, `--version`, single version.
+- **Base URL**: `model.host` applies to all providers.
+- **Legacy**: removed `tools/filesystem.py` and `llm/tool_result.py`.
 
-Restano:
+Still missing:
 
-- OAuth interattivo per MCP (oggi bearer/header da variabile d'ambiente);
-- retention e compattazione delle sessioni di audit;
-- conferme GUI per `ASK`;
-- allineamento continuo della documentazione.
-
----
-
-# 7. Più avanti
-
-- ricerca semantica sul Vault (indice, poi eventualmente ChromaDB);
-- RAG sui documenti;
-- gestione attività e scratchpad persistente;
-- osservazione del vault (note modificate dall'utente);
-- agente personale permanente;
-- provider aggiuntivi (OpenAI è quasi gratis: stesso client di DeepSeek
-  con un base URL diverso).
+- device flow / DPoP for MCP OAuth;
+- compaction of the audit sessions;
+- GUI confirmations for `ASK`;
+- continuous alignment of the documentation.
 
 ---
 
-# 8. Ordine di lavoro
+# 7. Later
 
-1. Memoria v1: fatta; restano revisione, retention e ricerca.
-2. PermissionEvaluator: v1 fatta; restano conferme GUI e policy
-   dinamiche.
-3. Igiene: fatta (packaging, test live, MCP, audit, base URL, legacy);
-   restano autenticazione MCP e retention dell'audit.
-4. Calling nativo: v1 fatta; resta la misura col benchmark.
+- semantic search on the Vault (index, then possibly ChromaDB);
+- RAG on the documents;
+- task management and persistent scratchpad;
+- vault observation (notes modified by the user);
+- permanent personal agent;
+- additional providers (OpenAI is almost free: the same client as DeepSeek
+  with a different base URL).
+
+---
+
+# 8. Work order
+
+1. Memory v2: done (lifecycle, CLI review, injection of confirmed ones);
+   chat retention, semantic search and GUI remain.
+2. PermissionEvaluator: v1 done; GUI confirmations and dynamic policies
+   remain.
+3. Hygiene: done (packaging, live tests, MCP auth/OAuth, audit with
+   retention, base URL, legacy).
+4. Native calling: v1 done; the benchmark measurement remains.
+5. Release 0.3.0: prepared for GitHub, with cross-platform CI and
+   release workflow.
+
+---
+
+# 9. Local tools
+
+Status as of 2026-11-05:
+
+- filesystem v2: `list_dir`, `read_chunk`, `rename`, `copy_file`,
+  `search`, in addition to the existing tools;
+- `local_tools/`: `calculator.evaluate`, `statistics.compute`,
+  `units.convert`, `feed.read` (local providers, not MCP servers);
+- `COMPUTE` capability always in the ceiling, `NETWORK` controlled by
+  `permissions.network` and by the policy (feed in `ask`);
+- write limits: `max_write_bytes`, `min_free_bytes`,
+  `session_write_bytes` and `ask_over_bytes` with a single preflight;
+- `feed.read` with SSRF policy: global addresses only, revalidated
+  redirects, no credentials in the URL;
+- filesystem with virtual root `/home/ai`, mandatory aliases and
+  per-mount permissions (`R`/`W`/`X`);
+- POSIX runner `tools/run_tests.sh` next to the Windows one.
+
+Open points:
+
+- DNS rebinding: the resolution is validated, but `requests` resolves
+  the name again at connection time; a pinned resolver or a dedicated
+  adapter is needed to close the case;
+- the calculator is deliberately limited (no symbolic algebra);
+- consider a size limit for the other tool outputs as well.
+
+Closed as user responsibility:
+
+- hard links, mounts and junctions inside the allowed directories are not
+  checked by Hagar. For total isolation the user must ensure
+  that there are none; Hagar does not create them and does not detect them;
+- TOCTOU race: Hagar does not use `openat2`, `O_NOFOLLOW` on every component or
+  Windows handles and does not guarantee atomicity between check and operation. The
+  race requires a concurrent local process with write access;
+  it is a malicious scenario or a compromised environment, not normal use.
+  For total isolation a dedicated volume, a separate user, a mount
+  namespace or a container are needed.

@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="Docs/HAGAR.jpg">
+  <img src="../HAGAR.jpg">
 </p>
+
+[Italiano](../it/README.md) · [English](../en/README.md) · [Español](../es/README.md) · [中文](../zh/README.md) · [Русский](../ru/README.md) · [Português](../pt/README.md)
 
 # H.A.G.A.R.
 
@@ -208,10 +210,10 @@ con la generazione di un avviso, mentre il sistema continua a funzionare. Le scr
 HAGAR ha una documentazione in più lingue. Al momento le lingue supportate
 sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la sua subdirectory dedicata in Docs.
 
-- [MANUAL.md](Docs/.../MANUAL.md) — formato della configurazione, comandi da console, 
+- [MANUAL.md](MANUAL.md) — formato della configurazione, comandi da console, 
   opzioni da linea di comando, presupposti di base. 
-- [ARCHITECTURE.md](Docs/.../ARCHITECTURE.md) — L'architettura software di questa 
+- [ARCHITECTURE.md](ARCHITECTURE.md) — L'architettura software di questa 
   versione dell'harness: componenti, modello di sicurezza, limiti noti.
-- [ROADMAP.md](Docs/.../ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
+- [ROADMAP.md](ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
   e questioni ancora aperte.
-- [CHANGELOG.md](Docs/.../CHANGELOG.md) — cronologia delle modifiche.
+- [CHANGELOG.md](CHANGELOG.md) — cronologia delle modifiche.
