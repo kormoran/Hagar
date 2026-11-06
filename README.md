@@ -99,43 +99,12 @@ The configuration is searched as `--config`, then the `HAGAR_CONFIG`
 environment variable, then `./hagar.yaml`. `python -m hagar` also works
 from a source checkout.
 
-## 3.1 Test suite
-
-The suite runs offline and covers configuration, the filesystem sandbox,
-the tool registry, the agent loop, the audit log, every LLM backend,
-Ollama response parsing, the MCP client, memory, the vault and the
-harness wiring.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
-.\tools\run_tests.ps1
-```
-
-Live tests call real services and are excluded by default:
-
-```powershell
-.\tools\run_tests.ps1 --live
-```
-
-They need a running Ollama server; the remote-provider checks run only
-when the corresponding API key is set (`DEEPSEEK_API_KEY`,
-`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). Model overrides:
-`HAGAR_LIVE_OLLAMA_MODEL`, `HAGAR_LIVE_DEEPSEEK_MODEL`,
-`HAGAR_LIVE_CLAUDE_MODEL`, `HAGAR_LIVE_GEMINI_MODEL`.
-
-`tools/run_tests.ps1` puts `tools/pytest_shim` on `PYTHONPATH`. The shim is
-needed when the tests run under a restricted token (for example the DSH
-sandbox on Windows): Python 3.13+ applies the POSIX `0o700` mode to
-`tempfile.mkdtemp()`, and the restricted token cannot open the resulting
-directory, so every `tmp_path` fixture fails with "Permission denied".
-On Windows the POSIX mode bits carry no meaning, so the shim restores the
-`0o777` default; confinement is still enforced by the token and the jail.
-
 ## 3.2 Layout
 
 ```
 hagar.py            entry point and harness wiring
+hagar.yaml          Default config file
+policy.yaml         Permssions for tools (MCP and embedded)
 core/               config, agent, audit log, registry, sandbox and tools
 llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), MCP client
 memory/             vault access

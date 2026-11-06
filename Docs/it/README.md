@@ -1,421 +1,217 @@
-## H.A.G.A.R.
+<p align="center">
+  <img src="Docs/HAGAR.jpg">
+</p>
 
-Harness Agentico Generale per AI Resilienti (General Agentic Harness for Resilient AIs)
-README.md in italiano in Docs/it
+# H.A.G.A.R.
 
-# 1. Project Vision
+Harness Agentico Generale per AI Resiliente (General Resilient Agentic Harness for AIs)
 
-Hagar is an LLM harness developed in Python, designed for the resilient execution of LLMs.
+# 0. Come tutto cominciò: la sicurezza 
 
-The goal is not merely to provide a chat interface with a language model, but to create a ***secure*** operating environment in which an LLM can use tools, consult persistent memory, and interact with external systems — all without having direct access to the host machine's actual resources — while preventing or at least mitigating common errors.
+Ho creato HAGAR perché nessun altro harness per IA isolava i miei file per impostazione predefinita. Che fosse DeepSeek, Claude Code, AutoGen o altro, se lasciati liberi, finiscono tutti per esporre il tuo file system agli LLM. Sei TU a dover imporre dei limiti e devi farlo bene, se no sono cavoli tuoi. Nessuno di questi strumenti garantisce che i tuoi dati non vengano letti per scopi imprecisati, per errore o per entrambi i motivi. E se non è l'harness stesso a farlo, potrebbe essere quel plugin tanto figo, quell'utilissima skill o qualsiasi altra aggiunta che hai appena installato...
 
-To this end, we adopt principles and methodologies from HMI/HCI (Human-Machine Interface/Interaction for industrial machinery) and Cognitive Ergonomics, applying them to the design of the environment in which the LLM operates. As a first iteration of the project, we define **The Four Laws of HAGAR**:
+**HAGAR ribalta questo approccio: sei TU a stabilire cosa gli LLM possono vedere, scrivere o cercare, e dove.** Nessun LLM può leggere o scrivere nulla al di fuori delle directory che hai esplicitamente indicato come leggibili o scrivibili nel file di configurazione. Se una directory non c'è nella sezione `[filesystem]` della configurazione, non esiste: per gli LLM, è come se non ci fosse.
 
-## 1.1 First Law of HAGAR
-**An LLM is, by definition, untrustworthy.** This is not because it is malicious or useless, but because it is probabilistic. Therefore, every statement it makes must be verified, and every action it takes must be constrained.
+Durante lo sviluppo di HAGAR, mi è sorto un altro interrogativo: perché un LLM dovrebbe avere bisogno di interagire con il sistema operativo? Nel mondo dell'intelligenza artificiale, il vero collo di bottiglia prestazionale sono le chiamate al modello, che possono richiedere secondi (a volte MOLTI secondi). L'accesso diretto al sistema operativo permette di risparmiare solo qualche millisecondo: vale la pena correre il rischio? La mia risposta è no.
 
-## 1.2 Second Law of HAGAR
-**Tools are more reliable than the LLM.** If the filesystem indicates that a file exists, it exists. If a tool returns a file size, that size is real. The LLM interprets, but tools provide measurements.
+Per questo motivo, **HAGAR fa il possibile per isolare l'LLM dal sistema operativo.** Ogni interazione con file, memorie o la macchina stessa avviene tramite strumenti specifici (basati su protocollo MCP o integrati direttamente in HAGAR). L'IA non sa su che sistema operativo sta girando, e non dovrebbe mai saperlo: se ci fosse un modo per cui un'IA possa capire il sistema operativo dove gira nonostante l'isolamento di HAGAR, lo considererò una falla di sicurezza e provvederò a correggerla (o, quantomeno, a documentare il problema per informare gli utenti).
 
-## 1.3 Third Law of HAGAR
-**State must exist outside the LLM’s "mind."** By implementing components such as `ToolRegistry`, `MCP`, `FilesystemSandbox`, and (forthcoming) `PermissionEvaluator`, we shift knowledge and control outside of the model itself. This aligns with standard practices for safety-critical systems. 
+|Harness	|Vede FS host	|Vede il SO		|Isolamento	  |
+|-----------|---------------|---------------|-------------|
+|Claude Code|Parziale		|Sì 	 		|Permessi	  |
+|Codex CLI	|Parziale		|Sì 	 		|Sandbox	  |
+|OpenHands	|No				|Sì 	 		|Docker		  |
+|E2B		|No				|Sì				|VM/Container |
+|`HAGAR`	|`No`			|`No`			|`FS virtuale`|
 
-## 1.4 HAGAR’s Fourth Law
-**Every action must be explainable after the fact.** An audit log is essential: when something goes wrong — and eventually it will — the question should not be "Why did the LLM go haywire?" but rather: "What assumption did it make?" "Which tool did it use?" "Which piece of data was incorrect?" In other words: incident investigation — much like in aviation.
+**Gli altri harness cercano di dare agli LLM un computer: HAGAR dice agli LLM che il computer non esiste.** 
+Le IA dovrebbero concentrarsi sulla gestione della conoscenza più che sui dettagli tecnici (anche se sono molto brave in entrambi). Più un framework può automatizzare, minore è il ragionamento (e il numero di token) richiesto. Così anche i modelli più piccoli possono esprimere il loro pieno potenziale.
 
-## 1.5 Software Architecture
+Oppure, detto in altro modo: per un LLM, HAGAR è la realtà.
 
-Structurally, HAGAR is built upon five fundamental principles:
+# 1. Visione del progetto
 
-- separation between the model and the operating system;
-- security by default;
-- a plugin-based architecture;
-- independence from any specific LLM provider;
-- extensibility via tools and the MCP (Model Context Protocol).
+HAGAR è un harness per LLM, sviluppato in Python, progettato per l'esecuzione sicura di modelli linguistici.
 
----
+L'obiettivo non è fornire solo un'interfaccia di chat per un LLM, ma creare un ambiente operativo ***sicuro e protetto*** in cui l'LLM possa utilizzare strumenti, consultare una memoria persistente e interagire con sistemi esterni — il tutto senza avere accesso diretto alle risorse reali della macchina ospite — prevenendo o almeno mitigando gli errori più comuni.
 
-# 2. Absolute Prohibitions
+Per questo ho adottato principi e metodologie provenienti sia dalla sicurezza informatica (principio del minimo privilegio, triade CIA) sia dall'ambito HMI/HCI (interazione/interfaccia uomo-macchina, tipica dei macchinari industriali) e dall'ergonomia cognitiva, applicandoli alla progettazione dell'ambiente in cui opera l'LLM: come si fa con il lavoro degli uomini, lo scopo ulteriore di HAGAR è creare un ambiente per LLM dove fare bene è facile, e sbagliare è difficile.
 
-The model must never:
+Sulla base di quanto esposto e al fine di stabilire una regola di condotta generale per ogni futuro sviluppo di questo software, enuncio qui **le Quattro Leggi di HAGAR**:
 
-- directly access the host filesystem;
-- execute commands in the actual shell;
-- obtain privileges beyond those defined in its configuration;
-- have knowledge of the operating system's actual organization.
+## 1.1 Prima Legge di HAGAR
+**Un LLM è, per definizione, inaffidabile.** Ciò non significa che sia malevolo o inutile, ma che il suo funzionamento è di natura probabilistica. Di conseguenza, ogni sua affermazione deve essere verificata e ogni sua azione deve essere soggetta a vincoli.
 
-All operations must take place exclusively through tools that are registered and controlled by the harness.
+## 1.2 Seconda Legge di HAGAR
+**Gli strumenti sono più affidabili dell'LLM.** Se il file system indica che un file esiste, allora esiste davvero. Se uno strumento restituisce la dimensione di un file, tale dimensione è reale. L'LLM interpreta, ma gli strumenti misurano. 
 
-## 2.1 Hard links, mounts and TOCTOU
+## 1.3 Terza Legge di HAGAR
+**Lo stato deve esistere al di fuori della "mente" dell'LLM.** Implementando componenti come `ToolRegistry`, `MCP`, `FilesystemSandbox`, `Memory` e `PermissionEvaluator`, trasferiamo la conoscenza e il controllo all'esterno del modello stesso. Ciò è in linea con le pratiche standard per i sistemi in cui la sicurezza è un requisito critico.
 
-Hagar does not inspect hard links, mounts or junctions inside the
-configured sandbox directories. A hard link is another name for the same
-inode, not a path target: a path-based sandbox cannot know that another
-name exists outside the allowed tree. The filesystem tools do not create
-hard links.
+## 1.4 Quarta Legge di HAGAR
+**Ogni azione deve essere spiegabile a posteriori.** Per questo motivo HAGAR implementa un *log di audit*: quando qualcosa va storto — e prima o poi succederà — la domanda non deve essere "Perché l'LLM è impazzito?", ma "Che presupposti ha adottato?", "Quale strumento ha usato?", "Quale dato era errato?". In altre parole, deve essere possibile condurre un'analisi degli incidenti, esattamente come in aviazione. HAGAR riconosce questa necessità e darà sempre gli strumenti per farla.
 
-Hagar also does not control TOCTOU races: there is no `openat2`,
-`O_NOFOLLOW` on every component or Windows handle-based backend, so the
-filesystem may change between the check and the operation. Closing that
-window requires a concurrent local process with write access to the
-sandbox directories: it is a malicious or compromised-environment
-scenario, not a normal-use accident.
+## 1.5 Architettura Software
 
-If a hard link or mount is already present inside an allowed directory,
-Hagar treats it as a normal file/directory and may read, modify or
-unlink its internal name. The user is responsible for keeping sandbox
-directories free of hard links, mounts and junctions to content that
-must not be accessible, and for preventing untrusted concurrent writers,
-when total isolation is required. Strong isolation requires a dedicated
-volume, a separate user, a mount namespace or a container; it is not a
-resolver-path feature. See `ARCHITECTURE.md` §6.1.
+Dal punto di vista strutturale, HAGAR si fonda su cinque principi fondamentali:
+
+- separazione tra il modello e il sistema operativo;
+- sicurezza per impostazione predefinita (*security by default*);
+- architettura a plugin;
+- indipendenza da qualsiasi specifico fornitore di LLM;
+- estensibilità tramite strumenti (*tools*) e l'MCP (Model Context Protocol).
 
 ---
 
-# 3. Development
+# 2. Divieti Assoluti
 
-## 3.0 Install and CLI
+Al modello è fatto assoluto divieto di:
 
-The repository ships a portable example configuration. Copy it and
-create the Vault directory before the first run:
+- accedere direttamente al file system dell'host;
+- eseguire comandi in una vera shell dell'OS;
+- ottenere privilegi superiori a quelli definiti in configurazione;
+- conoscere il reale sistema operativo.
 
-```bash
-# Linux / macOS
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
-cp hagar.example.yaml hagar.yaml
-mkdir -p vault logs
-hagar --config hagar.yaml
-```
+Tutte le operazioni devono avvenire solo attraverso strumenti registrati e controllati dall'harness.
+
+---
+
+# 3. Sviluppo
+
+## 3.0 Installazione e CLI
 
 ```powershell
-# Windows
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-Copy-Item hagar.example.yaml hagar.yaml
-New-Item -ItemType Directory -Force vault, logs
-hagar --config hagar.yaml
+.\.venv\Scripts\python -m pip install -e .
 ```
 
-`hagar.yaml` and `testvault/` are local and ignored by git. The example
-uses `./vault` as the memory root and the current directory as a
-read-only sandbox alias; adjust both paths to your machine.
+`pip install -e .` dichiara i pacchetti `core`, `llm` e `memory` e
+installa il comando `hagar`:
 
-`pip install -e .` declares the `core`, `llm`, `memory` and
-`local_tools` packages and installs the `hagar` command:
-
-```bash
+```powershell
 hagar --config hagar.yaml
 hagar --model qwen3:8b
-hagar --project hagar
-hagar --free
 hagar --no-memory
 hagar --no-native-tools
 hagar --version
 ```
 
-Le voci di `filesystem.sandbox` sono percorsi del sistema ospite:
-qualsiasi directory esistente e raggiungibile va bene. Ogni voce ha un
-alias esplicito e i permessi `R`/`W`/`X`:
+La configurazione viene cercata nell'ordine seguente: parametro `--config`,
+variabile d'ambiente `HAGAR_CONFIG` e infine file `./hagar.yaml`.
+È inoltre possibile utilizzare `python -m hagar` lavorando direttamente sul codice sorgente.
 
-```yaml
-filesystem:
-  sandbox:
-    - alias: documenti
-      path: C:\Users\pippo\Documenti
-      permissions: RWX
-```
-
-L'agente vede `/home/ai/documenti/...`; `/home/ai` elenca gli alias ma
-non è una directory fisica. Hagar non crea directory e non presume che
-esista una home dedicata. I path fisici e i nomi interni possono
-contenere spazi; l'alias no. In YAML conviene racchiudere tra apici
-singoli i path Windows con spazi:
-
-```yaml
-path: 'C:\Users\pippo\My Documents'
-```
-
-La sandbox può limitare le scritture:
-
-```yaml
-filesystem:
-  limits:
-    max_write_bytes: 100000000
-    min_free_bytes: 5000000000
-    session_write_bytes: 2000000000
-    ask_over_bytes: 50000000
-```
-
-`0` disabilita il limite. `max_write_bytes`, `min_free_bytes` e
-`session_write_bytes` sono invarianti; `ask_over_bytes` chiede conferma
-una sola volta, integrandosi con la policy.
-
-The configuration is searched as `--config`, then the `HAGAR_CONFIG`
-environment variable, then `./hagar.yaml`. `python -m hagar` also works
-from a source checkout.
-
-## 3.1 Test suite
-
-The suite runs offline and covers configuration, the filesystem sandbox,
-the tool registry, the agent loop, the audit log, every LLM backend,
-Ollama response parsing, the MCP client, memory, the vault and the
-harness wiring.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt -r requirements-dev.txt
-./tools/run_tests.sh
-```
-
-On Windows use `.\tools\run_tests.ps1`; the shim described below is
-Windows-only.
-
-Live tests call real services and are excluded by default:
-
-```bash
-./tools/run_tests.sh --live
-```
-
-On Windows: `.\tools\run_tests.ps1 --live`.
-
-They need a running Ollama server; the remote-provider checks run only
-when the corresponding API key is set (`DEEPSEEK_API_KEY`,
-`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). Model overrides:
-`HAGAR_LIVE_OLLAMA_MODEL`, `HAGAR_LIVE_DEEPSEEK_MODEL`,
-`HAGAR_LIVE_CLAUDE_MODEL`, `HAGAR_LIVE_GEMINI_MODEL`.
-
-`tools/run_tests.ps1` puts `tools/pytest_shim` on `PYTHONPATH`. The shim is
-needed when the tests run under a restricted token (for example the DSH
-sandbox on Windows): Python 3.13+ applies the POSIX `0o700` mode to
-`tempfile.mkdtemp()`, and the restricted token cannot open the resulting
-directory, so every `tmp_path` fixture fails with "Permission denied".
-On Windows the POSIX mode bits carry no meaning, so the shim restores the
-`0o777` default; confinement is still enforced by the token and the jail.
-Linux/macOS use `./tools/run_tests.sh`, which does not need the shim.
-
-## 3.2 Layout
+## 3.1 Layout
 
 ```
-hagar.py            entry point and harness wiring
-core/               config, agent, audit log, registry, sandbox and tools
-llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), MCP client
-memory/             vault access
-local_tools/        local tools (calculator, statistics, units, clock, calendar, think, text, url, feed)
-tests/              pytest suite
-tools/              development helpers (test runner, sandbox shim, model benchmark)
+hagar.py            Script di lancio dell'harness
+hagar.yaml          Script di configurazione predefinito
+policy.yaml			Configurazione dei permessi per i tool (integrati ed MCP)
+core/               config, agent, audit log, registry, sandbox e tools
+llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), client MCP
+memory/             accesso al vault
+tests/              suite pytest
+tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
+local_tools/		Tool per le AI integrati in HAGAR - non MCP, ma disponibili direttamente
 ```
 
-## 3.3 LLM backends
+## 3.2 LLM backends
 
-`model.provider` selects the backend. Tool schemas, message conversion and
-the native/fallback paths are shared in `llm/base.py`, so switching
-provider does not change the harness.
+`model.provider` seleziona il backend. Gli schemi degli strumenti (tool), la conversione dei messaggi e i percorsi nativi o di fallback sono gestiti in `llm/base.py`; pertanto, cambiare provider non richiede modifiche all'infrastruttura di esecuzione (harness).
 
-Native tool calling is the default for all four providers. If a model
-rejects it (HTTP 400/404/422), the agent falls back to the text JSON
-protocol for the session; set `model.native_tools: false` or pass
-`--no-native-tools` to force the text protocol.
+Il native tool calling è l'impostazione predefinita per tutti e quattro i backend. Se un modello rifiuta tale modalità (restituendo un errore HTTP 400, 404 o 422), l'agente passa al protocollo su JSON testuale per l'intera sessione; si può forzare l'uso del protocollo testuale impostando `model.native_tools: false` o passando l'argomento `--no-native-tools`.
 
-| provider   | transport                    | API key                |
+| provider   | trasporto                    | chiave API             |
 |------------|------------------------------|------------------------|
-| `ollama`   | native `/api/chat`           | none                   |
-| `deepseek` | OpenAI-compatible REST       | `DEEPSEEK_API_KEY`     |
+| `ollama`   | nativo `/api/chat`           | nessuna                |
+| `deepseek` | REST compatibile con OpenAI  | `DEEPSEEK_API_KEY`     |
 | `claude`   | Anthropic Messages API       | `ANTHROPIC_API_KEY`    |
 | `gemini`   | Generative Language API      | `GEMINI_API_KEY`       |
 
-DeepSeek's current model names are `deepseek-flash` (default) and
-`deepseek-v4-pro`; the old `deepseek-chat` is no longer accepted. The live
-test uses `deepseek-flash` unless `HAGAR_LIVE_DEEPSEEK_MODEL` overrides it.
-`tools/diagnose_deepseek.py` checks DNS, key shape and endpoint without
-printing the key.
+I nomi dei modelli attualmente supportati per DeepSeek sono `deepseek-flash` (predefinito) e `deepseek-v4-pro`; il vecchio `deepseek-chat` non è più accettato. Il live test usa `deepseek-flash`, a meno che non venga sovrascritto dalla variabile `HAGAR_LIVE_DEEPSEEK_MODEL`. Lo script `tools/diagnose_deepseek.py` consente di verificare il DNS, il formato della chiave e l'endpoint, senza mostrare la chiave stessa.
 
-Keys are read from the environment, never from the YAML file. If the
-default variable name does not suit you, set `model.api_key_env`.
-`model.host` is the base URL of any provider (with a per-provider
-default; Ollama uses `http://localhost:11434`) and `model.max_tokens` only
-applies to Claude (default 1024).
+Le chiavi vengono lette solo da variabili d'ambiente e mai dal file YAML. Se il nome predefinito della variabile non è adatto alle proprie esigenze, si può specificarne un altro con `model.api_key_env`. Il parametro `model.host` indica l'URL di base del provider (con un valore predefinito specifico per ciascuno; ad esempio, Ollama usa `http://localhost:11434`), mentre `model.max_tokens` si applica solo a Claude (con un valore predefinito di 1024). 
 
 ```yaml
 model:
-  provider: gemini
-  name: gemini-2.0-flash
+provider: gemini
+name: gemini-2.0-flash
 ```
 
-Each backend normalizes the dialogue to its own format: Claude receives
-system messages in the dedicated `system` field and alternating turns,
-Gemini receives `systemInstruction` and the `model` role. The shared
-protocol between the agent and the client only uses `user` and
-`assistant`.
+Ogni backend normalizza il dialogo secondo il proprio formato: Claude riceve i messaggi di sistema nel campo dedicato `system` e i turni alternati, mentre Gemini riceve `systemInstruction` e il ruolo `model`. Il protocollo condiviso tra l'agente e il client utilizza esclusivamente i ruoli `user` e `assistant`.
 
-## 3.4 Audit log
+## 3.3 Log di audit
 
-Every session appends JSON Lines to `audit.path` (default
-`logs/audit.jsonl`, resolved relative to the configuration file):
+Ogni sessione aggiunge voci in formato JSON Lines al percorso specificato in `audit.path` (valore predefinito: `logs/audit.jsonl`, risolto relativamente al file di configurazione):
 
 ```yaml
 audit:
-  enabled: true
-  path: logs/audit.jsonl
-  max_field_chars: 2000
+enabled: true
+path: logs/audit.jsonl
+max_field_chars: 2000
 ```
 
-Events: `harness.start`, `turn.start`, `llm.tool_choice`,
-`llm.protocol_error`, `llm.repaired`, `llm.repair_failed`, `tool.call`,
-`tool.result`, `turn.answer`, `turn.error`, `turn.stop`, `mcp.loaded`,
-`mcp.failed`, `llm.failed`, `harness.stop`. A missing `harness.stop` in
-the last session means the process was killed or crashed.
+Eventi registrati: `harness.start`, `turn.start`, `llm.tool_choice`, `llm.protocol_error`, `llm.repaired`, `llm.repair_failed`, `tool.call`, `tool.result`, `turn.answer`, `turn.error`, `turn.stop`, `mcp.loaded`, `mcp.failed`, `llm.failed`, `harness.stop`. L'assenza di un evento `harness.stop` nell'ultima sessione indica che il processo è stato terminato forzatamente o è andato in crash.
 
-Each record carries a UTC timestamp, the session id and, where relevant,
-a turn id shared by all events of one question. Truncation is controlled
-by `audit.max_field_chars`; API keys are never written to the log.
+Ogni record include un timestamp UTC, l'ID della sessione e, ove pertinente, un ID del turno condiviso da tutti gli eventi relativi a una singola richiesta. Il troncamento dei dati è regolato dal parametro `audit.max_field_chars`; le chiavi API non vengono mai scritte nel log.
 
-The log is made to be read after an incident, not by the model. It may
-contain the content of files read through the filesystem tools, so it
-should be treated with the same care as the workspace itself.
+Il log è concepito per essere consultato in seguito a un incidente, non per essere letto dal modello. Poiché può contenere il contenuto di file letti tramite gli strumenti di accesso al file system, deve essere trattato con la stessa cautela riservata all'area di lavoro (workspace) stessa.
 
-## 3.5 Model check
+## 3.4 Autorizzazioni e `policy.yaml`
 
-`tools/bench_models.py` runs a few representative turns (read, stat,
-create, chat without tools) against a temporary sandbox and prints one
-JSON line per model/task: tool calls with arguments, tool results, JSON
-repairs, elapsed time and the final answer.
-
-```bash
-python tools/bench_models.py
-python tools/bench_models.py llama3.1:latest
-```
-
-It needs a running Ollama server and already pulled models; the scratch
-area is `.bench/` (gitignored).
-
-`tools/bench_native.py` compares native tool calling with the text JSON
-protocol on the same model and tasks:
-
-```bash
-python tools/bench_native.py --provider ollama --model llama3.1:latest
-python tools/bench_native.py --provider deepseek --model deepseek-flash
-```
-
-It reports tool choice, argument correctness, latency and text-protocol
-repairs; `--mode`, `--tasks` and `--json` narrow or serialize the run.
-
-Indicative results (one run; 5-task subset for Ollama, full 9 for
-DeepSeek):
-
-| model | native | text |
-|---|---|---|
-| `llama3.1` | 4/5 | 5/5 |
-| `qwen3:8b` | 4/5 | 5/5 |
-| `hermes3:8b` | 4/5 | 3/5 |
-| `deepseek-flash` | 8/9 | 9/9 |
-
-No protocol wins everywhere. Native is usually faster; the text protocol
-sometimes selects better tools. The default stays native, with
-`model.native_tools: false` (or `--no-native-tools`) per model when the
-benchmark says otherwise.
-
-## 3.6 Permissions and `policy.yaml`
-
-Every tool call is authorized before execution. A tool declares its
-**capabilities** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
+Ogni chiamata a uno strumento viene autorizzata prima della sua esecuzione. Uno strumento dichiara le proprie
+**capability** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
 `FILESYSTEM_CREATE`, `FILESYSTEM_DELETE`, `MEMORY_READ`,
-`MEMORY_WRITE`, `MCP_CALL`, ...); a **subject** (the agent) declares
-rules mapping capabilities to `allow`, `ask` or `deny`, optionally
-scoped by tool name, path prefix or namespace.
+`MEMORY_WRITE`, `MCP_CALL`, ...); un **soggetto** (l'agente) definisce
+regole che associano tali funzionalità a `allow` (consenti), `ask` (chiedi) o `deny` (nega),
+eventualmente circoscritte in base al nome dello strumento, al prefisso del percorso o allo spazio dei nomi.
 
 ```yaml
 version: 1
 subjects:
-  assistant:
-    default: deny
-    rules:
-      - capabilities: [FILESYSTEM_READ]
-        effect: allow
-        tools: ["filesystem.*"]
-      - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
-        effect: ask
-        paths: ["note"]
+assistant:
+default: deny
+rules:
+- capabilities: [FILESYSTEM_READ]
+effect: allow
+tools: ["filesystem.*"]
+- capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
+effect: ask
+paths: ["note"]
 ```
 
-`ask` prompts on the console with `lo faccio? (y/N)` (default N); the
-`ConfirmationProvider` protocol leaves room for a GUI modal dialog. The
-policy file is read before the LLM is created: if it is missing or
-invalid, every policy becomes `DENY`, the failure is written to the
-audit log (`policy.failed`) and shown in chat, and the harness keeps
-running.
+L'opzione `ask` genera una richiesta nella console del tipo `lo faccio? (y/N)` (con valore predefinito `N`); il protocollo `ConfirmationProvider` permette inoltre di implementare una finestra di dialogo modale in un'interfaccia grafica (GUI). 
+Il file delle policy viene letto prima della creazione dell'LLM: se risulta mancante o
+non valido, ogni policy viene impostata su `DENY`, l'errore viene registrato nel log di controllo (`policy.failed`) e visualizzato nella chat, mentre l'harness continua a funzionare.
 
-## 3.7 Memory
+## 3.5 Memoria
 
-The harness keeps an episodic memory of the conversation in the
-Obsidian vault (`<vault>/Hagar/chat/`) and injects the last
-`memory.context_turns` turns into every prompt. At the end of a session
-the transcript is moved to `Hagar/archive/chat/` and replaced by a
-summary with a link and hash. The model can save durable memories with
-`memory.create_skill` (stored as `candidate` with provenance), list them
-with `memory.list_skills`, and search past turns with
-`memory.get_context`.
-
-Projects add a separate decision log:
-
-```text
-<vault>/Hagar/projects/<id>/index.md
-<vault>/Hagar/projects/<id>/decisions/<date>-<slug>.md
-```
-
-At startup Hagar lists active projects and “free activity”. Use
-`--project NAME`, `--free`, or the
-`/project list|new|select|free|status|archive|unarchive` commands. Project decisions are proposed at session end as `candidate`;
-if review is refused they stay `candidate` with `auto_saved: true`.
-Only the project index — summary and decision titles — is injected;
-details are read with `memory.project_context`.
-
-Archived transcripts can be searched and read on demand:
-
-```text
-/memory archive search <text>
-/memory archive read <session> [offset] [limit]
-```
-
-The tools are `memory.archive_search` and `memory.archive_read`.
-Archived entries carry their `project` in the frontmatter, so search can
-be filtered by project. The archive is never injected automatically.
+Il sistema mantiene una memoria episodica della conversazione all'interno del vault di Obsidian
+(`<vault>/Hagar/chat/`) e inserisce gli ultimi `memory.context_turns` in ogni prompt. Il modello può salvare memorie persistenti tramite
+`memory.create_skill` (archiviate come `candidate` con indicazione della provenienza),
+elencarle con `memory.list_skills` e consultare i passaggi precedenti
+tramite `memory.get_context`.
 
 ```yaml
 memory:
-  enabled: true
-  vault_subdir: Hagar
-  context_turns: 10
-  context_skills: 3
-  context_project_memories: 10
-  max_context_chars: 6000
-  project_max_active: 200
-  summary_max_chars: 4000
-  max_skill_chars: 4000
+enabled: true
+vault_subdir: Hagar
+context_turns: 10
+max_skill_chars: 4000
 ```
 
-The memory block is capped by `max_context_chars` (characters, not
-tokens); when it is trimmed, the audit records
-`memory.context_trimmed`. If a project exceeds `project_max_active`,
-Hagar asks whether to archive it; archiving is reversible and deletes
-nothing.
-
-If the vault is missing or unwritable, memory is disabled with a warning
-and the harness keeps running. Memory writes go through the policy
-engine (`MEMORY_READ`/`MEMORY_WRITE`; by default writes ask for
-confirmation). See ARCHITECTURE §3.11 for the vault layout.
-
+Se il vault è assente o non accessibile in scrittura, la funzionalità di memoria viene disabilitata
+con la generazione di un avviso, mentre il sistema continua a funzionare. Le scritture in memoria passano attraverso il motore delle policy (`MEMORY_READ`/`MEMORY_WRITE`; per impostazione predefinita, le operazioni di scrittura richiedono una conferma). Si veda ARCHITECTURE §3.11 per la struttura del vault.
 ---
 
-# 4. Documentation
+# 4. Documentazione
 
-- [MANUAL.md](MANUAL.md) — manuale utente: comandi, CLI, configurazione,
-  policy, default e comportamento in caso di errore.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — how the harness works today:
-  components, security model, known limits.
-- [ROADMAP.md](ROADMAP.md) — planned work, decisions already taken and
-  open questions.
-- [CHANGELOG.md](CHANGELOG.md) — version history.
+HAGAR ha una documentazione in più lingue. Al momento le lingue supportate
+sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la sua subdirectory dedicata in Docs.
+
+- [MANUAL.md](Docs/.../MANUAL.md) — formato della configurazione, comandi da console, 
+  opzioni da linea di comando, presupposti di base. 
+- [ARCHITECTURE.md](Docs/.../ARCHITECTURE.md) — L'architettura software di questa 
+  versione dell'harness: componenti, modello di sicurezza, limiti noti.
+- [ROADMAP.md](Docs/.../ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
+  e questioni ancora aperte.
+- [CHANGELOG.md](Docs/.../CHANGELOG.md) — cronologia delle modifiche.
