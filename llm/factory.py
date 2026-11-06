@@ -12,17 +12,24 @@ from llm.base import LLMClient
 from llm.claude_client import ClaudeClient
 from llm.deepseek_client import DeepSeekClient
 from llm.gemini_client import GeminiClient
+from llm.lmstudio_client import LMStudioClient
 from llm.ollama_client import OllamaClient
+from llm.openai_client import OpenAIClient
 
 SUPPORTED_PROVIDERS = (
     "ollama",
+    "lmstudio",
     "deepseek",
+    "openai",
     "claude",
     "gemini",
 )
 
 DEFAULT_API_KEY_ENV = {
+    "lmstudio": "LMSTUDIO_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "chatgpt": "OPENAI_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
     "gemini": "GEMINI_API_KEY",
 }
@@ -104,6 +111,43 @@ def create_llm(
             OllamaClient(
                 model=config.name,
                 host=config.host,
+                audit=audit,
+            ),
+            config,
+        )
+
+    if provider == "lmstudio":
+
+        env_name = (
+            config.api_key_env
+            or DEFAULT_API_KEY_ENV["lmstudio"]
+        )
+
+        api_key = (
+            os.environ.get(env_name, "").strip()
+            or None
+        )
+
+        return _with_native(
+            LMStudioClient(
+                model=config.name,
+                host=config.host,
+                api_key=api_key,
+                audit=audit,
+            ),
+            config,
+        )
+
+    if provider in {"openai", "chatgpt"}:
+
+        return _with_native(
+            OpenAIClient(
+                api_key=resolve_api_key(config),
+                model=config.name,
+                base_url=(
+                    config.host
+                    or OpenAIClient.DEFAULT_BASE_URL
+                ),
                 audit=audit,
             ),
             config,

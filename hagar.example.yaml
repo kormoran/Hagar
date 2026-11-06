@@ -9,7 +9,9 @@
 # hagar.yaml is intentionally ignored by git: it contains local paths.
 
 model:
-  # provider: ollama | deepseek | claude | gemini
+  # provider: ollama | lmstudio | deepseek | openai | chatgpt | claude | gemini
+  # LM Studio:  provider: lmstudio, host: http://localhost:1234/v1
+  # OpenAI:     provider: openai,   name: gpt-4.1, api_key_env: OPENAI_API_KEY
   provider: ollama
   host: http://localhost:11434
   name: llama3.1:latest

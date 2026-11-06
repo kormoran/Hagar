@@ -183,7 +183,7 @@ filesystem:
 
 | Campo | Default | Note |
 |---|---|---|
-| `provider` | obbligatorio | `ollama`, `deepseek`, `claude`, `gemini` |
+| `provider` | obbligatorio | `ollama`, `lmstudio`, `deepseek`, `openai` (`chatgpt`), `claude`, `gemini` |
 | `name` | obbligatorio | nome del modello presso il provider |
 | `host` | default provider | base URL dell’API |
 | `native_tools` | `true` | se `false`, usa il protocollo JSON testuale |
@@ -192,15 +192,20 @@ filesystem:
 
 Provider e chiavi:
 
-| Provider | Chiave standard |
-|---|---|
-| `ollama` | nessuna |
-| `deepseek` | `DEEPSEEK_API_KEY` |
-| `claude` | `ANTHROPIC_API_KEY` |
-| `gemini` | `GEMINI_API_KEY` |
+| Provider | Chiave standard | Default |
+|---|---|---|
+| `ollama` | nessuna | `http://localhost:11434` |
+| `lmstudio` | nessuna, opzionale `LMSTUDIO_API_KEY` | `http://localhost:1234/v1` |
+| `deepseek` | `DEEPSEEK_API_KEY` | API DeepSeek |
+| `openai` / `chatgpt` | `OPENAI_API_KEY` | `https://api.openai.com/v1` |
+| `claude` | `ANTHROPIC_API_KEY` | API Anthropic |
+| `gemini` | `GEMINI_API_KEY` | API Gemini |
 
 Le chiavi non vanno mai scritte nel YAML. Se una chiave manca, il client
-non viene costruito e l’avvio fallisce con un errore esplicito.
+non viene costruito e l’avvio fallisce con un errore esplicito. LM Studio
+non richiede chiave, salvo che il server locale sia configurato per
+richiederla. `chatgpt` è un alias di `openai`: l’abbonamento ChatGPT non
+dà accesso all’API, servono una chiave OpenAI e credito API.
 
 Con il calling nativo attivo, Hagar usa gli strumenti strutturati del
 provider. Se il provider rifiuta lo schema (HTTP 400/404/422), al primo

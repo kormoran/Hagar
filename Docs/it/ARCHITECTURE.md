@@ -71,7 +71,9 @@ Agent ──────────────── AuditLog (JSON Lines)
   │
   ├── LLMClient (llm/base.py)
   │     ├── OllamaClient
+  │     ├── LMStudioClient
   │     ├── DeepSeekClient
+  │     ├── OpenAIClient
   │     ├── ClaudeClient
   │     └── GeminiClient
   │
@@ -163,7 +165,9 @@ Il testo resta il fallback per modelli che non supportano i tool nativi;
 | provider | API | chiave | note |
 |---|---|---|---|
 | `ollama` | `/api/chat`, `/api/generate` | — | host default `localhost:11434` |
+| `lmstudio` | `/v1/chat/completions` (OpenAI) | opzionale `LMSTUDIO_API_KEY` | host default `localhost:1234/v1` |
 | `deepseek` | `/chat/completions` (OpenAI) | `DEEPSEEK_API_KEY` | system inline |
+| `openai` / `chatgpt` | `/v1/chat/completions` | `OPENAI_API_KEY` | ChatGPT via API, non abbonamento |
 | `claude` | `/v1/messages` | `ANTHROPIC_API_KEY` | system separato, turni alternati |
 | `gemini` | `models/{model}:generateContent` | `GEMINI_API_KEY` | `systemInstruction`, ruolo `model` |
 
@@ -171,7 +175,9 @@ La chiave si legge solo dall'ambiente; `model.api_key_env` sovrascrive il
 nome predefinito. `model.host` è la base URL di tutti i provider (con un
 default per provider), `model.max_tokens` è usato solo da Claude.
 `llm/factory.py` costruisce il client e rifiuta provider sconosciuti o
-chiavi mancanti. DeepSeek: i modelli correnti sono `deepseek-flash` e
+chiavi mancanti. LM Studio non richiede chiave salvo configurazione del
+server; OpenAI richiede una chiave API, non un abbonamento ChatGPT.
+DeepSeek: i modelli correnti sono `deepseek-flash` e
 `deepseek-v4-pro`; `deepseek-chat` non è più accettato.
 
 Stato attuale: **calling nativo v1** con fallback testuale automatico
@@ -788,9 +794,9 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 691 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 703 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (693 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

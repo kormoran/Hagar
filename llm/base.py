@@ -48,7 +48,8 @@ class LLMClient(ABC):
 
     Il dialogo usa soltanto i ruoli ``user`` e ``assistant``: ogni backend
     traduce verso il proprio formato. In questo modo lo stesso ciclo
-    agentico funziona su Ollama, DeepSeek, Claude e Gemini.
+    agentico funziona su Ollama, LM Studio, DeepSeek, OpenAI, Claude e
+    Gemini.
     """
 
     provider = "base"

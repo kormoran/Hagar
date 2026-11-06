@@ -109,7 +109,7 @@ hagar.py            Script di lancio dell'harness
 hagar.yaml          Script di configurazione predefinito
 policy.yaml			Configurazione dei permessi per i tool (integrati ed MCP)
 core/               config, agent, audit log, registry, sandbox e tools
-llm/                LLM backends (Ollama, DeepSeek, Claude, Gemini), client MCP
+llm/                LLM backends (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), client MCP
 memory/             accesso al vault
 tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
@@ -120,18 +120,22 @@ local_tools/		Tool per le AI integrati in HAGAR - non MCP, ma disponibili dirett
 
 `model.provider` seleziona il backend. Gli schemi degli strumenti (tool), la conversione dei messaggi e i percorsi nativi o di fallback sono gestiti in `llm/base.py`; pertanto, cambiare provider non richiede modifiche all'infrastruttura di esecuzione (harness).
 
-Il native tool calling è l'impostazione predefinita per tutti e quattro i backend. Se un modello rifiuta tale modalità (restituendo un errore HTTP 400, 404 o 422), l'agente passa al protocollo su JSON testuale per l'intera sessione; si può forzare l'uso del protocollo testuale impostando `model.native_tools: false` o passando l'argomento `--no-native-tools`.
+Il native tool calling è l'impostazione predefinita per tutti i backend. Se un modello rifiuta tale modalità (restituendo un errore HTTP 400, 404 o 422), l'agente passa al protocollo su JSON testuale per l'intera sessione; si può forzare l'uso del protocollo testuale impostando `model.native_tools: false` o passando l'argomento `--no-native-tools`.
 
 | provider   | trasporto                    | chiave API             |
 |------------|------------------------------|------------------------|
 | `ollama`   | nativo `/api/chat`           | nessuna                |
+| `lmstudio` | OpenAI-compatibile locale    | nessuna (opzionale)    |
 | `deepseek` | REST compatibile con OpenAI  | `DEEPSEEK_API_KEY`     |
+| `openai`   | OpenAI Chat Completions      | `OPENAI_API_KEY`       |
 | `claude`   | Anthropic Messages API       | `ANTHROPIC_API_KEY`    |
 | `gemini`   | Generative Language API      | `GEMINI_API_KEY`       |
 
+`chatgpt` è un alias di `openai`. L'abbonamento ChatGPT non dà accesso all'API: servono una chiave OpenAI e credito API. LM Studio deve avere il server locale attivo e un modello caricato; l'endpoint predefinito è `http://localhost:1234/v1`. Se il server LM Studio richiede una chiave, si può impostare `LMSTUDIO_API_KEY` o `model.api_key_env`; altrimenti non serve.
+
 I nomi dei modelli attualmente supportati per DeepSeek sono `deepseek-flash` (predefinito) e `deepseek-v4-pro`; il vecchio `deepseek-chat` non è più accettato. Il live test usa `deepseek-flash`, a meno che non venga sovrascritto dalla variabile `HAGAR_LIVE_DEEPSEEK_MODEL`. Lo script `tools/diagnose_deepseek.py` consente di verificare il DNS, il formato della chiave e l'endpoint, senza mostrare la chiave stessa.
 
-Le chiavi vengono lette solo da variabili d'ambiente e mai dal file YAML. Se il nome predefinito della variabile non è adatto alle proprie esigenze, si può specificarne un altro con `model.api_key_env`. Il parametro `model.host` indica l'URL di base del provider (con un valore predefinito specifico per ciascuno; ad esempio, Ollama usa `http://localhost:11434`), mentre `model.max_tokens` si applica solo a Claude (con un valore predefinito di 1024). 
+Le chiavi vengono lette solo da variabili d'ambiente e mai dal file YAML. Se il nome predefinito della variabile non è adatto alle proprie esigenze, si può specificarne un altro con `model.api_key_env`. Il parametro `model.host` indica l'URL di base del provider (con un valore predefinito specifico per ciascuno; ad esempio, Ollama usa `http://localhost:11434` e LM Studio `http://localhost:1234/v1`), mentre `model.max_tokens` si applica solo a Claude (con un valore predefinito di 1024).
 
 ```yaml
 model:

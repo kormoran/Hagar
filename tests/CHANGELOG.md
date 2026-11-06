@@ -5,9 +5,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 691 test superati, 2 skip su Windows (symlink non disponibili senza
+- 703 test superati, 2 skip su Windows (symlink non disponibili senza
   Developer Mode).
-- 693 test superati, 0 skip su Debian Linux (2026-11-06); i due test
+- 705 test superati, 0 skip su Debian Linux (2026-11-06); i due test
   symlink girano davvero. Questo è il primo controllo multipiattaforma
   reale prima della release.
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
@@ -30,7 +30,7 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | agent e audit | `test_agent.py`, `test_audit.py` |
 | memoria e progetti | `test_memory_store.py`, `test_memory_tools.py`, `test_memory_cli.py`, `test_agent_memory.py`, `test_projects.py`, `test_archive.py` |
 | calling nativo | `test_native_tools.py`, `test_agent_native.py` |
-| backend LLM | `test_ollama_client.py`, `test_llm_backends.py`, `test_factory.py` |
+| backend LLM | `test_ollama_client.py`, `test_llm_backends.py`, `test_openai_compatible.py`, `test_factory.py` |
 | MCP | `test_mcp_client.py` |
 | permessi e policy | `test_permissions.py`, `test_policy.py`, `test_registry_permissions.py` |
 | memoria | `test_memory_store.py`, `test_memory_tools.py`, `test_agent_memory.py` |
