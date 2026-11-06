@@ -12,7 +12,7 @@ I created HAGAR because no other harness would isolate my files by default. Deep
 
 **HAGAR reverts that default: YOU state what LLMs can see, write, search, and where.** No LLM can read or write anything outside the directories that you explicitly state as readable or writable in the config file. If a directory is not in the [filesystem] config section, no way. For LLMs, it does not exist.
 
-Developing HAGAR, another concept dawned on me: why an LLM should care for the OS anyway? In the AI world the real performance boundary is set by model calls: they takes seconds or even minutes. Direct OS access shave some milliseconds: does it worth the risk? I answered no.
+Developing HAGAR, another concept dawned on me: why an LLM should care for the OS anyway? In the AI world the real performance boundary is set by model calls: they takes seconds (many seconds, at times). Direct OS access shave some milliseconds: does it worth the risk? I answered no.
 
 So, **HAGAR does its best to isolate the LLM from the OS.** Every interaction with files, memories, machine is done by tools (either MCP or those embedded in HAGAR). The AI does not know which OS is running on. Ideally, it shall never know: if there will ever be a way for an AI to know the OS through HAGAR isolation, I will see it as a security hazard and fix it (or at least state the issue in docs and let users know).
 
@@ -34,7 +34,7 @@ Hagar is an LLM harness developed in Python, designed for the secure execution o
 
 The goal is not merely to provide a chat interface with a language model, but to create a ***safe and secure*** operating environment in which an LLM can use tools, consult persistent memory, and interact with external systems — all without having direct access to the host machine's actual resources — while preventing or at least mitigating common errors.
 
-To this purpose, I adopted principles and methodologies from both cybersecurity (least privilege level, CIA triad) and HMI/HCI (Human-Machine Interface/Interaction for industrial machinery) and Cognitive Ergonomics, applying them to the design of the environment in which the LLM operates. 
+To this purpose, I adopted principles and methodologies from both cybersecurity (least privilege level, CIA triad) and HMI/HCI (Human-Machine Interface/Interaction for industrial machinery) and Cognitive Ergonomics, applying them to the design of the environment in which the LLM operates: just as we do with human workplaces, I aim to create a workplace for LLMs where doing well is easy and making mistakes is difficult. 
 
 As per the statements above and in order to establish a general rule of conduct for any future development, I hereby state **The Four Laws of HAGAR**:
 
@@ -45,10 +45,10 @@ As per the statements above and in order to establish a general rule of conduct 
 **Tools are more reliable than the LLM.** If the filesystem indicates that a file exists, it exists. If a tool returns a file size, that size is real. The LLM interprets, but tools provide measurements.
 
 ## 1.3 Third Law of HAGAR
-**State must exist outside the LLM’s "mind."** By implementing components such as `ToolRegistry`, `MCP`, `FilesystemSandbox`, and `PermissionEvaluator`, we shift knowledge and control outside of the model itself. This aligns with standard practices for safety-critical systems. 
+**State must exist outside the LLM’s "mind."** By implementing components such as `ToolRegistry`, `MCP`, `FilesystemSandbox`, `Memory` and `PermissionEvaluator`, we shift knowledge and control outside of the model itself. This aligns with standard practices for safety-critical systems. 
 
 ## 1.4 Fourth Law of HAGAR
-**Every action must be explainable after the fact.** For this purpose, HAGAR implements an audit log: when something goes wrong — and eventually it will — the question should not be "Why did the LLM go haywire?" but rather: "What assumption did it make?" "Which tool did it use?" "Which piece of data was incorrect?" In other words: incident investigation must be possible — much like in aviation. HAGAR does support it AND will ever do.
+**Every action must be explainable after the fact.** For this purpose, HAGAR implements an audit log: when something goes wrong — and eventually it will — the question should not be "Why did the LLM go haywire?" but rather: "What assumption did it make?" "Which tool did it use?" "Which piece of data was incorrect?" In other words: incident investigation must be possible — much like in aviation. HAGAR does support it and will ever do.
 
 ## 1.5 Software Architecture
 
