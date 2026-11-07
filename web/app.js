@@ -84,6 +84,7 @@ function renderStatus(data) {
   document.getElementById('audit').textContent =
     a.enabled ? 'attivo' : 'disattivato';
   auditTab.disabled = !a.enabled;
+  auditTab.textContent = a.enabled ? 'Audit' : 'Audit off';
   auditOff.hidden = Boolean(a.enabled);
   if (!a.enabled && auditTab.classList.contains('active')) {
     switchTab('chat');
