@@ -32,6 +32,7 @@ EXPECTED_TOOLS = {
     "filesystem.chdir",
     "filesystem.list_dir",
     "filesystem.read_chunk",
+    "vision.open",
     "filesystem.rename",
     "filesystem.copy_file",
     "filesystem.delete_file",

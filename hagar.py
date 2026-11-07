@@ -50,6 +50,7 @@ from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
 from local_tools.plugins import BUILTIN_TOOL_PLUGINS
+from local_tools.vision_tool import VisionToolProvider
 
 
 __version__ = "0.3.0"
@@ -442,6 +443,9 @@ def build_harness(
     )
 
     fs_provider.register_tools(registry)
+
+    vision_provider = VisionToolProvider(filesystem)
+    vision_provider.register_tools(registry)
 
     # ==========================================
     # Memory tools

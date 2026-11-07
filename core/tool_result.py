@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from core.images import ImageInput
+
 
 @dataclass(slots=True)
 class ToolResult:
@@ -18,3 +20,5 @@ class ToolResult:
     output: str = ""
 
     error: str | None = None
+
+    images: tuple[ImageInput, ...] = ()

@@ -1281,6 +1281,35 @@ class FileSystemSandbox:
             encoding="utf-8"
         )
 
+    def read_bytes(
+        self,
+        path: str | Path,
+        max_bytes: int | None = None,
+    ) -> bytes:
+
+        target = self.resolve_path(path)
+
+        error = self.FS_Guardian(
+            "read",
+            target,
+        )
+
+        if error:
+            raise PermissionError(error)
+
+        if not target.is_file():
+            raise FileNotFoundError(self._display(target))
+
+        size = target.stat().st_size
+
+        if max_bytes is not None and size > max_bytes:
+
+            raise ValueError(
+                f"file is too large (max {max_bytes} bytes)"
+            )
+
+        return target.read_bytes()
+
     def copy_file(
         self,
         source: str | Path,

@@ -23,12 +23,77 @@ class ImageInputError(ValueError):
     pass
 
 
+def detect_mime_type(data: bytes) -> str | None:
+
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+
+    if (
+        len(data) >= 12
+        and data[:4] == b"RIFF"
+        and data[8:12] == b"WEBP"
+    ):
+        return "image/webp"
+
+    return None
+
+
 @dataclass(frozen=True)
 class ImageInput:
     """Immagine già decodificata e validata."""
 
     mime_type: str
     data: bytes
+
+    @classmethod
+    def from_bytes(
+        cls,
+        data: bytes,
+        mime_type: str | None = None,
+    ) -> "ImageInput":
+
+        if not isinstance(data, (bytes, bytearray)):
+
+            raise ImageInputError(
+                "image data must be bytes"
+            )
+
+        data = bytes(data)
+
+        if not data:
+
+            raise ImageInputError("image is empty")
+
+        if len(data) > MAX_IMAGE_BYTES:
+
+            raise ImageInputError(
+                "image is too large (max 10 MB)"
+            )
+
+        detected = detect_mime_type(data)
+
+        if detected is None:
+
+            raise ImageInputError(
+                "unsupported or invalid image data"
+            )
+
+        if (
+            mime_type is not None
+            and mime_type.lower() != detected
+        ):
+
+            raise ImageInputError(
+                "image MIME type does not match its content"
+            )
+
+        return cls(
+            mime_type=detected,
+            data=data,
+        )
 
     @classmethod
     def from_data_url(
@@ -81,9 +146,9 @@ class ImageInput:
                 "image is too large (max 10 MB)"
             )
 
-        return cls(
+        return cls.from_bytes(
+            data,
             mime_type=mime_type,
-            data=data,
         )
 
     @property

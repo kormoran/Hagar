@@ -183,6 +183,9 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   path host.
 - La sidebar in basso mostra i token cumulati della sessione: input,
   output e totale.
+- Il modello può caricare immagini dalla sandbox con `vision.open`;
+  l'immagine viene allegata al turno, non restituita come base64 nel
+  contesto.
 - Le conferme ASK sono modali: il turno resta in attesa e il server
   continua a rispondere. Un timeout equivale a rifiuto. Le richieste dei
   subagenti mostrano `agent_id` e `parent_id`; il padre LLM non può

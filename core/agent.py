@@ -12,6 +12,7 @@ from typing import Any
 from core.events import EventSink
 from core.events import emit
 from core.images import ImageInput
+from core.images import MAX_IMAGES
 from core.tool_call import ToolCall
 from core.tool_result import ToolResult
 from llm.base import NativeToolsUnavailable
@@ -201,6 +202,7 @@ class Agent:
                         turn,
                         messages,
                         question,
+                        attached_images=len(images or []),
                     )
 
                 except NativeToolsUnavailable as exc:
@@ -223,6 +225,7 @@ class Agent:
                 turn,
                 messages,
                 question,
+                attached_images=len(images or []),
             )
 
         finally:
@@ -234,6 +237,7 @@ class Agent:
         turn: str,
         messages: list[dict[str, Any]],
         question: str,
+        attached_images: int = 0,
     ) -> str:
 
         executed = 0
@@ -424,11 +428,19 @@ class Agent:
                     }
                 )
 
+            attached_images = self._attach_images(
+                messages,
+                turn,
+                tool_result,
+                attached_images,
+            )
+
     def _run_native(
         self,
         turn: str,
         messages: list[dict[str, Any]],
         question: str,
+        attached_images: int = 0,
     ) -> str:
         """
         Ciclo agentico con tool calling nativo del provider.
@@ -598,6 +610,13 @@ class Agent:
                     }
                 )
 
+                attached_images = self._attach_images(
+                    messages,
+                    turn,
+                    tool_result,
+                    attached_images,
+                )
+
     @staticmethod
     def _assistant_message(
         text: str,
@@ -721,6 +740,13 @@ class Agent:
                 )
             )
 
+            if isinstance(result, ToolResult):
+
+                if result.tool_name is None:
+                    result.tool_name = tool_call.tool
+
+                return result
+
             return ToolResult(
                 tool_name=tool_call.tool,
                 success=True,
@@ -736,6 +762,52 @@ class Agent:
                 output="",
                 error=str(exc),
             )
+
+    def _attach_images(
+        self,
+        messages: list[dict[str, Any]],
+        turn: str,
+        result: ToolResult,
+        attached: int,
+    ) -> int:
+
+        if not result.images:
+            return attached
+
+        remaining = MAX_IMAGES - attached
+        selected = result.images[:max(0, remaining)]
+        skipped = len(result.images) - len(selected)
+
+        if selected:
+
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "Immagine allegata dal tool "
+                                f"{result.tool_name}."
+                            ),
+                        },
+                        *[
+                            image.as_message_part()
+                            for image in selected
+                        ],
+                    ],
+                }
+            )
+
+        self._record(
+            "vision.attached",
+            turn=turn,
+            tool=result.tool_name,
+            count=len(selected),
+            skipped=skipped,
+        )
+
+        return attached + len(selected)
 
     # ==================================================
     # Memory

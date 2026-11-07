@@ -91,6 +91,9 @@ riferimento al commit quando utile.
   `timed_out`; `agent_id` in tutti gli eventi audit.
 - ASK dei subagenti inoltrate all'utente con `ParentBridgeConfirmation`,
   timeout 180 secondi e DENY alla scadenza; il padre LLM non approva.
+- `vision.open` carica PNG/JPEG/WebP dalla sandbox e li allega al turno;
+  `ToolResult.images` e il ciclo Agent gestiscono il canale multimodale
+  senza base64 nel testo. Audio in roadmap.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -236,7 +239,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 802 test superati, 2 skip su Windows; 804 superati, 0 skip su Debian
+- 804 test superati, 2 skip su Windows; 806 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

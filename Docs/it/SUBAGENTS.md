@@ -50,7 +50,8 @@ Ogni figlio:
 - ha un registry separato;
 - vede solo i tool con capability `FILESYSTEM_READ`,
   `MEMORY_READ` e `COMPUTE`, più `AGENT_DATA`;
-- non può usare `agent.*` né `filesystem.chdir`;
+- può usare `vision.open` sul proprio workspace, ma non
+  `agent.*` né `filesystem.chdir`;
 - legge solo il proprio workspace;
 - non scrive nella memoria;
 - inoltra le richieste ASK all’utente tramite un bridge, con timeout di

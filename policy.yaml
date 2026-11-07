@@ -22,7 +22,9 @@ subjects:
       # Lettura e ispezione: sempre permesse.
       - capabilities: [FILESYSTEM_READ]
         effect: allow
-        tools: ["filesystem.*"]
+        tools:
+          - "filesystem.*"
+          - "vision.open"
 
       # Scrittura e creazione: chiedono conferma in chat.
       - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]

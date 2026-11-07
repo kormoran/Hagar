@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import http.client
 import json
 import threading
@@ -323,9 +324,15 @@ def test_message_body_can_exceed_one_megabyte():
     server = RunningServer()
 
     try:
+        png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
         image = (
             "data:image/png;base64,"
-            + ("A" * 1_500_000)
+            + base64.b64encode(
+                png + (b"\x00" * 1_200_000)
+            ).decode("ascii")
         )
         status, body = server.request(
             "POST",

@@ -796,6 +796,18 @@ canoniche (`text`, `image`) e ogni backend le traduce nel proprio
 formato. Il testo dello stop e delle immagini è separato dal contenuto
 persistente: la memoria conserva solo la domanda e la risposta.
 
+`vision.open` legge un'immagine dalla sandbox, la valida con magic number
+e la restituisce come `ToolResult.images`. Il ciclo `Agent` allega
+l'immagine a un messaggio utente sintetico prima della chiamata
+successiva, quindi il modello la vede senza ricevere base64 nel testo del
+tool. Limiti: 4 immagini per turno, 10 MB per immagine, PNG/JPEG/WebP.
+Il child può usare `vision.open` nel proprio workspace read-only.
+
+L'audio non è implementato. Il canale allegati sarebbe riutilizzabile, ma
+servono un contratto provider audio-native diverso, formati/decoder e una
+scelta esplicita tra ASR e comprensione audio; è in roadmap senza
+timeline.
+
 ## 3.11.4 Token usage (`core/usage.py`)
 
 `TokenUsage` normalizza input, output, cache e reasoning. Funzioni
@@ -988,7 +1000,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 802 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 804 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

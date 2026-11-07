@@ -42,6 +42,7 @@ from core.permissions import DenyAllConfirmation
 from core.permissions import PermissionEvaluator
 from core.tool_registry import ToolRegistry
 from core.usage import UsageLedger
+from local_tools.vision_tool import VisionToolProvider
 
 
 READ_ONLY_CAPABILITIES = (
@@ -324,6 +325,7 @@ class SubagentManager:
         )
 
         FileSystemToolProvider(filesystem).register_tools(registry)
+        VisionToolProvider(filesystem).register_tools(registry)
 
         for tool in list(registry.list_definitions()):
 

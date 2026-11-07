@@ -110,6 +110,9 @@ descrizione.
 - [x] ASK dei figli inoltrate all'utente con timeout 180 secondi e DENY;
 - [ ] budget token/costo;
 - [ ] `parent_id` su ogni evento interno del figlio;
+- [ ] `audio.open`/`AudioInput`: il canale allegati è condiviso con le
+  immagini, ma servono provider audio-nativi, formati e semantica ASR
+  diversi; nessuna timeline;
 - [ ] conferme ASK via console quando il prompt è bloccato (la GUI è
   già supportata).
 
