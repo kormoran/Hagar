@@ -212,6 +212,66 @@ class MemoryToolProvider:
 
         registry.register(
             ToolDefinition(
+                name="memory.search",
+                description=(
+                    "Search the memory index (skills, projects, "
+                    "decisions, chats and summaries) with full-text "
+                    "matching. Returns paths, kinds, projects, "
+                    "statuses, titles and snippets."
+                ),
+                category="memory",
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="search",
+                parameters=[
+                    ToolParameter(
+                        name="query",
+                        param_type="string",
+                        description="Text to search for.",
+                    ),
+                    ToolParameter(
+                        name="project",
+                        param_type="string",
+                        description=(
+                            "Optional project id filter."
+                        ),
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        name="kind",
+                        param_type="string",
+                        description=(
+                            "Optional kind: skill, project, decision, "
+                            "chat, summary, archive, note."
+                        ),
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        name="status",
+                        param_type="string",
+                        description=(
+                            "Optional memory status filter."
+                        ),
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        name="limit",
+                        param_type="integer",
+                        description=(
+                            "Maximum results (default 10)."
+                        ),
+                        required=False,
+                        default=10,
+                    ),
+                ],
+                handler=self.search,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
                 name="memory.archive_search",
                 description=(
                     "Search archived chat transcripts for a "
@@ -382,6 +442,51 @@ class MemoryToolProvider:
 
         return json.dumps(
             [turn.as_dict() for turn in turns],
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def search(
+        self,
+        query: str,
+        project: str = "",
+        kind: str = "",
+        status: str = "",
+        limit: Any = 10,
+    ) -> str:
+
+        query_text = _optional(query)
+
+        if query_text is None:
+
+            return json.dumps(
+                {"error": "query is required"},
+                ensure_ascii=False,
+            )
+
+        try:
+
+            results = self.store.index.search(
+                query_text,
+                project=_optional(project),
+                kind=_optional(kind),
+                status=_optional(status),
+                limit=_limit(limit, 10, 100),
+            )
+
+        except Exception as exc:
+
+            return json.dumps(
+                {"error": str(exc)},
+                ensure_ascii=False,
+            )
+
+        return json.dumps(
+            {
+                "query": query_text,
+                "results": results,
+                "returned": len(results),
+            },
             ensure_ascii=False,
             indent=2,
         )

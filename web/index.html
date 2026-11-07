@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hagar</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<aside>
+  <h1>Hagar</h1>
+  <div class="muted" id="model">...</div>
+  <h2>Sessione</h2>
+  <dl>
+    <dt>Progetto</dt><dd id="project">...</dd>
+    <dt>Memoria</dt><dd id="memory">...</dd>
+    <dt>Audit</dt><dd id="audit">...</dd>
+  </dl>
+  <h2>Progetti</h2>
+  <div class="row">
+    <button id="project-refresh">Aggiorna</button>
+    <button id="project-free">Libera</button>
+    <button id="project-new">Nuovo</button>
+  </div>
+  <div id="projects" class="muted"></div>
+  <h2>Tool</h2>
+  <div id="tools"></div>
+  <div id="usage">
+    <div>Token sessione</div>
+    <strong id="usage-total">0</strong>
+    <div id="usage-detail" class="muted">in 0 · out 0</div>
+  </div>
+</aside>
+<main>
+  <header>
+    <strong>Chat</strong>
+    <span class="muted" id="state">pronta</span>
+  </header>
+  <div id="messages"></div>
+  <form id="composer">
+    <textarea id="input" placeholder="Scrivi un messaggio..." autofocus></textarea>
+    <button class="primary" id="send" type="submit">Invia</button>
+  </form>
+</main>
+<div id="modal" role="dialog" aria-modal="true">
+  <div class="box">
+    <h3 id="confirm-title">Conferma richiesta</h3>
+    <p class="muted" id="confirm-reason"></p>
+    <dl>
+      <dt>Tool</dt><dd id="confirm-tool"></dd>
+      <dt>Capability</dt><dd id="confirm-capabilities"></dd>
+    </dl>
+    <pre id="confirm-arguments"></pre>
+    <div class="row" style="justify-content:flex-end">
+      <button id="confirm-deny">Rifiuta</button>
+      <button class="primary" id="confirm-allow">Consenti</button>
+    </div>
+  </div>
+</div>
+<script>const TOKEN = __HAGAR_TOKEN__;</script>
+<script src="/static/app.js"></script>
+</body>
+</html>

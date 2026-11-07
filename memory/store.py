@@ -290,6 +290,7 @@ class MemoryStore:
         context_skills: int = 3,
         max_skill_chars: int = 4000,
         model: str | None = None,
+        index_path: Path | None = None,
     ) -> None:
 
         if not session_id:
@@ -312,6 +313,24 @@ class MemoryStore:
         self.max_skill_chars = int(max_skill_chars)
         self.model = model
         self.current_turn: str | None = None
+        self._index_path = index_path
+        self._index = None
+
+    @property
+    def index(self):
+        """Indice SQLite derivato, creato in modo lazy."""
+
+        if self._index is None:
+
+            from memory.index import MemoryIndex
+
+            self._index = MemoryIndex(
+                self.vault,
+                subdir=str(self.base),
+                path=self._index_path,
+            )
+
+        return self._index
 
     @staticmethod
     def _validate_subdir(

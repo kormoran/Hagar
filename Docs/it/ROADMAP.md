@@ -36,25 +36,29 @@ Completato dopo la release, non ancora rilasciato:
 - `core/usage.py`: parsing token per OpenAI/LM Studio/DeepSeek, Claude,
   Gemini e Ollama; `UsageLedger` per sessione;
 - sidebar GUI con token input/output/totale aggiornati via
-  `usage.updated`.
+  `usage.updated`;
+- `MemoryIndex`: indice SQLite/FTS5 incrementale e ricostruibile;
+- tool `memory.search`, `/memory search`, `/memory reindex`,
+  `/memory stats`;
+- asset GUI separati in `web/index.html`, `web/style.css`, `web/app.js`.
 
 ## 0.2 Ordine delle prossime release
 
-| Release | Obiettivo | Dipendenze |
+| Release | Obiettivo | Stato |
 |---|---|---|
-| **0.4.0** | Indice SQLite delle memorie | nessuna |
-| **0.4.x** | GUI: stop turno, cronologia, vision | 0.4.0 |
-| **0.5.0** | Subagenti | usage + policy per agente |
-| **0.6.0** | Broker LLM | subagenti + model registry |
-| **0.7.0** | Tool SQL read-only | policy + config database |
+| **0.4.0** | Indice SQLite delle memorie | implementato |
+| **0.4.x** | GUI: stop turno, cronologia, vision | prossimo |
+| **0.5.0** | Subagenti | pianificato |
+| **0.6.0** | Broker LLM | pianificato |
+| **0.7.0** | Tool SQL read-only | pianificato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
 
 ## 0.3 0.4.0 — Indice SQLite delle memorie
 
-Decisione: **Markdown resta la fonte di verità**. SQLite è un indice
-derivato e ricostruibile.
+Stato: implementato; resta la verifica sul Vault reale e l’eventuale
+misura delle prestazioni.
 
 - posizione: dati locali dell’app, non dentro il Vault sincronizzato;
 - schema: note, skill, decisioni, sessioni, tag, FTS5;

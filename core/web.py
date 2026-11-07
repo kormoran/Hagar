@@ -11,6 +11,8 @@ import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from http.server import ThreadingHTTPServer
+from importlib.resources import files
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
@@ -20,6 +22,35 @@ from core.events import ServiceEvent
 from core.service import HarnessService
 from core.usage import UsageLedger
 from memory.projects import ProjectError
+
+
+STATIC_TYPES = {
+    "style.css": "text/css; charset=utf-8",
+    "app.js": "application/javascript; charset=utf-8",
+}
+
+
+def _read_web_asset(name: str) -> bytes:
+    """Legge un asset dal package o dal sorgente in editable mode."""
+
+    try:
+        return files("web").joinpath(name).read_bytes()
+
+    except (ModuleNotFoundError, FileNotFoundError):
+        source = (
+            Path(__file__).resolve().parent.parent
+            / "web"
+            / name
+        )
+        return source.read_bytes()
+
+
+def render_index(token: str) -> bytes:
+    html = _read_web_asset("index.html").decode("utf-8")
+    return html.replace(
+        "__HAGAR_TOKEN__",
+        json.dumps(token),
+    ).encode("utf-8")
 
 
 class EventBus:
@@ -232,450 +263,6 @@ class HagarHTTPServer(ThreadingHTTPServer):
         super().handle_error(request, client_address)
 
 
-HTML = r"""<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hagar</title>
-<style>
-:root {
-  color-scheme: dark;
-  --bg: #101318;
-  --panel: #171b22;
-  --line: #2a303a;
-  --text: #e6e9ef;
-  --muted: #9aa4b2;
-  --accent: #7aa2ff;
-  --danger: #ff7a7a;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font: 15px/1.5 system-ui, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-}
-aside {
-  border-right: 1px solid var(--line);
-  background: var(--panel);
-  padding: 18px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-}
-#usage {
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 13px;
-}
-#usage strong { color: var(--text); font-size: 16px; }
-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-#messages {
-  flex: 1;
-  overflow: auto;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.message {
-  max-width: 85%;
-  padding: 10px 13px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.user { align-self: flex-end; border-color: #34446b; }
-.assistant { align-self: flex-start; }
-.tool {
-  align-self: stretch;
-  font-size: 13px;
-  color: var(--muted);
-  border-left: 3px solid var(--accent);
-  padding: 8px 10px;
-  background: #11151b;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.error { border-color: var(--danger); color: var(--danger); }
-form {
-  display: flex;
-  gap: 10px;
-  padding: 14px 18px;
-  border-top: 1px solid var(--line);
-}
-textarea {
-  flex: 1;
-  min-height: 52px;
-  max-height: 180px;
-  resize: vertical;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: #0d1015;
-  color: var(--text);
-  font: inherit;
-}
-button {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #202632;
-  color: var(--text);
-  padding: 8px 12px;
-  cursor: pointer;
-  font: inherit;
-}
-button.primary { background: #2c4a86; border-color: #3c5fa5; }
-button:disabled { opacity: .5; cursor: default; }
-h1 { font-size: 17px; margin: 0; }
-h2 { font-size: 12px; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; font-size: 13px; }
-dt { color: var(--muted); }
-dd { margin: 0; overflow-wrap: anywhere; }
-#tools { font-size: 12px; color: var(--muted); max-height: 220px; overflow: auto; }
-#modal {
-  position: fixed; inset: 0; display: none; place-items: center;
-  background: rgb(0 0 0 / .65); padding: 20px;
-}
-#modal.open { display: grid; }
-#modal .box {
-  width: min(640px, 100%); background: var(--panel);
-  border: 1px solid var(--line); border-radius: 12px; padding: 18px;
-}
-pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; }
-.muted { color: var(--muted); font-size: 13px; }
-@media (max-width: 760px) {
-  body { grid-template-columns: 1fr; }
-  aside { display: none; }
-}
-</style>
-</head>
-<body>
-<aside>
-  <h1>Hagar</h1>
-  <div class="muted" id="model">...</div>
-  <h2>Sessione</h2>
-  <dl>
-    <dt>Progetto</dt><dd id="project">...</dd>
-    <dt>Memoria</dt><dd id="memory">...</dd>
-    <dt>Audit</dt><dd id="audit">...</dd>
-  </dl>
-  <h2>Progetti</h2>
-  <div class="row">
-    <button id="project-refresh">Aggiorna</button>
-    <button id="project-free">Libera</button>
-    <button id="project-new">Nuovo</button>
-  </div>
-  <div id="projects" class="muted"></div>
-  <h2>Tool</h2>
-  <div id="tools"></div>
-  <div id="usage">
-    <div>Token sessione</div>
-    <strong id="usage-total">0</strong>
-    <div id="usage-detail" class="muted">in 0 · out 0</div>
-  </div>
-</aside>
-<main>
-  <header>
-    <strong>Chat</strong>
-    <span class="muted" id="state">pronta</span>
-  </header>
-  <div id="messages"></div>
-  <form id="composer">
-    <textarea id="input" placeholder="Scrivi un messaggio..." autofocus></textarea>
-    <button class="primary" id="send" type="submit">Invia</button>
-  </form>
-</main>
-<div id="modal" role="dialog" aria-modal="true">
-  <div class="box">
-    <h3 id="confirm-title">Conferma richiesta</h3>
-    <p class="muted" id="confirm-reason"></p>
-    <dl>
-      <dt>Tool</dt><dd id="confirm-tool"></dd>
-      <dt>Capability</dt><dd id="confirm-capabilities"></dd>
-    </dl>
-    <pre id="confirm-arguments"></pre>
-    <div class="row" style="justify-content:flex-end">
-      <button id="confirm-deny">Rifiuta</button>
-      <button class="primary" id="confirm-allow">Consenti</button>
-    </div>
-  </div>
-</div>
-<script>
-const TOKEN = __HAGAR_TOKEN__;
-const messages = document.getElementById('messages');
-const input = document.getElementById('input');
-const send = document.getElementById('send');
-const state = document.getElementById('state');
-const modal = document.getElementById('modal');
-let pendingConfirmation = null;
-let busy = false;
-let thinking = null;
-
-function el(tag, cls, text) {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function add(role, text) {
-  const node = el('div', 'message ' + role, text);
-  messages.appendChild(node);
-  messages.scrollTop = messages.scrollHeight;
-  return node;
-}
-
-function setBusy(value, label) {
-  busy = value;
-  send.disabled = value;
-  input.disabled = value;
-  state.textContent = label || (value ? 'in corso...' : 'pronta');
-}
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Hagar-Token': TOKEN,
-      ...(options.headers || {}),
-    },
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
-  return data;
-}
-
-function renderUsage(usage) {
-  if (!usage) return;
-  const total = usage.total_tokens || 0;
-  const input = usage.input_tokens || 0;
-  const output = usage.output_tokens || 0;
-  document.getElementById('usage-total').textContent =
-    total.toLocaleString('it-IT');
-  document.getElementById('usage-detail').textContent =
-    'in ' + input.toLocaleString('it-IT') +
-    ' · out ' + output.toLocaleString('it-IT');
-}
-
-function renderStatus(data) {
-  document.getElementById('model').textContent =
-    data.model.provider + ' / ' + data.model.name;
-  const p = data.project;
-  document.getElementById('project').textContent =
-    p ? (p.title + ' [' + p.id + ']') : 'attività libera';
-  const m = data.memory || {};
-  document.getElementById('memory').textContent =
-    m.enabled ? 'attiva' : 'disattivata';
-  const a = data.audit || {};
-  document.getElementById('audit').textContent =
-    a.enabled ? 'attivo' : 'disattivato';
-  renderUsage(data.usage);
-  if (Array.isArray(data.tools)) {
-    const box = document.getElementById('tools');
-    box.replaceChildren();
-    for (const name of data.tools) box.appendChild(el('div', '', name));
-  }
-}
-
-async function refreshStatus() {
-  try { renderStatus(await api('/api/status')); } catch (e) { console.error(e); }
-}
-
-async function refreshProjects() {
-  try {
-    const data = await api('/api/projects');
-    const box = document.getElementById('projects');
-    box.replaceChildren();
-    if (!data.projects.length) box.appendChild(el('div', '', 'Nessun progetto'));
-    for (const project of data.projects) {
-      const row = document.createElement('div');
-      const button = el('button', '', project.title);
-      button.onclick = () => selectProject(project.id);
-      row.appendChild(button);
-      row.appendChild(el('span', 'muted', ' ' + project.id));
-      box.appendChild(row);
-    }
-  } catch (e) { console.error(e); }
-}
-
-async function selectProject(id) {
-  try {
-    await api('/api/project', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'select', id }),
-    });
-    await refreshStatus();
-    await refreshProjects();
-  } catch (e) { add('error', String(e)); }
-}
-
-document.getElementById('project-refresh').onclick = refreshProjects;
-document.getElementById('project-free').onclick = async () => {
-  try {
-    await api('/api/project', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'free' }),
-    });
-    await refreshStatus();
-  } catch (e) { add('error', String(e)); }
-};
-document.getElementById('project-new').onclick = async () => {
-  const name = prompt('Nome del nuovo progetto:');
-  if (!name) return;
-  try {
-    await api('/api/project', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'new', name }),
-    });
-    await refreshStatus();
-    await refreshProjects();
-  } catch (e) { add('error', String(e)); }
-};
-
-function openConfirmation(data) {
-  pendingConfirmation = data.id;
-  document.getElementById('confirm-title').textContent =
-    'Conferma: ' + data.tool;
-  document.getElementById('confirm-reason').textContent =
-    data.reason || '';
-  document.getElementById('confirm-tool').textContent = data.tool;
-  document.getElementById('confirm-capabilities').textContent =
-    (data.capabilities || []).join(', ');
-  document.getElementById('confirm-arguments').textContent =
-    JSON.stringify(data.arguments || {}, null, 2);
-  modal.classList.add('open');
-}
-
-async function answerConfirmation(approved) {
-  if (!pendingConfirmation) return;
-  const id = pendingConfirmation;
-  pendingConfirmation = null;
-  modal.classList.remove('open');
-  try {
-    await api('/api/confirm', {
-      method: 'POST',
-      body: JSON.stringify({ id, approved }),
-    });
-  } catch (e) {
-    add('error', String(e));
-  }
-}
-
-document.getElementById('confirm-allow').onclick = () => answerConfirmation(true);
-document.getElementById('confirm-deny').onclick = () => answerConfirmation(false);
-
-const source = new EventSource('/api/events?token=' + encodeURIComponent(TOKEN));
-
-source.onmessage = (event) => {
-  let payload;
-  try { payload = JSON.parse(event.data); } catch (e) { return; }
-  const type = payload.type;
-  const data = payload.data || {};
-  if (type === 'status') { renderStatus(data); return; }
-  if (type === 'usage.updated') { renderUsage(data); return; }
-  if (type === 'turn.start') {
-    setBusy(true, 'in corso...');
-    thinking = add('assistant', '…');
-    return;
-  }
-  if (type === 'tool.call') {
-    add('tool', '→ ' + data.tool + ' ' + JSON.stringify(data.arguments || {}));
-    return;
-  }
-  if (type === 'tool.result') {
-    const text = data.success
-      ? ('✓ ' + data.tool + ' (' + data.duration_ms + ' ms)\n' + (data.output || ''))
-      : ('✗ ' + data.tool + ': ' + (data.error || 'errore'));
-    add('tool', text);
-    return;
-  }
-  if (type === 'permission.decision') {
-    if (data.effect === 'DENY') {
-      add('error', 'Permesso negato: ' + data.tool + ' — ' + (data.reason || ''));
-    }
-    return;
-  }
-  if (type === 'confirmation.request') {
-    openConfirmation(data);
-    return;
-  }
-  if (type === 'confirmation.resolved') {
-    if (pendingConfirmation === data.id) {
-      pendingConfirmation = null;
-      modal.classList.remove('open');
-    }
-    return;
-  }
-  if (type === 'turn.answer') {
-    if (thinking) { thinking.remove(); thinking = null; }
-    add('assistant', data.answer || '');
-    setBusy(false);
-    refreshStatus();
-    return;
-  }
-  if (type === 'turn.error') {
-    if (thinking) { thinking.remove(); thinking = null; }
-    add('error', data.error || 'Errore');
-    setBusy(false);
-    return;
-  }
-  if (type === 'session.finished') {
-    setBusy(false, 'sessione terminata');
-  }
-};
-
-source.onerror = () => {
-  state.textContent = 'connessione persa';
-};
-
-document.getElementById('composer').onsubmit = async (event) => {
-  event.preventDefault();
-  const text = input.value.trim();
-  if (!text || busy) return;
-  add('user', text);
-  input.value = '';
-  try {
-    await api('/api/message', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-  } catch (e) {
-    add('error', String(e));
-    setBusy(false);
-  }
-};
-
-refreshStatus();
-refreshProjects();
-</script>
-</body>
-</html>
-"""
-
-
 class HagarRequestHandler(BaseHTTPRequestHandler):
     """Router minimale per la GUI locale."""
 
@@ -785,15 +372,38 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/":
 
-            body = HTML.replace(
-                "__HAGAR_TOKEN__",
-                json.dumps(self.session.token),
-            ).encode("utf-8")
+            body = render_index(self.session.token)
 
             self.send_response(HTTPStatus.OK)
             self.send_header(
                 "Content-Type",
                 "text/html; charset=utf-8",
+            )
+            self.send_header(
+                "Content-Length",
+                str(len(body)),
+            )
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        if parsed.path.startswith("/static/"):
+
+            name = parsed.path[len("/static/"):]
+            content_type = STATIC_TYPES.get(name)
+
+            if content_type is None:
+
+                self._error("not found", HTTPStatus.NOT_FOUND)
+                return
+
+            body = _read_web_asset(name)
+
+            self.send_response(HTTPStatus.OK)
+            self.send_header(
+                "Content-Type",
+                content_type,
             )
             self.send_header(
                 "Content-Length",

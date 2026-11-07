@@ -41,6 +41,7 @@ def test_declared_packages():
         "llm",
         "memory",
         "local_tools",
+        "web",
     }
 
 

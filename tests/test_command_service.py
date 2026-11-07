@@ -84,6 +84,35 @@ class FakeSkill:
         }
 
 
+class FakeIndex:
+    def __init__(self):
+        self.rebuilt = 0
+
+    def search(self, query, limit=10):
+        return [
+            {
+                "path": "Hagar/skills/demo.md",
+                "kind": "skill",
+                "project": None,
+                "status": "confirmed",
+                "title": query,
+                "snippet": "contenuto",
+            }
+        ]
+
+    def rebuild(self):
+        self.rebuilt += 1
+        return 3
+
+    def stats(self):
+        return {
+            "path": "index.db",
+            "documents": 3,
+            "kinds": {"skill": 1},
+            "fts": True,
+        }
+
+
 class FakeMemory:
     STATUSES = ("candidate", "confirmed", "archived")
 
@@ -91,6 +120,7 @@ class FakeMemory:
         self.skills = [
             FakeSkill("demo", "Demo", "candidate"),
         ]
+        self.index = FakeIndex()
 
     def list_skills(self, kind=None, status=None, limit=50):
         return [
@@ -284,6 +314,30 @@ def test_memory_archive_search_is_not_a_skill_slug():
     assert result.ok is True
     assert result.data["total"] == 1
     assert result.data["hits"][0]["question"] == "TOCTOU"
+
+
+def test_memory_index_search():
+    _, commands = make_service(memory=FakeMemory())
+
+    result = commands.handle("/memory search TOCTOU")
+
+    assert result.ok is True
+    assert result.data["query"] == "TOCTOU"
+    assert result.data["results"][0]["path"].endswith("demo.md")
+
+
+def test_memory_index_reindex_and_stats():
+    memory = FakeMemory()
+    _, commands = make_service(memory=memory)
+
+    rebuilt = commands.handle("/memory reindex")
+    stats = commands.handle("/memory stats")
+
+    assert rebuilt.ok is True
+    assert rebuilt.data["changed"] == 3
+    assert memory.index.rebuilt == 1
+    assert stats.ok is True
+    assert stats.data["documents"] == 3
 
 
 def test_memory_archive_read_uses_structured_result():

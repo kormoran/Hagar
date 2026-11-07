@@ -32,6 +32,7 @@ def store(tmp_path):
         context_turns=5,
         max_skill_chars=200,
         model="test-model",
+        index_path=tmp_path / "index.db",
     )
 
 
@@ -46,6 +47,7 @@ def test_tools_are_registered(registry):
     assert set(registry.tool_names()) == {
         "memory.create_skill",
         "memory.list_skills",
+        "memory.search",
         "memory.get_context",
         "memory.archive_search",
         "memory.archive_read",
@@ -222,6 +224,20 @@ def test_memory_write_requires_capability(store):
     assert json.loads(
         registry.execute("memory.list_skills")
     ) == []
+
+
+def test_search_uses_the_index(registry, store):
+    store.create_skill(
+        "TOCTOU",
+        "Contenuto indicizzato sul TOCTOU.",
+    )
+
+    result = json.loads(
+        registry.execute("memory.search", query="TOCTOU")
+    )
+
+    assert result["returned"] == 1
+    assert result["results"][0]["kind"] == "skill"
 
 
 def test_namespace_scope_is_applied(store):

@@ -116,9 +116,10 @@ variabile d'ambiente `HAGAR_CONFIG` e infine file `./hagar.yaml`.
 hagar.py            Script di lancio dell'harness
 hagar.yaml          Script di configurazione predefinito
 policy.yaml			Configurazione dei permessi per i tool (integrati ed MCP)
-core/               config, agent, audit log, registry, sandbox e tools
+core/               config, agent, audit log, registry, sandbox, service e web server
 llm/                LLM backends (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), client MCP
-memory/             accesso al vault
+memory/             accesso al vault e indice SQLite (memory/index.py)
+web/                HTML, CSS e JavaScript della GUI locale
 tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
 local_tools/		Tool per le AI integrati in HAGAR - non MCP, ma disponibili direttamente

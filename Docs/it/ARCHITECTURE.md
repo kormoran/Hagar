@@ -733,9 +733,14 @@ comandi slash, tranne `/memory review`.
 `hagar web` avvia un `ThreadingHTTPServer` locale con:
 
 - `GET /` pagina chat;
+- `GET /static/style.css` e `/static/app.js` (asset in `web/`);
 - `GET /api/events` stream SSE;
 - `POST /api/message`, `/api/confirm`, `/api/project`;
 - `GET /api/status`, `/api/projects`, `/api/pending`.
+
+Gli asset statici vivono in `web/` (`index.html`, `style.css`,
+`app.js`). `render_index()` inietta solo il token; il resto è servito
+verbatim con whitelist e `importlib.resources`.
 
 La GUI è un adapter: usa `HarnessService`, `CommandService` e
 `QueueConfirmationProvider`. Le conferme ASK bloccano il thread del turno
@@ -760,6 +765,21 @@ multiutente e non espone ancora la modifica del Vault.
 del client. `UsageLedger` accumula i totali per sessione e pubblica
 `usage.updated`; la GUI lo usa nella sidebar. L'usage del provider è la
 verità; una stima locale resta solo un fallback.
+
+## 3.11.5 Memory index (`memory/index.py`)
+
+`MemoryIndex` è un indice SQLite derivato dal Vault Markdown:
+
+- tabelle `documents`, `meta` e `documents_fts` (FTS5);
+- sync incrementale per hash/mtime/size;
+- `rebuild()` ricostruisce da zero;
+- ricerca con filtri `project`, `kind`, `status`;
+- fallback `LIKE` se FTS5 non è disponibile;
+- database nei dati locali dell'app, non nel Vault sincronizzato.
+
+Il tool `memory.search` usa l'indice; `/memory reindex` e `/memory stats`
+espongono manutenzione e stato. Il Markdown resta la fonte di verità:
+cancellare il DB non perde memorie.
 
 ## 3.12 Avvio e packaging
 
@@ -860,7 +880,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 748 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 758 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

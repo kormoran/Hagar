@@ -144,6 +144,38 @@ def test_index_contains_token_and_ui():
         assert server.session.token in text
         assert "Comandi chat" not in text
         assert "Hagar" in text
+        assert "/static/app.js" in text
+
+    finally:
+        server.close()
+
+
+def test_static_assets_are_served_without_token():
+    server = RunningServer()
+
+    try:
+        status, body = server.request(
+            "GET",
+            "/static/style.css",
+            token=False,
+        )
+        assert status == 200
+        assert b"--bg" in body
+
+        status, body = server.request(
+            "GET",
+            "/static/app.js",
+            token=False,
+        )
+        assert status == 200
+        assert b"__HAGAR_TOKEN__" not in body
+
+        status, _ = server.request(
+            "GET",
+            "/static/missing.js",
+            token=False,
+        )
+        assert status == 404
 
     finally:
         server.close()

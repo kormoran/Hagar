@@ -46,6 +46,12 @@ riferimento al commit quando utile.
   Claude, Gemini e Ollama, con `UsageLedger` per sessione.
 - La GUI mostra input, output e totale token nella sidebar, aggiornati
   via evento `usage.updated`.
+- HTML, CSS e JavaScript della GUI separati in `web/` e serviti come
+  asset statici; `core/web.py` inietta solo il token.
+- Nuovo `memory/index.py`: indice SQLite/FTS5 incrementale e
+  ricostruibile delle memorie Markdown, con fallback lessicale.
+- Nuovo tool `memory.search`; comandi `/memory search`, `reindex`,
+  `stats`.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -178,7 +184,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 748 test superati, 2 skip su Windows; 750 superati, 0 skip su Debian
+- 758 test superati, 2 skip su Windows; 760 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

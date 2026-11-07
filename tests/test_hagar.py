@@ -40,6 +40,7 @@ EXPECTED_TOOLS = {
     "filesystem.stat",
     "memory.create_skill",
     "memory.list_skills",
+    "memory.search",
     "memory.get_context",
     "memory.project_context",
     "memory.archive_search",

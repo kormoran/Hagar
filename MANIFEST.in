@@ -9,3 +9,4 @@ include requirements.txt
 include requirements-dev.txt
 recursive-include Docs *.md *.jpg
 recursive-include tests *.py
+recursive-include web *.html *.css *.js

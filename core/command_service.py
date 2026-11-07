@@ -682,6 +682,9 @@ class CommandService:
                     "Comandi memoria:",
                     "  /memory list [status]",
                     "  /memory show <slug>",
+                    "  /memory search <testo>",
+                    "  /memory reindex",
+                    "  /memory stats",
                     "  /memory confirm <slug>",
                     "  /memory archive <slug>",
                     "  /memory archive search <testo>",
@@ -748,6 +751,103 @@ class CommandService:
                         for skill in skills
                     ],
                 },
+            )
+
+        if command == "search":
+
+            query = " ".join(arguments[1:]).strip()
+
+            if not query:
+
+                return CommandResult(
+                    command="/memory search",
+                    ok=False,
+                    error="missing query",
+                    lines=["Uso: /memory search <testo>"],
+                )
+
+            try:
+
+                results = memory.index.search(
+                    query,
+                    limit=20,
+                )
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/memory search",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore indice: {exc}"],
+                )
+
+            lines = [
+                f"Risultati indice: {len(results)}"
+            ]
+
+            for result in results:
+
+                lines.append(
+                    f"  [{result['kind']}] "
+                    f"{result['title']} "
+                    f"({result['path']})"
+                )
+
+            return CommandResult(
+                command="/memory search",
+                lines=lines,
+                data={"query": query, "results": results},
+            )
+
+        if command == "reindex":
+
+            try:
+
+                changed = memory.index.rebuild()
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/memory reindex",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore indice: {exc}"],
+                )
+
+            return CommandResult(
+                command="/memory reindex",
+                lines=[
+                    f"Indice ricostruito: {changed} documenti."
+                ],
+                data={"changed": changed},
+            )
+
+        if command == "stats":
+
+            try:
+
+                stats = memory.index.stats()
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/memory stats",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore indice: {exc}"],
+                )
+
+            lines = [
+                f"Indice: {stats['documents']} documenti",
+                f"File: {stats['path']}",
+                f"FTS5: {'sì' if stats['fts'] else 'no'}",
+            ]
+
+            return CommandResult(
+                command="/memory stats",
+                lines=lines,
+                data=stats,
             )
 
         if command == "show":
