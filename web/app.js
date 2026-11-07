@@ -8,6 +8,12 @@ const imageInput = document.getElementById('image-input');
 const previews = document.getElementById('previews');
 const newChat = document.getElementById('new-chat');
 const historyBox = document.getElementById('history');
+const tabButtons = document.querySelectorAll('.tab');
+const auditTab = document.getElementById('audit-tab');
+const auditOff = document.getElementById('audit-off');
+const auditLog = document.getElementById('audit-log');
+const toolLog = document.getElementById('tool-log');
+const thinkingLog = document.getElementById('thinking-log');
 let pendingConfirmation = null;
 let pendingImages = [];
 let busy = false;
@@ -77,6 +83,11 @@ function renderStatus(data) {
   const a = data.audit || {};
   document.getElementById('audit').textContent =
     a.enabled ? 'attivo' : 'disattivato';
+  auditTab.disabled = !a.enabled;
+  auditOff.hidden = Boolean(a.enabled);
+  if (!a.enabled && auditTab.classList.contains('active')) {
+    switchTab('chat');
+  }
   renderUsage(data.usage);
   if (Array.isArray(data.tools)) {
     const box = document.getElementById('tools');
@@ -87,6 +98,106 @@ function renderStatus(data) {
 
 async function refreshStatus() {
   try { renderStatus(await api('/api/status')); } catch (e) { console.error(e); }
+}
+
+function renderEntries(container, entries, render) {
+  container.replaceChildren();
+  if (!entries.length) {
+    container.appendChild(el('div', 'empty', 'nessun elemento'));
+    return;
+  }
+  for (const entry of entries) container.appendChild(render(entry));
+}
+
+async function refreshTools() {
+  try {
+    const data = await api('/api/tools');
+    renderEntries(toolLog, data.tools, (tool) => {
+      const box = el('div', 'log-entry');
+      const status = tool.success === null
+        ? 'in corso'
+        : (tool.success ? 'ok' : 'errore');
+      box.appendChild(el(
+        'div',
+        'meta',
+        `[${tool.turn || '-'}:${tool.index || '-'}] ${tool.tool} · ${status}`
+      ));
+      if (tool.arguments && Object.keys(tool.arguments).length) {
+        box.appendChild(el('div', '', 'args: ' + JSON.stringify(tool.arguments)));
+      }
+      if (tool.error) box.appendChild(el('div', 'error', tool.error));
+      if (tool.output) box.appendChild(el('div', '', tool.output));
+      return box;
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function refreshAudit() {
+  if (auditTab.disabled) return;
+  try {
+    const data = await api('/api/audit');
+    auditOff.hidden = data.enabled;
+    if (!data.enabled) {
+      auditLog.replaceChildren();
+      return;
+    }
+    renderEntries(auditLog, [...data.entries].reverse(), (entry) => {
+      const box = el('div', 'log-entry');
+      const meta = [entry.ts, entry.event].filter(Boolean).join(' · ');
+      box.appendChild(el('div', 'meta', meta));
+      const fields = ['tool', 'effect', 'error', 'turn'];
+      for (const key of fields) {
+        if (entry[key] !== undefined && entry[key] !== '') {
+          box.appendChild(el('div', '', `${key}: ${entry[key]}`));
+        }
+      }
+      return box;
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function refreshThinking() {
+  try {
+    const data = await api('/api/thinking');
+    thinkingLog.replaceChildren();
+    for (const item of data.thinking || []) {
+      const box = el('div', 'log-entry');
+      box.appendChild(el('div', 'meta', 'reasoning · ' + item.ts));
+      box.appendChild(el('div', '', item.text));
+      thinkingLog.appendChild(box);
+    }
+    for (const item of data.timeline || []) {
+      if (item.type === 'thinking') continue;
+      const box = el('div', 'log-entry');
+      box.appendChild(el('div', 'meta', item.ts + ' · ' + item.type));
+      if (item.data && item.data.tool) {
+        box.appendChild(el('div', '', item.data.tool));
+      }
+      thinkingLog.appendChild(box);
+    }
+    if (!thinkingLog.children.length) {
+      thinkingLog.appendChild(el('div', 'empty', 'nessun evento'));
+    }
+  } catch (e) { console.error(e); }
+}
+
+function switchTab(name) {
+  for (const button of tabButtons) {
+    button.classList.toggle('active', button.dataset.tab === name);
+  }
+  for (const panel of document.querySelectorAll('.panel')) {
+    panel.classList.toggle('active', panel.id === 'panel-' + name);
+  }
+  if (name === 'history') refreshHistory();
+  if (name === 'tools') refreshTools();
+  if (name === 'audit') refreshAudit();
+  if (name === 'thinking') refreshThinking();
+}
+
+for (const button of tabButtons) {
+  button.onclick = () => {
+    if (!button.disabled) switchTab(button.dataset.tab);
+  };
 }
 
 async function refreshProjects() {
@@ -152,6 +263,7 @@ async function loadChat(sessionId) {
     }
     readOnly = true;
     setBusy(false, 'chat storica · sola lettura');
+    switchTab('chat');
     messages.scrollTop = messages.scrollHeight;
   } catch (e) {
     add('error', String(e));
@@ -170,6 +282,7 @@ async function startNewChat() {
     renderPreviews();
     readOnly = false;
     setBusy(false);
+    switchTab('chat');
     await refreshStatus();
     await refreshHistory();
   } catch (e) {
@@ -260,6 +373,7 @@ source.onmessage = (event) => {
   }
   if (type === 'tool.call') {
     add('tool', '→ ' + data.tool + ' ' + JSON.stringify(data.arguments || {}));
+    if (document.getElementById('panel-tools').classList.contains('active')) refreshTools();
     return;
   }
   if (type === 'tool.result') {
@@ -267,6 +381,11 @@ source.onmessage = (event) => {
       ? ('✓ ' + data.tool + ' (' + data.duration_ms + ' ms)\n' + (data.output || ''))
       : ('✗ ' + data.tool + ': ' + (data.error || 'errore'));
     add('tool', text);
+    if (document.getElementById('panel-tools').classList.contains('active')) refreshTools();
+    return;
+  }
+  if (type === 'thinking') {
+    if (document.getElementById('panel-thinking').classList.contains('active')) refreshThinking();
     return;
   }
   if (type === 'permission.decision') {

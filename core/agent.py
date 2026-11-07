@@ -249,6 +249,21 @@ class Agent:
                     f"{exc}"
                 )
 
+            reasoning = getattr(
+                self.llm,
+                "last_reasoning",
+                "",
+            )
+
+            if reasoning:
+
+                emit(
+                    self.event_sink,
+                    "thinking",
+                    turn=turn,
+                    text=reasoning,
+                )
+
             #
             # Nessun tool richiesto:
             # genera la risposta finale.
@@ -442,6 +457,15 @@ class Agent:
                     "Errore durante "
                     "la richiesta al modello: "
                     f"{exc}"
+                )
+
+            if reply.reasoning:
+
+                emit(
+                    self.event_sink,
+                    "thinking",
+                    turn=turn,
+                    text=reply.reasoning,
                 )
 
             #

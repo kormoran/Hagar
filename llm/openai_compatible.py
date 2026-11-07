@@ -119,6 +119,17 @@ class OpenAICompatibleClient(LLMClient):
     # Chat API
     # ==================================================
 
+    @staticmethod
+    def _reasoning(message: dict[str, Any]) -> str:
+
+        value = (
+            message.get("reasoning_content")
+            or message.get("reasoning")
+            or ""
+        )
+
+        return str(value).strip()
+
     def chat(
         self,
         messages: list[dict[str, str]],
@@ -157,6 +168,8 @@ class OpenAICompatibleClient(LLMClient):
             )
 
         message = choices[0].get("message") or {}
+
+        self.last_reasoning = self._reasoning(message)
 
         content = message.get("content")
 
@@ -278,6 +291,7 @@ class OpenAICompatibleClient(LLMClient):
                 self._assistant_message(text, calls)
             ),
             usage=usage_from_openai(data),
+            reasoning=self._reasoning(message),
         )
 
     # ==================================================

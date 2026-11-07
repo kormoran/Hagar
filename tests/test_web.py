@@ -249,6 +249,40 @@ def test_stop_requests_agent_cancellation():
         server.close()
 
 
+def test_tools_and_thinking_endpoints():
+    server = RunningServer()
+
+    try:
+        status, body = server.request("GET", "/api/tools")
+        assert status == 200
+        assert json.loads(body)["tools"] == []
+
+        status, body = server.request("GET", "/api/thinking")
+        assert status == 200
+        data = json.loads(body)
+        assert data["timeline"] == []
+        assert data["thinking"] == []
+
+    finally:
+        server.close()
+
+
+def test_audit_endpoint_reports_disabled():
+    server = RunningServer()
+
+    try:
+        server.session.harness.audit.enabled = False
+        status, body = server.request("GET", "/api/audit")
+        assert status == 200
+        assert json.loads(body) == {
+            "enabled": False,
+            "entries": [],
+        }
+
+    finally:
+        server.close()
+
+
 def test_message_accepts_image_data_url():
     server = RunningServer()
 

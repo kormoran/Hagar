@@ -79,6 +79,9 @@ restituisce gli stessi risultati.
   implementato (OpenAI/LM Studio, Claude, Gemini);
 - cronologia chat visibile dopo un refresh — implementata come elenco
   delle chat passate con ricarica dal Vault e **+ Nuova chat**;
+- tab Chat, Chat history, Tool output, Audit e Thinking — implementate;
+  Audit si disabilita se il log è spento, Thinking usa il reasoning se
+  disponibile e altrimenti la timeline.
 - lettura sola delle memorie dal browser;
 - eventuale comando `/usage` lato CLI.
 

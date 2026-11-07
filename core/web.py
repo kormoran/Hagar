@@ -18,6 +18,7 @@ from urllib.parse import parse_qs
 from urllib.parse import unquote
 from urllib.parse import urlparse
 
+from core.audit import read_entries
 from core.confirmations import QueueConfirmationProvider
 from core.events import ServiceEvent
 from core.events import make_event
@@ -25,6 +26,7 @@ from core.images import MAX_IMAGES
 from core.images import ImageInput
 from core.images import ImageInputError
 from core.service import HarnessService
+from core.session_log import SessionLog
 from core.usage import UsageLedger
 from memory.projects import ProjectError
 
@@ -123,10 +125,11 @@ class WebSession:
         self.confirmation = confirmation
         self.bus = EventBus()
         self.token = secrets.token_urlsafe(24)
+        self.log = SessionLog()
 
-        self.confirmation.event_sink = self.bus.publish
+        self.confirmation.event_sink = self._publish
 
-        self.usage = UsageLedger(self.bus.publish)
+        self.usage = UsageLedger(self._publish)
 
         llm = getattr(harness, "llm", None)
 
@@ -135,12 +138,20 @@ class WebSession:
 
         self.service = HarnessService(
             harness,
-            event_sink=self.bus.publish,
+            event_sink=self._publish,
         )
 
         self._lock = threading.Lock()
         self._busy = False
         self._closed = False
+
+    def _publish(
+        self,
+        event: ServiceEvent,
+    ) -> None:
+
+        self.log.record(event)
+        self.bus.publish(event)
 
     # ==================================================
     # Turni
@@ -223,7 +234,10 @@ class WebSession:
                     "a turn is already running"
                 )
 
-        return self.service.new_chat()
+        session_id = self.service.new_chat()
+        self.log.clear()
+
+        return session_id
 
     def history(self) -> list[dict[str, Any]]:
 
@@ -499,6 +513,48 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
             self._json(
                 {"chats": self.session.history()}
+            )
+            return
+
+        if parsed.path == "/api/tools":
+
+            self._json(
+                {"tools": self.session.log.tools()}
+            )
+            return
+
+        if parsed.path == "/api/thinking":
+
+            self._json(
+                {
+                    "timeline": self.session.log.timeline(),
+                    "thinking": self.session.log.thinking(),
+                }
+            )
+            return
+
+        if parsed.path == "/api/audit":
+
+            audit = self.session.harness.audit
+
+            if not audit.enabled:
+
+                self._json(
+                    {"enabled": False, "entries": []}
+                )
+                return
+
+            try:
+                entries = read_entries(audit.path)
+            except (OSError, ValueError) as exc:
+                self._error(str(exc))
+                return
+
+            self._json(
+                {
+                    "enabled": True,
+                    "entries": entries[-200:],
+                }
             )
             return
 

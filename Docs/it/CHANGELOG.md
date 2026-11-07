@@ -58,10 +58,16 @@ riferimento al commit quando utile.
   MIME e limite 10 MB; adapter OpenAI/LM Studio, Claude e Gemini.
 - Upload immagini nella GUI con anteprima e rimozione; nessuna immagine
   salvata in memoria o audit.
-- Cronologia chat nella sidebar: elenco di `chat/` e `archive/chat/`,
-  caricamento del transcript in sola lettura.
+- Cronologia chat nella tab dedicata: elenco di `chat/` e
+  `archive/chat/`, caricamento del transcript in sola lettura.
 - Pulsante **+ Nuova chat** con `MemoryStore.new_session()` e reset del
   contesto; i transcript precedenti restano nel Vault.
+- Tab GUI: Chat, Chat history, Tool output, Audit, Thinking.
+- `SessionLog` in memoria per tool call/risultati e timeline;
+  `/api/tools`, `/api/audit`, `/api/thinking`.
+- Audit disattivato: tab disabilitata con etichetta `audit off`.
+- Thinking mostra il reasoning esposto dal provider, altrimenti la
+  timeline degli eventi.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -194,7 +200,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 770 test superati, 2 skip su Windows; 772 superati, 0 skip su Debian
+- 772 test superati, 2 skip su Windows; 774 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

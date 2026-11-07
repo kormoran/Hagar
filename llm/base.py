@@ -44,6 +44,7 @@ class LLMReply:
             source="missing"
         )
     )
+    reasoning: str = ""
 
 
 class LLMClient(ABC):
@@ -81,6 +82,7 @@ class LLMClient(ABC):
         self.audit = audit
 
         self.last_usage = TokenUsage(source="missing")
+        self.last_reasoning = ""
         self.usage_sink: UsageSink | None = None
 
         #

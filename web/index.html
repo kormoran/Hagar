@@ -10,9 +10,6 @@
 <aside>
   <h1>Hagar</h1>
   <div class="muted" id="model">...</div>
-  <button id="new-chat" class="primary">+ Nuova chat</button>
-  <h2>Chat passate</h2>
-  <div id="history" class="history"></div>
   <h2>Sessione</h2>
   <dl>
     <dt>Progetto</dt><dd id="project">...</dd>
@@ -35,23 +32,57 @@
   </div>
 </aside>
 <main>
-  <header>
-    <strong>Chat</strong>
-    <div class="row">
-      <span class="muted" id="state">pronta</span>
-      <button id="stop" disabled>Stop</button>
+  <nav class="tabs">
+    <button class="tab active" data-tab="chat">Chat</button>
+    <button class="tab" data-tab="history">Chat history</button>
+    <button class="tab" data-tab="tools">Tool output</button>
+    <button class="tab" id="audit-tab" data-tab="audit">Audit</button>
+    <button class="tab" data-tab="thinking">Thinking</button>
+  </nav>
+
+  <section id="panel-chat" class="panel active">
+    <header>
+      <strong>Chat</strong>
+      <div class="row">
+        <span class="muted" id="state">pronta</span>
+        <button id="stop" disabled>Stop</button>
+      </div>
+    </header>
+    <div id="messages"></div>
+    <div id="previews"></div>
+    <form id="composer">
+      <textarea id="input" placeholder="Scrivi un messaggio..." autofocus></textarea>
+      <label class="file-button">
+        Immagine
+        <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+      </label>
+      <button class="primary" id="send" type="submit">Invia</button>
+    </form>
+  </section>
+
+  <section id="panel-history" class="panel">
+    <div class="panel-head">
+      <strong>Chat history</strong>
+      <button id="new-chat" class="primary">+ Nuova chat</button>
     </div>
-  </header>
-  <div id="messages"></div>
-  <div id="previews"></div>
-  <form id="composer">
-    <textarea id="input" placeholder="Scrivi un messaggio..." autofocus></textarea>
-    <label class="file-button">
-      Immagine
-      <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
-    </label>
-    <button class="primary" id="send" type="submit">Invia</button>
-  </form>
+    <div id="history" class="history"></div>
+  </section>
+
+  <section id="panel-tools" class="panel">
+    <div class="panel-head"><strong>Tool output</strong></div>
+    <div id="tool-log" class="log"></div>
+  </section>
+
+  <section id="panel-audit" class="panel">
+    <div class="panel-head"><strong>Audit</strong></div>
+    <div id="audit-off" class="empty" hidden>audit off</div>
+    <div id="audit-log" class="log"></div>
+  </section>
+
+  <section id="panel-thinking" class="panel">
+    <div class="panel-head"><strong>Thinking</strong></div>
+    <div id="thinking-log" class="log"></div>
+  </section>
 </main>
 <div id="modal" role="dialog" aria-modal="true">
   <div class="box">

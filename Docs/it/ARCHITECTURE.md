@@ -735,9 +735,17 @@ comandi slash, tranne `/memory review`.
 - `GET /` pagina chat;
 - `GET /static/style.css` e `/static/app.js` (asset in `web/`);
 - `GET /api/events` stream SSE;
-- `POST /api/message`, `/api/confirm`, `/api/project`;
+- `POST /api/message`, `/api/confirm`, `/api/project`, `/api/stop`,
+  `/api/new-chat`;
 - `GET /api/status`, `/api/projects`, `/api/pending`;
-- `GET /api/history`, `/api/history/<session>`; `POST /api/new-chat`.
+- `GET /api/history`, `/api/history/<session>`;
+- `GET /api/tools`, `/api/audit`, `/api/thinking`.
+
+Le tab della GUI sono Chat, Chat history, Tool output, Audit e Thinking.
+La sidebar tiene progetto, stato e token; la cronologia è nella tab
+dedicata. `SessionLog` conserva gli eventi della sessione per Tool
+output e timeline; Audit legge il JSONL; Thinking privilegia il
+reasoning esposto dal provider e altrimenti mostra la timeline.
 
 La sidebar sinistra elenca le chat di `chat/` e `archive/chat/`; un
 click carica i turni dal Vault in sola lettura. `POST /api/new-chat`
@@ -905,7 +913,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 770 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 772 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
