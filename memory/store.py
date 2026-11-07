@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
+import uuid
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -379,6 +380,132 @@ class MemoryStore:
 
         self.vault.ensure_dir(self.chat_dir)
         self.vault.ensure_dir(self.skills_dir)
+
+    def new_session(
+        self,
+        session_id: str | None = None,
+    ) -> str:
+        """Apre una nuova sessione senza toccare i transcript esistenti."""
+
+        new_id = session_id or uuid.uuid4().hex[:12]
+
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", new_id):
+
+            raise MemoryError(
+                "session id contains invalid characters"
+            )
+
+        self.session_id = new_id
+        self.current_turn = None
+        return new_id
+
+    def list_sessions(
+        self,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Elenca le chat presenti in chat/ e archive/chat/."""
+
+        sessions: dict[str, dict[str, Any]] = {}
+
+        for directory, archived in (
+            (self.chat_dir, False),
+            (self.archive_chat_dir, True),
+        ):
+
+            for path in self.vault.list_files(
+                directory,
+                "*.md",
+            ):
+
+                try:
+                    text = path.read_text(encoding="utf-8")
+
+                except OSError:
+                    continue
+
+                turns = _parse_turns(text, path.stem)
+
+                if not turns:
+                    continue
+
+                first = turns[0]
+                session = first.session or path.stem
+
+                item = {
+                    "id": session,
+                    "title": (
+                        first.question.strip()[:100]
+                        or session
+                    ),
+                    "date": first.timestamp,
+                    "turns": len(turns),
+                    "archived": archived,
+                    "_mtime": path.stat().st_mtime,
+                }
+
+                existing = sessions.get(session)
+
+                if existing is None or (
+                    existing["archived"] and not archived
+                ):
+                    sessions[session] = item
+
+        result = sorted(
+            sessions.values(),
+            key=lambda item: (
+                item["_mtime"],
+                item["date"],
+                item["id"],
+            ),
+            reverse=True,
+        )
+
+        for item in result:
+            item.pop("_mtime", None)
+
+        return result[:max(1, int(limit))]
+
+    def read_session(
+        self,
+        session_id: str,
+    ) -> list[dict[str, Any]]:
+        """Legge una chat da chat/ o archive/chat/."""
+
+        if not re.fullmatch(
+            r"[A-Za-z0-9._-]+",
+            session_id,
+        ):
+
+            raise MemoryError("invalid session id")
+
+        turns: list[Turn] = []
+
+        for directory in (
+            self.chat_dir,
+            self.archive_chat_dir,
+        ):
+
+            for path in self.vault.list_files(
+                directory,
+                "*.md",
+            ):
+
+                try:
+                    text = path.read_text(encoding="utf-8")
+
+                except OSError:
+                    continue
+
+                for turn in _parse_turns(text, path.stem):
+
+                    if turn.session != session_id:
+                        continue
+
+                    turns.append(turn)
+
+        turns.sort(key=lambda turn: turn.timestamp)
+
+        return [turn.as_dict() for turn in turns]
 
     def begin_turn(
         self,
@@ -1303,7 +1430,8 @@ class MemoryStore:
         """
 
         turns = self.recent_turns(
-            self.context_turns
+            self.context_turns,
+            session=self.session_id,
         )
 
         skills = (

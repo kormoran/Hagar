@@ -266,6 +266,56 @@ class HarnessService:
         }
 
     # ==================================================
+    # Chat
+    # ==================================================
+
+    def new_chat(self) -> str:
+        """Apre una nuova sessione e azzera il contesto della chat."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        session_id = memory.new_session()
+
+        audit = getattr(self.harness, "audit", None)
+
+        if audit is not None:
+            audit.session_id = session_id
+            audit.record(
+                "chat.new",
+                session=session_id,
+            )
+
+        self._emit(
+            "chat.new",
+            session_id=session_id,
+        )
+
+        return session_id
+
+    def history(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Elenco delle chat salvate nel Vault."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            return []
+
+        return memory.list_sessions(limit=limit)
+
+    def load_chat(self, session_id: str) -> list[dict[str, Any]]:
+        """Turni di una chat passata, in ordine cronologico."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        return memory.read_session(session_id)
+
+    # ==================================================
     # Stato
     # ==================================================
 

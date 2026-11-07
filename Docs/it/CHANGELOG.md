@@ -58,6 +58,10 @@ riferimento al commit quando utile.
   MIME e limite 10 MB; adapter OpenAI/LM Studio, Claude e Gemini.
 - Upload immagini nella GUI con anteprima e rimozione; nessuna immagine
   salvata in memoria o audit.
+- Cronologia chat nella sidebar: elenco di `chat/` e `archive/chat/`,
+  caricamento del transcript in sola lettura.
+- Pulsante **+ Nuova chat** con `MemoryStore.new_session()` e reset del
+  contesto; i transcript precedenti restano nel Vault.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -190,7 +194,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 767 test superati, 2 skip su Windows; 769 superati, 0 skip su Debian
+- 770 test superati, 2 skip su Windows; 772 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

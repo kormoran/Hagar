@@ -15,6 +15,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
+from urllib.parse import unquote
 from urllib.parse import urlparse
 
 from core.confirmations import QueueConfirmationProvider
@@ -211,6 +212,26 @@ class WebSession:
     # ==================================================
     # Stato
     # ==================================================
+
+    def new_chat(self) -> str:
+        """Crea una nuova sessione; il contesto precedente non entra."""
+
+        with self._lock:
+
+            if self._busy:
+                raise RuntimeError(
+                    "a turn is already running"
+                )
+
+        return self.service.new_chat()
+
+    def history(self) -> list[dict[str, Any]]:
+
+        return self.service.history()
+
+    def load_chat(self, session_id: str) -> list[dict[str, Any]]:
+
+        return self.service.load_chat(session_id)
 
     def status(self) -> dict[str, Any]:
 
@@ -474,6 +495,39 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if parsed.path == "/api/history":
+
+            self._json(
+                {"chats": self.session.history()}
+            )
+            return
+
+        if parsed.path.startswith("/api/history/"):
+
+            session_id = unquote(
+                parsed.path[len("/api/history/"):]
+            )
+
+            try:
+
+                turns = self.session.load_chat(session_id)
+
+            except Exception as exc:
+
+                self._error(
+                    str(exc),
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            self._json(
+                {
+                    "session": session_id,
+                    "turns": turns,
+                }
+            )
+            return
+
         if parsed.path == "/api/pending":
 
             self._json(
@@ -576,6 +630,23 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 {"stopping": True},
                 status=HTTPStatus.ACCEPTED,
             )
+            return
+
+        if parsed.path == "/api/new-chat":
+
+            try:
+
+                session_id = self.session.new_chat()
+
+            except RuntimeError as exc:
+
+                self._error(
+                    str(exc),
+                    HTTPStatus.CONFLICT,
+                )
+                return
+
+            self._json({"session": session_id})
             return
 
         if parsed.path == "/api/confirm":

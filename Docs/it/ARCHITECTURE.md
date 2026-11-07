@@ -736,7 +736,13 @@ comandi slash, tranne `/memory review`.
 - `GET /static/style.css` e `/static/app.js` (asset in `web/`);
 - `GET /api/events` stream SSE;
 - `POST /api/message`, `/api/confirm`, `/api/project`;
-- `GET /api/status`, `/api/projects`, `/api/pending`.
+- `GET /api/status`, `/api/projects`, `/api/pending`;
+- `GET /api/history`, `/api/history/<session>`; `POST /api/new-chat`.
+
+La sidebar sinistra elenca le chat di `chat/` e `archive/chat/`; un
+click carica i turni dal Vault in sola lettura. `POST /api/new-chat`
+chiama `MemoryStore.new_session()` e cambia la sessione di audit, senza
+toccare i transcript precedenti.
 
 Gli asset statici vivono in `web/` (`index.html`, `style.css`,
 `app.js`). `render_index()` inietta solo il token; il resto è servito
@@ -899,7 +905,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 767 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 770 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

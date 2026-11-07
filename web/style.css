@@ -34,6 +34,22 @@ aside {
   font-size: 13px;
 }
 #usage strong { color: var(--text); font-size: 16px; }
+#new-chat { width: 100%; margin-top: 14px; }
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow: auto;
+}
+.history button {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.history button.current { border-color: var(--accent); }
 main {
   display: flex;
   flex-direction: column;

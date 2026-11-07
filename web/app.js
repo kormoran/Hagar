@@ -6,9 +6,12 @@ const state = document.getElementById('state');
 const modal = document.getElementById('modal');
 const imageInput = document.getElementById('image-input');
 const previews = document.getElementById('previews');
+const newChat = document.getElementById('new-chat');
+const historyBox = document.getElementById('history');
 let pendingConfirmation = null;
 let pendingImages = [];
 let busy = false;
+let readOnly = false;
 let thinking = null;
 
 function el(tag, cls, text) {
@@ -27,9 +30,10 @@ function add(role, text) {
 
 function setBusy(value, label) {
   busy = value;
-  send.disabled = value;
-  input.disabled = value;
-  imageInput.disabled = value;
+  send.disabled = value || readOnly;
+  input.disabled = value || readOnly;
+  imageInput.disabled = value || readOnly;
+  newChat.disabled = value;
   stop.disabled = !value;
   state.textContent = label || (value ? 'in corso...' : 'pronta');
 }
@@ -61,6 +65,7 @@ function renderUsage(usage) {
 }
 
 function renderStatus(data) {
+  window.__hagarStatus = data;
   document.getElementById('model').textContent =
     data.model.provider + ' / ' + data.model.name;
   const p = data.project;
@@ -111,6 +116,68 @@ async function selectProject(id) {
     await refreshProjects();
   } catch (e) { add('error', String(e)); }
 }
+
+async function refreshHistory() {
+  try {
+    const data = await api('/api/history');
+    const current = (window.__hagarStatus || {}).session_id;
+    historyBox.replaceChildren();
+    if (!data.chats.length) {
+      historyBox.appendChild(el('div', 'muted', 'Nessuna chat'));
+      return;
+    }
+    for (const chat of data.chats) {
+      const button = el(
+        'button',
+        chat.id === current ? 'current' : '',
+        (chat.archived ? '📦 ' : '') + chat.title
+      );
+      button.title = chat.date + ' · ' + chat.turns + ' turni';
+      button.onclick = () => loadChat(chat.id);
+      historyBox.appendChild(button);
+    }
+  } catch (e) { console.error(e); }
+}
+
+async function loadChat(sessionId) {
+  if (busy) return;
+  try {
+    const data = await api(
+      '/api/history/' + encodeURIComponent(sessionId)
+    );
+    messages.replaceChildren();
+    for (const turn of data.turns) {
+      add('user', turn.question);
+      add('assistant', turn.answer);
+    }
+    readOnly = true;
+    setBusy(false, 'chat storica · sola lettura');
+    messages.scrollTop = messages.scrollHeight;
+  } catch (e) {
+    add('error', String(e));
+  }
+}
+
+async function startNewChat() {
+  if (busy) return;
+  try {
+    await api('/api/new-chat', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    messages.replaceChildren();
+    pendingImages = [];
+    renderPreviews();
+    readOnly = false;
+    setBusy(false);
+    await refreshStatus();
+    await refreshHistory();
+  } catch (e) {
+    add('error', String(e));
+  }
+}
+
+newChat.onclick = startNewChat;
 
 document.getElementById('project-refresh').onclick = refreshProjects;
 document.getElementById('project-free').onclick = async () => {
@@ -224,6 +291,7 @@ source.onmessage = (event) => {
     add('assistant', data.answer || '');
     setBusy(false);
     refreshStatus();
+    refreshHistory();
     return;
   }
   if (type === 'turn.error') {
@@ -319,5 +387,8 @@ document.getElementById('composer').onsubmit = async (event) => {
   }
 };
 
-refreshStatus();
-refreshProjects();
+(async () => {
+  await refreshStatus();
+  await refreshProjects();
+  await refreshHistory();
+})();

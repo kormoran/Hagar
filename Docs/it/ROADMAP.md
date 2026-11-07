@@ -77,7 +77,8 @@ restituisce gli stessi risultati.
 - pulsante **Stop** del turno — implementato;
 - vision: upload immagine nel composer, con adapter per provider —
   implementato (OpenAI/LM Studio, Claude, Gemini);
-- cronologia chat visibile dopo un refresh;
+- cronologia chat visibile dopo un refresh — implementata come elenco
+  delle chat passate con ricarica dal Vault e **+ Nuova chat**;
 - lettura sola delle memorie dal browser;
 - eventuale comando `/usage` lato CLI.
 

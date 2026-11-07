@@ -159,6 +159,10 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - Il browser riceve un token casuale nella pagina; le API lo richiedono
   nell’header `X-Hagar-Token`.
 - La chat mostra turni, tool call, risultati e conferme ASK.
+- La sidebar sinistra elenca le chat passate, una riga per chat; un
+  click ricarica il transcript dal Vault in sola lettura.
+- Il pulsante **+ Nuova chat** apre una nuova sessione e azzera il
+  contesto; la chat precedente resta nella cronologia.
 - Il pulsante **Stop** interrompe il turno in modo cooperativo.
 - Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
   per i modelli vision. Le immagini non vengono salvate nella memoria né
