@@ -188,6 +188,7 @@ class Harness:
     project_store: ProjectStore | None = None
     project_id: str | None = None
     project_state: dict[str, str | None] | None = None
+    subagents: Any = None
 
 
 def build_harness(
@@ -463,9 +464,11 @@ def build_harness(
         config=config,
         parent_registry=registry,
         audit=audit,
+        parent_filesystem=filesystem,
         project_store=project_store,
         project_state=project_state,
         parent_id=audit.session_id,
+        max_concurrent=2,
     )
 
     plugin_failures = load_tool_plugins(
@@ -690,6 +693,7 @@ def build_harness(
         project_store=project_store,
         project_id=None,
         project_state=project_state,
+        subagents=subagents,
     )
 
 

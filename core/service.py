@@ -137,6 +137,21 @@ class HarnessService:
 
             raise
 
+        finally:
+
+            manager = getattr(
+                self.harness,
+                "subagents",
+                None,
+            )
+
+            if manager is not None:
+
+                try:
+                    manager.finish_turn()
+                except Exception:
+                    pass
+
         self._emit(
             "turn.answer",
             answer=answer,

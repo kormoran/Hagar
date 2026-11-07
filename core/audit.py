@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import threading
 import uuid
 
 from datetime import datetime, timezone
@@ -155,6 +156,8 @@ class AuditLog:
 
         self._warned = False
 
+        self._lock = threading.Lock()
+
         if self.enabled:
 
             self._prune()
@@ -170,6 +173,16 @@ class AuditLog:
     # ==================================================
 
     def record(
+        self,
+        event: str,
+        **fields: Any,
+    ) -> dict[str, Any]:
+        """Registra un evento in modo serializzato tra thread."""
+
+        with self._lock:
+            return self._record_unlocked(event, **fields)
+
+    def _record_unlocked(
         self,
         event: str,
         **fields: Any,

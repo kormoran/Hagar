@@ -1,82 +1,112 @@
-# Subagenti — MVP sincrono
+# Subagenti — fase asincrona
 
-**Stato:** MVP implementato  
+**Stato:** implementato
 **Data:** 2026-11-07  
-**Tool:** `agent.run`
+**Tool:** `agent.spawn`, `agent.status`, `agent.wait`, `agent.result`,
+`agent.cancel`, `agent.run` (compatibilità sincrona)
 
-## 1. Cosa fa
+## 1. Cosa fanno
 
-Il modello può delegare un compito a un subagente sincrono:
+Il modello può avviare fino a due subagenti concorrenti:
 
 ```text
-agent.run(task, context?)
+agent.spawn(task, context?, inputs?) -> agent_id
+agent.status(agent_id) -> stato
+agent.wait(agent_id, timeout?) -> risultato
+agent.result(agent_id) -> risultato
+agent.cancel(agent_id) -> ok
 ```
 
-Il padre resta in attesa. Il figlio:
+`spawn` ritorna subito. Il padre può continuare a lavorare e raccogliere
+i risultati quando servono. `agent.run` resta come scorciatoia
+`spawn + wait` per compatibilità.
 
-- usa lo stesso modello del padre, ma un client LLM separato;
+Ogni figlio:
+
+- usa lo stesso modello locale del padre, ma un client LLM separato;
 - ha un registry separato;
-- vede solo i tool con capability di lettura o calcolo;
-- non può usare `filesystem.chdir`;
-- non può usare `agent.run`;
+- vede solo i tool con capability `FILESYSTEM_READ`,
+  `MEMORY_READ` e `COMPUTE`;
+- non può usare `agent.*` né `filesystem.chdir`;
+- legge solo il proprio workspace;
 - non scrive nella memoria;
-- non può chiedere conferme all’utente;
-- non ha memoria automatica del padre: riceve solo `task` e `context`.
+- non può chiedere conferme all’utente.
 
-Il risultato è JSON compatto:
+## 2. Workspace privato
 
-```json
-{
-  "agent_id": "a-1a2b3c4d",
-  "status": "completed",
-  "answer": "...",
-  "error": null,
-  "usage": {
-    "input_tokens": 168,
-    "output_tokens": 56,
-    "cached_input_tokens": 0,
-    "reasoning_tokens": 0,
-    "total_tokens": 224,
-    "calls": 2
-  },
-  "duration_ms": 1234.5
-}
+Per ogni figlio viene creato un workspace temporaneo:
+
+```text
+<hagar-temp>/hagar-subagent-<id>/
 ```
 
-## 2. Limiti dell’MVP
+Il figlio lo vede come:
 
-- un solo subagente per volta;
-- nessun annidamento;
-- nessun timeout a parete: vale `max_tool_calls`;
+```text
+/home/ai/workspace
+```
+
+Il workspace è in sola lettura. Prima dell’avvio, il manager copia gli
+input indicati dal padre:
+
+```text
+agent.spawn(
+    task="analizza il CSV",
+    inputs=["/home/ai/workspace/report.csv"]
+)
+```
+
+Regole:
+
+- gli input devono essere file nel sandbox del padre;
+- il padre deve avere il permesso di lettura;
+- il nome del file viene preservato;
+- due input con lo stesso nome sono un errore;
+- il figlio non vede il path host;
+- il workspace viene eliminato alla fine del turno.
+
+Il padre scrive solo nel proprio workspace. Il workspace del figlio è
+fuori dalle radici del padre, quindi non è raggiungibile dai suoi tool.
+
+## 3. Limiti dell’implementazione
+
+- massimo **2** subagenti attivi (configurabile nel manager come
+  `max_concurrent`);
+- solo modelli locali;
+- nessun annidamento: il registry del figlio esclude `agent.*`;
+- nessun export di file prodotti dal figlio: il workspace viene
+  distrutto;
+- nessun budget token/tempo oltre a `max_tool_calls`;
+- nessun timeout a parete sul singolo turno del figlio;
 - nessuna GUI dedicata;
 - nessuna scrittura di memoria;
-- nessuna conferma interattiva;
-- nessun budget token/costo configurabile;
-- il client LLM è nuovo, ma il modello è lo stesso del padre;
-- un errore del modello può diventare una risposta testuale del figlio, non
-  necessariamente `status: failed`.
+- conferme negate;
+- gli eventi interni del figlio (`turn.*`, `tool.*`) non hanno ancora
+  un campo `agent` nell’audit.
 
-Il manager restituisce `failed` quando la costruzione o l’esecuzione del
-figlio solleva un’eccezione. Gli errori interni dell’agente che vengono
-restituiti come testo possono quindi apparire come `completed`.
+Alla fine del turno del padre:
 
-## 3. Componenti isolati
+1. `finish_turn()` attende i figli per un timeout;
+2. annulla quelli ancora attivi;
+3. elimina i workspace;
+4. dimentica i job.
+
+## 4. Componenti isolati
 
 | Componente | Padre | Figlio |
 |---|---|---|
 | LLM client | `harness.llm` | nuova istanza, stesso modello |
 | Tool registry | completo | filtrato read-only |
-| Memoria | `MemoryStore` | nessuna scrittura, `memory=None` nell’agent |
-| Sandbox | condiviso in lettura | nessun `chdir` |
+| Filesystem | workspace padre | workspace privato in sola lettura |
+| Memoria | `MemoryStore` | `memory=None`, nessuna scrittura |
 | Conferme | provider normale | `DenyAllConfirmation` |
 | Usage | ledger padre | ledger separato |
-| Audit | condiviso | eventi `agent.*` |
+| Audit | condiviso, con lock | eventi `agent.*` |
 
-Il subagente può usare i tool di memoria in lettura perché sono nel
-registry filtrato. Non ha però il contesto automatico del padre: il
-padre deve passare il contesto necessario nel campo `context`.
+Il figlio non ha il contesto automatico del padre: il padre deve passare
+`context`.
 
-## 4. Tool ammessi
+## 5. Tool ammessi
 
 Il registry del figlio include i tool le cui capability sono un
 sottoinsieme di:
@@ -91,7 +121,7 @@ Sono esclusi esplicitamente:
 
 ```text
 filesystem.chdir
-agent.run
+agent.*
 ```
 
 Sono esclusi per capability:
@@ -103,7 +133,7 @@ Sono esclusi per capability:
 - MCP;
 - shell.
 
-## 5. Audit
+## 6. Audit
 
 Eventi registrati dal manager:
 
@@ -111,6 +141,7 @@ Eventi registrati dal manager:
 agent.spawned
 agent.started
 agent.finished
+agent.cancelled
 agent.failed
 ```
 
@@ -120,6 +151,7 @@ Campi principali:
 agent
 parent
 task
+inputs
 max_tool_calls
 status
 usage
@@ -127,55 +159,40 @@ duration_ms
 error
 ```
 
-Gli eventi interni del figlio (`turn.start`, `turn.answer`, `tool.call`)
-restano nel normale audit Hagar, ma non hanno ancora un campo `agent`.
-Questa è una lacuna nota dell’MVP.
+`AuditLog.record` è protetto da lock, così le scritture concorrenti non
+interlacciano la catena hash.
 
-## 6. Concorrenza
+## 7. Concorrenza
 
-`SubagentManager` ha un lock e un flag `busy`.
+- thread separati per i figli;
+- limite `max_concurrent = 2`;
+- lock sul dizionario dei job;
+- nessuna condizione di race sul filesystem: workspace separati;
+- nessuna condivisione di `MemoryStore`, sandbox o client LLM;
+- provider locale con richieste concorrenti;
+- `agent.wait` blocca solo il chiamante, non gli altri figli.
 
-- se un subagente è già in esecuzione, `agent.run` restituisce un errore
-  strutturato;
-- non ci sono thread multipli;
-- il padre rimane bloccato durante l’esecuzione.
-
-Questa scelta evita, per ora, race su audit, memoria, sandbox e provider.
-
-## 7. Test
+## 8. Test
 
 `tests/test_subagents.py` copre:
 
 - esecuzione con tool read-only;
-- esclusione di scrittura e `agent.run`;
+- esclusione di scrittura e `agent.*`;
 - passaggio del contesto;
-- rifiuto del secondo subagente mentre il primo è in corso;
+- copia degli input nel workspace privato;
+- rifiuto oltre `max_concurrent`;
+- due subagenti concorrenti;
 - errore di costruzione del provider;
 - eventi audit.
 
-Test live eseguito con LM Studio e `gemma-3-27b-it`.
+Test live eseguito con LM Studio e `gemma-3-27b-it`: due subagenti
+concorrenti completati, ciascuno con usage separato.
 
-## 8. Prossimi passi
+## 9. Prossimi passi
 
-### Fase 2 — Manager
-
-- `agent.spawn`, `agent.status`, `agent.wait`, `agent.cancel`,
-  `agent.result`;
-- thread e timeout;
-- stato nella GUI;
-- eventi con `agent_id`.
-
-### Fase 3 — Isolamento
-
-- sandbox separato;
-- registry clone completo;
-- budget token/tempo;
-- conferme delegate;
-- profondità e concorrenza.
-
-### Fase 4 — Memoria e persistenza
-
-- contesto automatico read-only;
-- scritture mediate dal padre;
-- result store;
-- eventuale isolamento a processi.
+- export esplicito degli artifact dal workspace del figlio;
+- budget token/tempo e timeout a parete;
+- annidamento controllato, se richiesto;
+- `agent_id` su tutti gli eventi interni;
+- conferme delegate al padre o alla GUI;
+- modello scelto dal broker, non dal manager.

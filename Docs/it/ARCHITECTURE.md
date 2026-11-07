@@ -925,21 +925,26 @@ I plugin Python sono trusted e girano in-process; per estensioni non
 fidate il confine resta MCP o un processo separato. Il contratto completo
 è in `PLUGINS.md`.
 
-## 3.15 Subagenti MVP
+## 3.15 Subagenti asincroni
 
-`core/subagents.py` implementa `agent.run`:
+`core/subagents.py` implementa:
 
-- un solo subagente sincrono per volta;
-- stesso modello del padre ma client LLM separato;
+- `agent.spawn/status/wait/result/cancel` e `agent.run` sincrono;
+- fino a due subagenti concorrenti;
+- stesso modello locale ma client LLM separato;
+- workspace temporaneo privato per ogni figlio;
+- input copiati dal workspace del padre;
 - registry filtrato a `FILESYSTEM_READ`, `MEMORY_READ` e `COMPUTE`;
-- esclusione di `filesystem.chdir` e `agent.run`;
+- esclusione di `filesystem.chdir` e `agent.*`;
 - nessuna scrittura di memoria;
 - conferme negate con `DenyAllConfirmation`;
 - usage separato;
-- audit `agent.spawned/started/finished/failed`.
+- audit `agent.spawned/started/finished/cancelled/failed`;
+- cleanup di workspace e job a fine turno.
 
-Non c'è ancora concorrenza, annidamento, budget token/tempo o GUI
-dedicata. I dettagli sono in `SUBAGENTS.md`.
+`AuditLog.record` è serializzato con lock per le scritture concorrenti.
+Non ci sono ancora export di artifact, budget token/tempo, annidamento o
+GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 
 ---
 
@@ -960,7 +965,7 @@ dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 785 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 787 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

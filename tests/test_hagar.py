@@ -55,6 +55,11 @@ EXPECTED_TOOLS = {
     "url.parse",
     "feed.read",
     "agent.run",
+    "agent.spawn",
+    "agent.status",
+    "agent.wait",
+    "agent.result",
+    "agent.cancel",
 }
 
 DEFAULT_POLICY = {
