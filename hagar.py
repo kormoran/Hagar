@@ -13,6 +13,7 @@ from core.agent import Agent
 from core.audit import AuditLog
 from core.config import ConfigError, ConfigLoader
 from core.command_service import CommandService
+from core.confirmations import QueueConfirmationProvider
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -149,6 +150,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--free",
         action="store_true",
         help="avvia in attività libera, senza progetto",
+    )
+
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["web"],
+        help="avvia la GUI web locale",
+    )
+
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="host della GUI web (default: 127.0.0.1)",
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="porta della GUI web (default: 8765)",
     )
 
     parser.add_argument(
@@ -692,26 +713,101 @@ def build_harness(
     )
 
 
+def _load_config(
+    args: argparse.Namespace,
+) -> AppConfig:
+
+    config = ConfigLoader.load(
+        resolve_config(args.config)
+    )
+
+    if args.model:
+        config.model.name = args.model
+
+    if args.no_memory:
+        config.memory.enabled = False
+
+    if args.no_native_tools:
+        config.model.native_tools = False
+
+    return config
+
+
+def _run_web(
+    args: argparse.Namespace,
+) -> None:
+
+    from core.web import serve
+
+    try:
+
+        config = _load_config(args)
+
+        provider = QueueConfirmationProvider(
+            timeout=300,
+        )
+
+        harness = build_harness(
+            config,
+            confirmation=provider,
+        )
+
+        if args.project:
+
+            project = (
+                harness.project_store.get_project(
+                    args.project
+                )
+                if harness.project_store is not None
+                else None
+            )
+
+            if (
+                project is None
+                or project.status != "active"
+            ):
+
+                raise ValueError(
+                    "progetto non trovato o non attivo: "
+                    f"{args.project}"
+                )
+
+            harness.project_id = project.id
+
+            if harness.project_state is not None:
+                harness.project_state["id"] = project.id
+
+            harness.agent.project_id = project.id
+
+        if args.free:
+            harness.project_id = None
+
+    except (ConfigError, ValueError) as exc:
+
+        print(f"Errore: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    serve(
+        harness,
+        provider,
+        host=args.host,
+        port=args.port,
+    )
+
+
 def _main(
     argv: list[str] | None = None,
 ) -> None:
 
     args = build_parser().parse_args(argv)
 
-    config_path = resolve_config(args.config)
+    if args.command == "web":
+        _run_web(args)
+        return
 
     try:
 
-        config = ConfigLoader.load(config_path)
-
-        if args.model:
-            config.model.name = args.model
-
-        if args.no_memory:
-            config.memory.enabled = False
-
-        if args.no_native_tools:
-            config.model.native_tools = False
+        config = _load_config(args)
 
         harness = build_harness(
             config,

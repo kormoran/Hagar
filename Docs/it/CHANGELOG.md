@@ -33,6 +33,10 @@ riferimento al commit quando utile.
   `/audit`, `/project` e `/memory`, con `CommandResult` strutturato.
 - La CLI usa il command service per i comandi slash; `/memory review`
   resta interattiva.
+- Nuovo `QueueConfirmationProvider`: conferme ASK da GUI con coda,
+  timeout e rifiuto esplicito.
+- Nuova GUI web locale (`hagar web`): chat, eventi SSE, stato, progetti,
+  tool call e modale di conferma; token locale e bind `127.0.0.1`.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -165,7 +169,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 730 test superati, 2 skip su Windows; 732 superati, 0 skip su Debian
+- 739 test superati, 2 skip su Windows; 741 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

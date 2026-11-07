@@ -87,8 +87,8 @@ python -m venv .venv
 .\.venv\Scripts\python -m pip install -e .
 ```
 
-`pip install -e .` dichiara i pacchetti `core`, `llm` e `memory` e
-installa il comando `hagar`:
+`pip install -e .` dichiara i pacchetti `core`, `llm`, `memory` e
+`local_tools` e installa il comando `hagar`:
 
 ```powershell
 hagar --config hagar.yaml
@@ -96,7 +96,14 @@ hagar --model qwen3:8b
 hagar --no-memory
 hagar --no-native-tools
 hagar --version
+
+# GUI web locale
+hagar web
+hagar --config hagar.yaml web --port 8765
 ```
+
+La GUI web usa `http://127.0.0.1:8765/`, un token casuale per le API e
+conferme ASK modali. Per i dettagli vedi `MANUAL.md` §3.0.
 
 La configurazione viene cercata nell'ordine seguente: parametro `--config`,
 variabile d'ambiente `HAGAR_CONFIG` e infine file `./hagar.yaml`.

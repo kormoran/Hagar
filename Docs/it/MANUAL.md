@@ -121,6 +121,7 @@ L’unica eccezione sono i comandi informativi `/tools`, `/status`, `/mcp`,
 
 ```text
 hagar [opzioni]
+hagar web [opzioni]
 ```
 
 | Opzione | Effetto |
@@ -131,9 +132,32 @@ hagar [opzioni]
 | `--free` | avvia in attività libera |
 | `--no-memory` | disattiva memoria e progetti per la sessione |
 | `--no-native-tools` | forza il protocollo JSON testuale |
+| `--host HOST` | host della GUI web (default `127.0.0.1`) |
+| `--port PORT` | porta della GUI web (default `8765`) |
 | `--version` | stampa la versione |
 
 `--project` e `--free` sono mutuamente esclusivi.
+
+## 3.0 GUI web
+
+```bash
+hagar web
+hagar --config hagar.yaml web --port 8765
+```
+
+Apre una GUI locale su `http://127.0.0.1:8765/`.
+
+- Il server è pensato per un solo utente locale: default `127.0.0.1`.
+- Il browser riceve un token casuale nella pagina; le API lo richiedono
+  nell’header `X-Hagar-Token`.
+- La chat mostra turni, tool call, risultati e conferme ASK.
+- Le conferme ASK sono modali: il turno resta in attesa e il server
+  continua a rispondere. Un timeout equivale a rifiuto.
+- La GUI non è ancora multiutente e non espone il Vault in modifica.
+- Ctrl-C chiude il server e tenta la fine sessione.
+
+Non usare `--host 0.0.0.0` su una rete non fidata: la GUI espone i tool
+del harness a chiunque possa raggiungere la porta.
 
 ## 3.1 Ricerca della configurazione
 

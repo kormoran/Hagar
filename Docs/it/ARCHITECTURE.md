@@ -728,6 +728,24 @@ Gestisce `/help`, `/tools`, `/status`, `/mcp`, `/audit`, `/project` e
 perché richiede input umano. La CLI usa il command service per tutti i
 comandi slash, tranne `/memory review`.
 
+## 3.11.3 Web GUI (`core/web.py`)
+
+`hagar web` avvia un `ThreadingHTTPServer` locale con:
+
+- `GET /` pagina chat;
+- `GET /api/events` stream SSE;
+- `POST /api/message`, `/api/confirm`, `/api/project`;
+- `GET /api/status`, `/api/projects`, `/api/pending`.
+
+La GUI è un adapter: usa `HarnessService`, `CommandService` e
+`QueueConfirmationProvider`. Le conferme ASK bloccano il thread del turno
+su un `threading.Event`; il server resta libero e sblocca la richiesta con
+`POST /api/confirm`. Un timeout vale come rifiuto.
+
+Sicurezza: bind predefinito `127.0.0.1`, token casuale iniettato nella
+pagina, header `X-Hagar-Token` per le API e `?token=` per SSE. Non è
+multiutente e non espone ancora la modifica del Vault.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -827,7 +845,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 730 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 739 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
