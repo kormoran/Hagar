@@ -91,6 +91,29 @@ class MemoryDatabase:
 
         with self.connection() as connection:
 
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                """
+            )
+            row = connection.execute(
+                "SELECT value FROM meta WHERE key = 'schema_version'"
+            ).fetchone()
+
+            if row is not None:
+
+                current = int(row["value"])
+
+                if current > SCHEMA_VERSION:
+
+                    raise MemoryError(
+                        "memory database schema is newer "
+                        f"({current} > {SCHEMA_VERSION})"
+                    )
+
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS meta (
