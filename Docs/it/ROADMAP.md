@@ -106,8 +106,7 @@ descrizione.
   con capability `AGENT_DATA` e cleanup;
 - [x] audit `artifact.discarded` per artifact non esportati;
 - [ ] persistenza/orphan retention (solo se necessaria);
-- [ ] migrazione di progetti e decisioni al database SQLite; con backend
-  SQLite i progetti sono temporaneamente disattivati;
+- [x] progetti e decisioni nello stesso database SQLite;
 - [ ] export Markdown opzionale dal database;
 - [x] timeout a parete di 5 minuti per subagente;
 - [x] policy del figlio strettamente più restrittiva del padre;

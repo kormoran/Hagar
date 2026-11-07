@@ -150,6 +150,36 @@ class MemoryDatabase:
 
                 CREATE INDEX IF NOT EXISTS summaries_time
                     ON summaries(created_at);
+
+                CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_activity TEXT NOT NULL,
+                    summary TEXT NOT NULL DEFAULT ''
+                );
+
+                CREATE TABLE IF NOT EXISTS decisions (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    decision TEXT NOT NULL,
+                    alternatives TEXT NOT NULL DEFAULT '[]',
+                    rationale TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    reviewed_at TEXT,
+                    auto_saved INTEGER NOT NULL DEFAULT 0,
+                    source_session TEXT,
+                    source_turn TEXT,
+                    FOREIGN KEY (project_id)
+                        REFERENCES projects(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS decisions_project_status
+                    ON decisions(project_id, status, created_at);
                 """
             )
             connection.execute(

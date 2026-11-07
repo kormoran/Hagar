@@ -171,7 +171,7 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - In alto ci sono le tab **Chat**, **Chat history**, **Tool output**,
   **Audit** e **Thinking**.
 - **Chat history** elenca le chat passate, una riga per chat; un click
-  riprende la chat: il transcript viene ricaricato dal Vault e i nuovi
+  riprende la chat: il transcript viene ricaricato dal database e i nuovi
   turni si aggiungono alla stessa sessione.
 - Il pulsante **+ Nuova chat** apre una nuova sessione e azzera il
   contesto; la chat precedente resta nella cronologia.
@@ -182,7 +182,7 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   disabilitata e mostra `audit off`.
 - **Thinking** mostra il reasoning esposto dal provider, se presente; in
   alternativa la timeline degli eventi dell'agente.
-- **Memories** mostra le note del Vault in sola lettura, con ricerca.
+- **Memories** mostra memorie e skill del database in sola lettura, con ricerca.
 - Il pulsante **Stop** interrompe il turno in modo cooperativo.
 - Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
   per i modelli vision. WebP viene convertito in PNG nella GUI perché LM
@@ -198,7 +198,7 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   continua a rispondere. Un timeout equivale a rifiuto. Le richieste dei
   subagenti mostrano `agent_id` e `parent_id`; il padre LLM non può
   approvarle. Il timeout del subagente è 180 secondi.
-- La GUI non è ancora multiutente e non espone il Vault in modifica.
+- La GUI non è ancora multiutente e non espone modifiche dirette alla memoria.
 - Ctrl-C chiude il server e tenta la fine sessione.
 
 Non usare `--host 0.0.0.0` su una rete non fidata: la GUI espone i tool
@@ -340,15 +340,16 @@ vault:
   path: ./vault
 ```
 
-È la radice della memoria Markdown. Deve esistere ed essere scrivibile.
-Se manca o non è scrivibile, la memoria viene disattivata con un avviso;
-il resto del harness continua.
+Con il backend SQLite è usato solo dal backend Markdown legacy e dai
+progetti legacy. Con `memory.backend: sqlite` può anche non esistere.
 
 ## 4.5 `memory`
 
 ```yaml
 memory:
   enabled: true
+  backend: sqlite
+  database: ./hagar-memory.db
   vault_subdir: Hagar
   context_turns: 10
   context_skills: 3
@@ -362,7 +363,9 @@ memory:
 | Campo | Default | Effetto |
 |---|---|---|
 | `enabled` | `true` | attiva la memoria |
-| `vault_subdir` | `Hagar` | sottodirectory dentro il Vault |
+| `backend` | `sqlite` | `sqlite` o `markdown` legacy |
+| `database` | dati locali | path esplicito del database SQLite |
+| `vault_subdir` | `Hagar` | sottodirectory del Vault legacy |
 | `context_turns` | `10` | turni recenti iniettati; `0` disattiva |
 | `context_skills` | `3` | skill confermate iniettate |
 | `context_project_memories` | `10` | titoli di decisioni attive |
@@ -373,6 +376,15 @@ memory:
 
 `vault_subdir` deve restare dentro il Vault: path assoluti, `..`,
 `I:/...` e altri drive Windows vengono rifiutati anche su Linux.
+
+Con `backend: sqlite` il database predefinito è:
+
+```text
+%LOCALAPPDATA%/Hagar/memory.db
+```
+
+o `HAGAR_MEMORY_DB`. SQLite usa WAL, transazioni e `VACUUM INTO` per il
+backup; il Vault non viene aggiornato.
 
 Il budget è in **caratteri**, non in token. Quando il blocco viene
 tagliato, l’audit registra `memory.context_trimmed`.
@@ -628,8 +640,8 @@ esiste:
 | Nessun `hagar.yaml` | errore di configurazione, uscita 1 |
 | YAML invalido | errore di configurazione, uscita 1 |
 | Policy invalida | DENY totale, harness avviato |
-| Vault assente/non scrivibile | memoria disattivata, harness avviato |
-| `projects` non scrivibile | progetti disabilitati, memoria attiva |
+| Memoria disattivata | controlla `memory.database` e i permessi della directory |
+| `Projects: disabled` | controlla il database SQLite o `vault.path` nel backend legacy |
 | Nessun progetto attivo | attività libera |
 | Avvio non interattivo | attività libera, salvo `--project`/`--free` |
 | `--project` inesistente | errore, uscita 1 |
@@ -678,7 +690,7 @@ Se non ci sono turni non viene creato nessun summary.
 # 7. Sicurezza operativa
 
 - Il modello è non fidato: policy e conferme sono i controlli.
-- Il Vault è Markdown in chiaro: può contenere conversazioni e decisioni.
+- Il database SQLite contiene conversazioni e decisioni: va protetto.
 - L’audit può contenere output di file: va protetto.
 - Le chiavi API stanno solo nell’ambiente.
 - I token MCP/OAuth stanno in cache locali con permessi ristretti.
@@ -693,8 +705,8 @@ Se non ci sono turni non viene creato nessun summary.
 | Sintomo | Controllo |
 |---|---|
 | `Policy: DENY ALL` | validare `policy.yaml` e `policy.path` |
-| `Memory: disabled` | esiste `vault.path`? è scrivibile? |
-| `Projects: disabled` | esiste `vault.path/Hagar/projects`? |
+| `Memory: disabled` | controlla `memory.database` e i permessi |
+| `Projects: disabled` | controlla il database SQLite |
 | `Failed to load MCP server` | endpoint, token, `/mcp` |
 | `MCP auth token missing` | variabile indicata da `token_env` |
 | `MCP HTTP 401` | credenziali/header Basic o OAuth |

@@ -654,8 +654,9 @@ conteggio delle decisioni attive. Ogni decisione ha stato
 provenance e `auto_saved`. Le decisioni non si riscrivono: una nuova
 decisione può sostituirne una vecchia.
 
-Con `memory.backend: sqlite` i progetti non sono ancora migrati e
-restano disattivati; il backend Markdown legacy continua a supportarli.
+Con `memory.backend: sqlite` progetti e decisioni usano le tabelle
+`projects` e `decisions` dello stesso database; il backend Markdown
+legacy continua a usare il Vault.
 
 All’avvio Hagar mostra i progetti attivi e “attività libera”:
 
@@ -1010,7 +1011,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 812 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 814 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

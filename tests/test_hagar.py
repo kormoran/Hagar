@@ -920,7 +920,7 @@ def test_sqlite_memory_is_default_without_vault(tmp_path):
     assert isinstance(harness.memory, SqliteMemoryStore)
     assert harness.memory_error is None
     assert harness.memory.database.path == database
-    assert harness.project_store is None
+    assert harness.project_store is not None
 
 
 def test_memory_backend_defaults_to_sqlite(tmp_path, monkeypatch):

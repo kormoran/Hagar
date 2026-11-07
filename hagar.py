@@ -372,20 +372,36 @@ def build_harness(
                 error=memory_error,
             )
 
-        if memory is not None and config.memory.backend == "markdown":
+        if memory is not None:
 
             try:
 
-                project_store = ProjectStore(
-                    vault,
-                    subdir=config.memory.vault_subdir,
-                )
-                project_store.ensure()
+                if config.memory.backend == "sqlite":
 
-                audit.record(
-                    "project.enabled",
-                    root=str(config.vault.path),
-                )
+                    from memory.sqlite_projects import SqliteProjectStore
+
+                    project_store = SqliteProjectStore(
+                        memory.database
+                    )
+                    project_store.ensure()
+                    audit.record(
+                        "project.enabled",
+                        backend="sqlite",
+                        path=str(memory.database.path),
+                    )
+
+                else:
+
+                    project_store = ProjectStore(
+                        vault,
+                        subdir=config.memory.vault_subdir,
+                    )
+                    project_store.ensure()
+                    audit.record(
+                        "project.enabled",
+                        backend="markdown",
+                        root=str(config.vault.path),
+                    )
 
             except Exception as exc:
 
@@ -393,6 +409,7 @@ def build_harness(
 
                 audit.record(
                     "project.disabled",
+                    backend=config.memory.backend,
                     root=str(config.vault.path),
                     error=str(exc),
                 )
