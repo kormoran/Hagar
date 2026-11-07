@@ -71,6 +71,10 @@ riferimento al commit quando utile.
 - Browser memorie in sola lettura: `/api/memories`, `/api/memory`.
 - `/usage` in CLI per i token cumulati della sessione; stesso ledger
   usato dalla GUI.
+- Tool e provider LLM sono plugin: built-in in `local_tools/plugins.py`
+  e `llm/plugins.py`, esterni via entry point `hagar.tools`/`hagar.llm`.
+- Errori dei plugin isolati e registrati in audit; policy e sandbox
+  restano nell'host.
 - Audit disattivato: tab disabilitata con etichetta `audit off`.
 - Thinking mostra il reasoning esposto dal provider, altrimenti la
   timeline degli eventi.
@@ -206,7 +210,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 777 test superati, 2 skip su Windows; 779 superati, 0 skip su Debian
+- 782 test superati, 2 skip su Windows; 784 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

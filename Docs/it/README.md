@@ -123,7 +123,9 @@ memory/             accesso al vault e indice SQLite (memory/index.py)
 web/                HTML, CSS e JavaScript della GUI locale
 tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
-local_tools/		Tool per le AI integrati in HAGAR - non MCP, ma disponibili direttamente
+local_tools/        tool integrati; i built-in passano da local_tools/plugins.py
+core/plugins.py     contratti e scoperta dei plugin (hagar.tools, hagar.llm)
+llm/plugins.py      provider LLM built-in registrati come plugin
 ```
 
 ## 3.2 LLM backends
@@ -232,4 +234,5 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
   versione dell'harness: componenti, modello di sicurezza, limiti noti.
 - [ROADMAP.md](ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
   e questioni ancora aperte.
+- [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
 - [CHANGELOG.md](CHANGELOG.md) — cronologia delle modifiche.

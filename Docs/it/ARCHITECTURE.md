@@ -176,8 +176,11 @@ nome predefinito. `model.host` è la base URL di tutti i provider (con un
 default per provider), `model.timeout` è il timeout HTTP (default 120),
 `model.max_tokens` è usato solo da Claude.
 `llm/factory.py` costruisce il client e rifiuta provider sconosciuti o
-chiavi mancanti. LM Studio non richiede chiave salvo configurazione del
-server; OpenAI richiede una chiave API, non un abbonamento ChatGPT.
+chiavi mancanti. I provider built-in sono spec in `llm/plugins.py`; un
+provider esterno si registra con l'entry point `hagar.llm` e una factory
+`(config, audit) -> LLMClient` (vedi `PLUGINS.md`). LM Studio non
+richiede chiave salvo configurazione del server; OpenAI richiede una
+chiave API, non un abbonamento ChatGPT.
 DeepSeek: i modelli correnti sono `deepseek-flash` e
 `deepseek-v4-pro`; `deepseek-chat` non è più accettato.
 
@@ -900,6 +903,28 @@ nel registry e vivono fuori dal core, in un package separato.
 - `local_tools` è dichiarato in `pyproject.toml` e installato con il
   progetto.
 
+I tool built-in sono registrati da `local_tools/plugins.py` attraverso
+lo stesso contratto `ToolPlugin` dei plugin esterni. I plugin esterni si
+scoprono con l'entry point `hagar.tools` e ricevono un `PluginContext`.
+Policy e sandbox restano nel registry: un plugin non può concedere
+permessi. Un plugin guasto viene saltato e registrato in audit, senza
+fermare gli altri.
+
+## 3.14 Plugin
+
+`core/plugins.py` definisce:
+
+- `ToolPlugin` + `PluginContext` per i tool;
+- `LLMProvider` per i provider LLM;
+- scoperta via `importlib.metadata.entry_points`;
+- isolamento degli errori e audit `plugin.loaded`/`plugin.error`.
+
+I provider built-in sono in `llm/plugins.py` e vengono registrati prima
+degli esterni. Un provider esterno non può sostituire un nome built-in.
+I plugin Python sono trusted e girano in-process; per estensioni non
+fidate il confine resta MCP o un processo separato. Il contratto completo
+è in `PLUGINS.md`.
+
 ---
 
 # 4. Modello di sicurezza
@@ -919,7 +944,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 777 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 782 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

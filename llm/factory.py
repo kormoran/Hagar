@@ -1,89 +1,55 @@
 # llm/factory.py
 
-from __future__ import annotations
+"""Factory dei provider LLM, con provider built-in e plugin esterni."""
 
-import os
+from __future__ import annotations
 
 from typing import Any
 
 from core.config import ConfigError
 from core.models import ModelConfig
+from core.plugins import PluginFailure
+from core.plugins import load_llm_providers
 from llm.base import LLMClient
-from llm.claude_client import ClaudeClient
-from llm.deepseek_client import DeepSeekClient
-from llm.gemini_client import GeminiClient
-from llm.lmstudio_client import LMStudioClient
-from llm.ollama_client import OllamaClient
-from llm.openai_client import OpenAIClient
+from llm.plugins import BUILTIN_LLM_PROVIDERS
+from llm.plugins import DEFAULT_API_KEY_ENV
+from llm.plugins import PUBLIC_PROVIDERS
+from llm.plugins import resolve_api_key
 
-SUPPORTED_PROVIDERS = (
-    "ollama",
-    "lmstudio",
-    "deepseek",
-    "openai",
-    "claude",
-    "gemini",
-)
 
-DEFAULT_API_KEY_ENV = {
-    "lmstudio": "LMSTUDIO_API_KEY",
-    "deepseek": "DEEPSEEK_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "chatgpt": "OPENAI_API_KEY",
-    "claude": "ANTHROPIC_API_KEY",
-    "gemini": "GEMINI_API_KEY",
-}
+SUPPORTED_PROVIDERS = tuple(PUBLIC_PROVIDERS)
+
+_provider_cache: dict[str, Any] | None = None
+_plugin_failures: list[PluginFailure] = []
+
+
+def _providers() -> dict[str, Any]:
+    """Carica built-in e plugin una sola volta."""
+
+    global _provider_cache
+    global _plugin_failures
+
+    if _provider_cache is None:
+
+        _provider_cache, _plugin_failures = load_llm_providers(
+            BUILTIN_LLM_PROVIDERS,
+        )
+
+    return _provider_cache
 
 
 def available_providers() -> list[str]:
-    """Provider supportati, nell'ordine in cui vengono elencati gli errori."""
+    """Provider built-in e plugin, senza alias interni."""
 
-    return list(SUPPORTED_PROVIDERS)
+    providers = _providers()
+    names = list(PUBLIC_PROVIDERS)
 
+    for name in providers:
 
-def resolve_api_key(
-    config: ModelConfig,
-) -> str:
-    """
-    Legge la chiave API dall'ambiente.
+        if name not in names and name != "chatgpt":
+            names.append(name)
 
-    Le chiavi non compaiono mai nel file di configurazione: il YAML dice
-    solo quale variabile leggere (``model.api_key_env``), e solo se il
-    nome predefinito del provider non va bene.
-    """
-
-    provider = config.provider.strip().lower()
-
-    env_name = (
-        config.api_key_env
-        or DEFAULT_API_KEY_ENV.get(provider)
-    )
-
-    if not env_name:
-
-        raise ConfigError(
-            f"Provider '{provider}' does not use an API key"
-        )
-
-    value = os.environ.get(env_name, "").strip()
-
-    if not value:
-
-        raise ConfigError(
-            f"Missing API key for provider "
-            f"'{provider}': set the {env_name} "
-            f"environment variable"
-        )
-
-    if not value.isascii():
-
-        raise ConfigError(
-            f"{env_name} contains non-ASCII "
-            "characters: the key was probably "
-            "not pasted correctly"
-        )
-
-    return value
+    return names
 
 
 def _with_native(
@@ -104,109 +70,29 @@ def create_llm(
     """Costruisce il client del provider indicato dalla configurazione."""
 
     provider = config.provider.strip().lower()
+    providers = _providers()
 
-    if provider == "ollama":
+    if audit is not None:
 
-        return _with_native(
-            OllamaClient(
-                model=config.name,
-                host=config.host,
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
+        for failure in _plugin_failures:
+
+            audit.record(
+                "plugin.error",
+                plugin_group=failure.group,
+                plugin=failure.name,
+                error=failure.error,
+            )
+
+    spec = providers.get(provider)
+
+    if spec is None:
+
+        raise ConfigError(
+            f"Unsupported model provider: "
+            f"'{config.provider}'. Supported: "
+            + ", ".join(available_providers())
         )
 
-    if provider == "lmstudio":
+    client = spec.factory(config, audit)
 
-        env_name = (
-            config.api_key_env
-            or DEFAULT_API_KEY_ENV["lmstudio"]
-        )
-
-        api_key = (
-            os.environ.get(env_name, "").strip()
-            or None
-        )
-
-        return _with_native(
-            LMStudioClient(
-                model=config.name,
-                host=config.host,
-                api_key=api_key,
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
-        )
-
-    if provider in {"openai", "chatgpt"}:
-
-        return _with_native(
-            OpenAIClient(
-                api_key=resolve_api_key(config),
-                model=config.name,
-                base_url=(
-                    config.host
-                    or OpenAIClient.DEFAULT_BASE_URL
-                ),
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
-        )
-
-    if provider == "deepseek":
-
-        return _with_native(
-            DeepSeekClient(
-                api_key=resolve_api_key(config),
-                model=config.name,
-                base_url=(
-                    config.host
-                    or DeepSeekClient.DEFAULT_BASE_URL
-                ),
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
-        )
-
-    if provider == "claude":
-
-        return _with_native(
-            ClaudeClient(
-                api_key=resolve_api_key(config),
-                model=config.name,
-                max_tokens=config.max_tokens,
-                base_url=(
-                    config.host
-                    or ClaudeClient.DEFAULT_BASE_URL
-                ),
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
-        )
-
-    if provider == "gemini":
-
-        return _with_native(
-            GeminiClient(
-                api_key=resolve_api_key(config),
-                model=config.name,
-                base_url=(
-                    config.host
-                    or GeminiClient.DEFAULT_BASE_URL
-                ),
-                timeout=config.timeout,
-                audit=audit,
-            ),
-            config,
-        )
-
-    raise ConfigError(
-        f"Unsupported model provider: "
-        f"'{config.provider}'. Supported: "
-        + ", ".join(SUPPORTED_PROVIDERS)
-    )
+    return _with_native(client, config)

@@ -20,6 +20,8 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from core.models import AppConfig
+from core.plugins import PluginContext
+from core.plugins import load_tool_plugins
 from core.service import HarnessService
 from core.permissions import (
     ConfirmationProvider,
@@ -46,23 +48,7 @@ from memory.project_tools import ProjectToolProvider
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
-from local_tools.calculator import Calculator
-from local_tools.clock import Clock
-from local_tools.clock_tool import ClockToolProvider
-from local_tools.calendar import Calendar
-from local_tools.calendar_tool import CalendarToolProvider
-from local_tools.feeder import Feeder
-from local_tools.statistics import Stats_calc
-from local_tools.think import Think
-from local_tools.think_tool import ThinkToolProvider
-from local_tools.text_diff import TextDiff
-from local_tools.text_diff_tool import TextDiffToolProvider
-from local_tools.url_parse import UrlParser
-from local_tools.url_parse_tool import UrlParseToolProvider
-from local_tools.unit_converter import UnitConverter
-from local_tools.math_tools import MathToolsProvider
-from local_tools.unit_converter_tool import UnitConverterToolProvider
-from local_tools.feeder_tool import FeederToolProvider
+from local_tools.plugins import BUILTIN_TOOL_PLUGINS
 
 
 __version__ = "0.3.0"
@@ -469,47 +455,30 @@ def build_harness(
             ).register_tools(registry)
 
     # ==========================================
-    # Local tools (non-MCP)
+    # Local tools (plugin)
     # ==========================================
 
-    unit_conversions = UnitConverterToolProvider(
-        UnitConverter()
+    plugin_failures = load_tool_plugins(
+        BUILTIN_TOOL_PLUGINS,
+        registry,
+        PluginContext(
+            config=config,
+            audit=audit,
+            filesystem=filesystem,
+            memory=memory,
+            project_store=project_store,
+            project_state=project_state,
+        ),
+        audit=audit,
     )
 
-    unit_conversions.register_tools(registry)
-
-    ClockToolProvider(
-        Clock()
-    ).register_tools(registry)
-
-    CalendarToolProvider(
-        Calendar()
-    ).register_tools(registry)
-
-    ThinkToolProvider(
-        Think()
-    ).register_tools(registry)
-
-    TextDiffToolProvider(
-        TextDiff()
-    ).register_tools(registry)
-
-    UrlParseToolProvider(
-        UrlParser()
-    ).register_tools(registry)
-
-    math_tools = MathToolsProvider(
-        Calculator(),
-        Stats_calc(),
-    )
-
-    math_tools.register_tools(registry)
-
-    feed_reader = FeederToolProvider(
-        Feeder()
-    )
-
-    feed_reader.register_tools(registry)
+    for failure in plugin_failures:
+        audit.record(
+            "plugin.skipped",
+            plugin_group=failure.group,
+            plugin=failure.name,
+            error=failure.error,
+        )
 
     # ==========================================
     # MCP servers

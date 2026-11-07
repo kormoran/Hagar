@@ -84,7 +84,9 @@ restituisce gli stessi risultati.
   implementate; Audit si disabilita se il log è spento, Thinking usa il
   reasoning se disponibile e altrimenti la timeline;
 - browser memorie in sola lettura — implementato;
-- comando `/usage` lato CLI — implementato.
+- comando `/usage` lato CLI — implementato;
+- tool e provider LLM come plugin con entry point — implementato;
+  audit sink rimandato.
 
 La vision non deve entrare nella memoria come base64: solo hash e
 descrizione.
