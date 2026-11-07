@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import queue
 import secrets
+import sys
 import threading
 
 from http import HTTPStatus
@@ -198,6 +199,20 @@ class HagarHTTPServer(ThreadingHTTPServer):
 
         super().__init__(address, HagarRequestHandler)
         self.session = session
+
+    def handle_error(
+        self,
+        request: Any,
+        client_address: Any,
+    ) -> None:
+        """Non stampare traceback per disconnessioni del browser."""
+
+        exc = sys.exc_info()[1]
+
+        if isinstance(exc, (ConnectionError, OSError)):
+            return
+
+        super().handle_error(request, client_address)
 
 
 HTML = r"""<!doctype html>
@@ -966,7 +981,13 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 )
                 self.wfile.flush()
 
-        except (BrokenPipeError, ConnectionResetError):
+        except (
+            BrokenPipeError,
+            ConnectionError,
+            ConnectionAbortedError,
+            OSError,
+        ):
+            # Il browser ha chiuso la connessione SSE: è normale.
             pass
 
         finally:

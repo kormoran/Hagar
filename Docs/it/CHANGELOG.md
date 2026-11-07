@@ -37,6 +37,8 @@ riferimento al commit quando utile.
   timeout e rifiuto esplicito.
 - Nuova GUI web locale (`hagar web`): chat, eventi SSE, stato, progetti,
   tool call e modale di conferma; token locale e bind `127.0.0.1`.
+- Le disconnessioni SSE del browser non producono più traceback su
+  Windows (`ConnectionAbortedError`/WinError 10053).
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -169,7 +171,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 739 test superati, 2 skip su Windows; 741 superati, 0 skip su Debian
+- 740 test superati, 2 skip su Windows; 742 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

@@ -250,3 +250,20 @@ def test_confirmation_resolve_via_http():
 
     finally:
         server.close()
+
+
+def test_connection_abort_does_not_print_traceback(capsys):
+    server = RunningServer()
+
+    try:
+        try:
+            raise ConnectionAbortedError(
+                "client disconnected"
+            )
+        except ConnectionAbortedError:
+            server.server.handle_error(None, None)
+
+        assert capsys.readouterr().err == ""
+
+    finally:
+        server.close()
