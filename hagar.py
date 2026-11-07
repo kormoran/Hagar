@@ -23,6 +23,7 @@ from core.models import AppConfig
 from core.plugins import PluginContext
 from core.plugins import load_tool_plugins
 from core.service import HarnessService
+from core.subagents import SubagentManager
 from core.permissions import (
     ConfirmationProvider,
     ConsoleConfirmation,
@@ -458,6 +459,15 @@ def build_harness(
     # Local tools (plugin)
     # ==========================================
 
+    subagents = SubagentManager(
+        config=config,
+        parent_registry=registry,
+        audit=audit,
+        project_store=project_store,
+        project_state=project_state,
+        parent_id=audit.session_id,
+    )
+
     plugin_failures = load_tool_plugins(
         BUILTIN_TOOL_PLUGINS,
         registry,
@@ -468,6 +478,7 @@ def build_harness(
             memory=memory,
             project_store=project_store,
             project_state=project_state,
+            subagents=subagents,
         ),
         audit=audit,
     )

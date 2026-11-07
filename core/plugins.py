@@ -31,6 +31,7 @@ class PluginContext:
     memory: Any = None
     project_store: Any = None
     project_state: dict[str, Any] | None = None
+    subagents: Any = None
 
 
 @dataclass(frozen=True)

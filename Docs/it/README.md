@@ -125,6 +125,7 @@ tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
 local_tools/        tool integrati; i built-in passano da local_tools/plugins.py
 core/plugins.py     contratti e scoperta dei plugin (hagar.tools, hagar.llm)
+core/subagents.py   manager del subagente MVP sincrono e read-only
 llm/plugins.py      provider LLM built-in registrati come plugin
 ```
 
@@ -237,4 +238,5 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
   grafo semantico, plugin di formato e host nativo.
+- [SUBAGENTS.md](SUBAGENTS.md) — MVP subagenti, isolamento e limiti.
 - [CHANGELOG.md](CHANGELOG.md) — cronologia delle modifiche.

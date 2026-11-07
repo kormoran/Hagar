@@ -15,6 +15,7 @@ from local_tools.feeder import Feeder
 from local_tools.feeder_tool import FeederToolProvider
 from local_tools.math_tools import MathToolsProvider
 from local_tools.statistics import Stats_calc
+from local_tools.subagent_tool import SubagentToolProvider
 from local_tools.text_diff import TextDiff
 from local_tools.text_diff_tool import TextDiffToolProvider
 from local_tools.think import Think
@@ -86,6 +87,18 @@ def register_feeder(
     FeederToolProvider(Feeder()).register_tools(registry)
 
 
+def register_subagent(
+    registry: ToolRegistry,
+    context: PluginContext,
+) -> None:
+    if context.subagents is None:
+        return
+
+    SubagentToolProvider(
+        context.subagents
+    ).register_tools(registry)
+
+
 BUILTIN_TOOL_PLUGINS = [
     ToolPlugin(
         name="clock",
@@ -134,5 +147,11 @@ BUILTIN_TOOL_PLUGINS = [
         version="1.0",
         builtin=True,
         register=register_feeder,
+    ),
+    ToolPlugin(
+        name="subagent",
+        version="1.0",
+        builtin=True,
+        register=register_subagent,
     ),
 ]

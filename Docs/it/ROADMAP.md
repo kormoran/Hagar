@@ -93,16 +93,16 @@ descrizione.
 
 ## 0.5 0.5.0 — Subagenti
 
-- `AgentSpec` con modello, tool, capability, mount, scope memoria,
-  budget token/costo/tempo e profondità;
-- `AgentManager` con spawn/status/wait/cancel/result;
-- thread prima, processi solo se serve isolamento reale;
-- policy per agente: il figlio non può superare il tetto del padre;
-- sandbox e registry filtrati per agente;
-- audit con `agent_id`/`parent_id`;
-- usage separato per agente;
-- conferme ASK non interattive: deny salvo approvazione del padre o
-  della GUI.
+- [x] MVP: `AgentSpec` minimale, `agent.run` sincrono, un subagente per
+  volta, stesso modello, tool read-only, memoria read-only, conferme
+  negate, audit `agent.*`, usage separato;
+- [ ] `AgentManager` con spawn/status/wait/cancel/result;
+- [ ] thread e timeout; processi solo se serve isolamento reale;
+- [ ] policy per agente: il figlio non può superare il tetto del padre;
+- [ ] sandbox e registry filtrati per agente, con `chdir` isolato;
+- [ ] audit con `agent_id`/`parent_id` su tutti gli eventi;
+- [ ] budget token/costo/tempo e profondità;
+- [ ] conferme ASK non interattive delegate al padre o alla GUI.
 
 ## 0.6 0.6.0 — Broker LLM
 

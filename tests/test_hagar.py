@@ -54,6 +54,7 @@ EXPECTED_TOOLS = {
     "text.diff",
     "url.parse",
     "feed.read",
+    "agent.run",
 }
 
 DEFAULT_POLICY = {
