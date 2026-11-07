@@ -106,6 +106,40 @@ button {
 }
 button.primary { background: #2c4a86; border-color: #3c5fa5; }
 button:disabled { opacity: .5; cursor: default; }
+.file-button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #202632;
+  color: var(--text);
+  padding: 8px 12px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+#previews {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px;
+  flex-wrap: wrap;
+}
+.preview {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+}
+.preview img {
+  display: block;
+  max-height: 90px;
+  max-width: 120px;
+  border-radius: 4px;
+}
+.preview button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 0 6px;
+  border-radius: 50%;
+}
 h1 { font-size: 17px; margin: 0; }
 h2 { font-size: 12px; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; font-size: 13px; }

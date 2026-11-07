@@ -751,9 +751,28 @@ La sidebar mostra i token cumulati della sessione: `UsageLedger` riceve
 l'usage da ogni chiamata LLM tramite `usage_sink` e pubblica
 `usage.updated` su SSE.
 
+**Stop:** `POST /api/stop` chiama `Agent.cancel()`; l'agente controlla
+l'evento tra un passo e l'altro e solleva `AgentCancelled`. Il turno si
+interrompe in modo cooperativo, non abortisce una richiesta HTTP già in
+corso.
+
+**Vision:** `POST /api/message` accetta `images` come data URL
+PNG/JPEG/WebP (max 4, 10 MB ciascuna). `core/images.py` valida e
+converte; `Agent.ask(question, images=...)` costruisce content
+multimodale. Gli adapter OpenAI-compatibili/LM Studio usano
+`image_url`; Claude usa blocchi `image`; Gemini usa `inlineData`.
+L'immagine non finisce nella memoria Markdown né nell'audit.
+
 Sicurezza: bind predefinito `127.0.0.1`, token casuale iniettato nella
 pagina, header `X-Hagar-Token` per le API e `?token=` per SSE. Non è
 multiutente e non espone ancora la modifica del Vault.
+
+## 3.11.6 Vision input (`core/images.py`)
+
+`ImageInput` valida data URL, MIME e dimensione; `Agent.ask` usa parti
+canoniche (`text`, `image`) e ogni backend le traduce nel proprio
+formato. Il testo dello stop e delle immagini è separato dal contenuto
+persistente: la memoria conserva solo la domanda e la risposta.
 
 ## 3.11.4 Token usage (`core/usage.py`)
 
@@ -880,7 +899,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 758 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 767 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

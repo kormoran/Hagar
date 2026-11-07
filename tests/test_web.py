@@ -19,9 +19,15 @@ class FakeAgent:
     def __init__(self):
         self.answer = "risposta web"
         self.project_id = None
+        self.cancelled = False
+        self.questions = []
 
-    def ask(self, question):
+    def ask(self, question, images=None):
+        self.questions.append((question, images))
         return self.answer
+
+    def cancel(self):
+        self.cancelled = True
 
 
 class FakeAudit:
@@ -226,6 +232,54 @@ def test_status_and_message_roundtrip():
             time.sleep(0.02)
 
         assert json.loads(body)["busy"] is False
+
+    finally:
+        server.close()
+
+
+def test_stop_requests_agent_cancellation():
+    server = RunningServer()
+
+    try:
+        server.session._busy = True
+        assert server.session.stop() is True
+        assert server.session.harness.agent.cancelled is True
+
+    finally:
+        server.close()
+
+
+def test_message_accepts_image_data_url():
+    server = RunningServer()
+
+    try:
+        image = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0l"
+            "EQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        status, _ = server.request(
+            "POST",
+            "/api/message",
+            {
+                "text": "cosa vedi?",
+                "images": [image],
+            },
+        )
+
+        assert status == 202
+
+        deadline = time.time() + 3
+
+        while time.time() < deadline:
+            if server.session.harness.agent.questions:
+                break
+            time.sleep(0.02)
+
+        _, images = server.session.harness.agent.questions[0]
+
+        assert len(images) == 1
+        assert images[0].mime_type == "image/png"
 
     finally:
         server.close()

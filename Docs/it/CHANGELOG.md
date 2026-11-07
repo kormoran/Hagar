@@ -52,6 +52,12 @@ riferimento al commit quando utile.
   ricostruibile delle memorie Markdown, con fallback lessicale.
 - Nuovo tool `memory.search`; comandi `/memory search`, `reindex`,
   `stats`.
+- Stop cooperativo del turno (`Agent.cancel`, `POST /api/stop`) con
+  pulsante nella GUI ed evento `turn.cancelled`.
+- Input immagini vision (`core/images.py`) con validazione data URL,
+  MIME e limite 10 MB; adapter OpenAI/LM Studio, Claude e Gemini.
+- Upload immagini nella GUI con anteprima e rimozione; nessuna immagine
+  salvata in memoria o audit.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -184,7 +190,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 758 test superati, 2 skip su Windows; 760 superati, 0 skip su Debian
+- 767 test superati, 2 skip su Windows; 769 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

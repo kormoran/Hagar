@@ -66,9 +66,23 @@ class GeminiClient(LLMClient):
         messages: list[dict[str, str]],
     ) -> str:
 
-        system, contents = self._convert_messages(
-            messages
-        )
+        if any(
+            isinstance(message.get("content"), list)
+            for message in messages
+        ):
+
+            system, contents = (
+                self._convert_native_messages(
+                    messages,
+                    None,
+                )
+            )
+
+        else:
+
+            system, contents = self._convert_messages(
+                messages
+            )
 
         payload: dict[str, Any] = {
             "contents": contents,
@@ -266,6 +280,42 @@ class GeminiClient(LLMClient):
         )
 
     @staticmethod
+    def _content_parts(content: Any) -> list[dict[str, Any]]:
+
+        if not isinstance(content, list):
+
+            return [{"text": content}]
+
+        parts: list[dict[str, Any]] = []
+
+        for part in content:
+
+            if not isinstance(part, dict):
+                continue
+
+            if part.get("type") == "text":
+
+                parts.append(
+                    {"text": part.get("text", "")}
+                )
+
+            elif part.get("type") == "image":
+
+                parts.append(
+                    {
+                        "inlineData": {
+                            "mimeType": part.get(
+                                "mime_type",
+                                "image/png",
+                            ),
+                            "data": part.get("data", ""),
+                        }
+                    }
+                )
+
+        return parts
+
+    @staticmethod
     def _convert_native_messages(
         messages: list[dict[str, Any]],
         names: dict[str, str] | None = None,
@@ -341,7 +391,9 @@ class GeminiClient(LLMClient):
 
             else:
 
-                parts = [{"text": content}]
+                parts = GeminiClient._content_parts(
+                    content
+                )
 
                 target = (
                     "model"

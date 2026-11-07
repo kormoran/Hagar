@@ -34,11 +34,19 @@
 <main>
   <header>
     <strong>Chat</strong>
-    <span class="muted" id="state">pronta</span>
+    <div class="row">
+      <span class="muted" id="state">pronta</span>
+      <button id="stop" disabled>Stop</button>
+    </div>
   </header>
   <div id="messages"></div>
+  <div id="previews"></div>
   <form id="composer">
     <textarea id="input" placeholder="Scrivi un messaggio..." autofocus></textarea>
+    <label class="file-button">
+      Immagine
+      <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+    </label>
     <button class="primary" id="send" type="submit">Invia</button>
   </form>
 </main>

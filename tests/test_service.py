@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from core.agent import Agent
+from core.agent import AgentCancelled
 from core.permissions import Capability
 from core.permissions import Effect
 from core.service import HarnessService
@@ -23,7 +24,7 @@ class FakeAgent:
         self.error = None
         self.questions = []
 
-    def ask(self, question):
+    def ask(self, question, images=None):
         self.questions.append(question)
 
         if self.error is not None:
@@ -145,6 +146,21 @@ def test_ask_error_emits_error_and_reraises():
         "turn.error",
     ]
     assert events[1].data["error"] == "modello giù"
+
+
+def test_ask_cancelled_emits_cancelled_event():
+    harness = make_harness()
+    harness.agent.error = AgentCancelled("stop")
+    events = []
+    service = HarnessService(harness, events.append)
+
+    with pytest.raises(AgentCancelled):
+        service.ask("ciao")
+
+    assert [event.type for event in events] == [
+        "turn.start",
+        "turn.cancelled",
+    ]
 
 
 def test_set_and_clear_project_updates_harness_and_agent():

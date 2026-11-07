@@ -7,9 +7,11 @@ import time
 from typing import Any
 from typing import Callable
 
+from core.agent import AgentCancelled
 from core.events import EventSink
 from core.events import ServiceEvent
 from core.events import emit
+from core.images import ImageInput
 from memory.projects import ProjectError
 from memory.session import SessionSummarizer
 
@@ -77,6 +79,7 @@ class HarnessService:
     def ask(
         self,
         question: str,
+        images: list[ImageInput] | None = None,
     ) -> str:
 
         started = time.perf_counter()
@@ -84,6 +87,7 @@ class HarnessService:
         self._emit(
             "turn.start",
             question=question,
+            image_count=len(images or []),
             project_id=getattr(
                 self.harness,
                 "project_id",
@@ -92,7 +96,25 @@ class HarnessService:
         )
 
         try:
-            answer = self.harness.agent.ask(question)
+            if images:
+                answer = self.harness.agent.ask(
+                    question,
+                    images=images,
+                )
+            else:
+                answer = self.harness.agent.ask(question)
+
+        except AgentCancelled:
+
+            self._emit(
+                "turn.cancelled",
+                duration_ms=round(
+                    (time.perf_counter() - started) * 1000,
+                    1,
+                ),
+            )
+
+            raise
 
         except Exception as exc:
 

@@ -19,6 +19,10 @@ from urllib.parse import urlparse
 
 from core.confirmations import QueueConfirmationProvider
 from core.events import ServiceEvent
+from core.events import make_event
+from core.images import MAX_IMAGES
+from core.images import ImageInput
+from core.images import ImageInputError
 from core.service import HarnessService
 from core.usage import UsageLedger
 from memory.projects import ProjectError
@@ -144,6 +148,7 @@ class WebSession:
     def send(
         self,
         text: str,
+        images: list[ImageInput] | None = None,
     ) -> bool:
         """Avvia un turno; False se uno è già in corso."""
 
@@ -156,7 +161,7 @@ class WebSession:
 
         thread = threading.Thread(
             target=self._run_turn,
-            args=(text,),
+            args=(text, images),
             name="hagar-web-turn",
             daemon=True,
         )
@@ -164,14 +169,35 @@ class WebSession:
 
         return True
 
+    def stop(self) -> bool:
+        """Richiede l'interruzione del turno corrente."""
+
+        with self._lock:
+
+            if not self._busy:
+                return False
+
+        agent = getattr(self.harness, "agent", None)
+
+        if agent is None or not hasattr(agent, "cancel"):
+            return False
+
+        agent.cancel()
+        self.bus.publish(
+            make_event("turn.stop_requested")
+        )
+
+        return True
+
     def _run_turn(
         self,
         text: str,
+        images: list[ImageInput] | None = None,
     ) -> None:
 
         try:
 
-            self.service.ask(text)
+            self.service.ask(text, images=images)
 
         except Exception:
             # HarnessService emette già turn.error prima di rilanciare.
@@ -487,12 +513,42 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
             text = str(payload.get("text", "")).strip()
 
-            if not text:
+            raw_images = payload.get("images") or []
 
-                self._error("text is required")
+            if not isinstance(raw_images, list):
+
+                self._error("images must be a list")
                 return
 
-            if not self.session.send(text):
+            if len(raw_images) > MAX_IMAGES:
+
+                self._error(
+                    f"too many images (max {MAX_IMAGES})"
+                )
+                return
+
+            try:
+
+                images = [
+                    ImageInput.from_data_url(value)
+                    for value in raw_images
+                ]
+
+            except ImageInputError as exc:
+
+                self._error(str(exc))
+                return
+
+            if not text and not images:
+
+                self._error("text or image is required")
+                return
+
+            if not text:
+
+                text = "Descrivi questa immagine."
+
+            if not self.session.send(text, images):
 
                 self._error(
                     "a turn is already running",
@@ -502,6 +558,22 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
             self._json(
                 {"accepted": True},
+                status=HTTPStatus.ACCEPTED,
+            )
+            return
+
+        if parsed.path == "/api/stop":
+
+            if not self.session.stop():
+
+                self._error(
+                    "no turn is running",
+                    HTTPStatus.CONFLICT,
+                )
+                return
+
+            self._json(
+                {"stopping": True},
                 status=HTTPStatus.ACCEPTED,
             )
             return

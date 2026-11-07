@@ -78,9 +78,23 @@ class ClaudeClient(LLMClient):
         messages: list[dict[str, str]],
     ) -> str:
 
-        system, converted = self._convert_messages(
-            messages
-        )
+        if any(
+            isinstance(message.get("content"), list)
+            for message in messages
+        ):
+
+            system, converted = (
+                self._convert_native_messages(
+                    messages,
+                    None,
+                )
+            )
+
+        else:
+
+            system, converted = self._convert_messages(
+                messages
+            )
 
         payload: dict[str, Any] = {
             "model": self.model,
@@ -231,6 +245,51 @@ class ClaudeClient(LLMClient):
             usage=usage_from_anthropic(data),
         )
 
+    # ==================================================
+    # Message conversion
+    # ==================================================
+
+    @staticmethod
+    def _content_blocks(content: Any) -> list[dict[str, Any]]:
+
+        if not isinstance(content, list):
+
+            return [{"type": "text", "text": content}]
+
+        blocks: list[dict[str, Any]] = []
+
+        for part in content:
+
+            if not isinstance(part, dict):
+                continue
+
+            if part.get("type") == "text":
+
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": part.get("text", ""),
+                    }
+                )
+
+            elif part.get("type") == "image":
+
+                blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": part.get(
+                                "mime_type",
+                                "image/png",
+                            ),
+                            "data": part.get("data", ""),
+                        },
+                    }
+                )
+
+        return blocks
+
     @staticmethod
     def _convert_native_messages(
         messages: list[dict[str, Any]],
@@ -299,9 +358,9 @@ class ClaudeClient(LLMClient):
 
             else:
 
-                blocks = [
-                    {"type": "text", "text": content}
-                ]
+                blocks = ClaudeClient._content_blocks(
+                    content
+                )
 
                 target = (
                     "assistant"

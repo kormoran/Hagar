@@ -127,7 +127,7 @@ class OpenAICompatibleClient(LLMClient):
         response = self._post(
             {
                 "model": self.model,
-                "messages": messages,
+                "messages": self._openai_messages(messages),
                 "stream": False,
             }
         )
@@ -285,6 +285,65 @@ class OpenAICompatibleClient(LLMClient):
     # ==================================================
 
     @classmethod
+    def _content(
+        cls,
+        content: Any,
+    ) -> Any:
+
+        if not isinstance(content, list):
+            return content
+
+        converted = []
+
+        for part in content:
+
+            if not isinstance(part, dict):
+                continue
+
+            if part.get("type") == "text":
+
+                converted.append(
+                    {
+                        "type": "text",
+                        "text": part.get("text", ""),
+                    }
+                )
+
+            elif part.get("type") == "image":
+
+                converted.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": (
+                                "data:"
+                                f"{part.get('mime_type', 'image/png')}"
+                                ";base64,"
+                                f"{part.get('data', '')}"
+                            )
+                        },
+                    }
+                )
+
+        return converted
+
+    @classmethod
+    def _openai_messages(
+        cls,
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+
+        return [
+            {
+                **message,
+                "content": cls._content(
+                    message.get("content", "")
+                ),
+            }
+            for message in messages
+        ]
+
+    @classmethod
     def _to_native_messages(
         cls,
         messages: list[dict[str, Any]],
@@ -353,9 +412,8 @@ class OpenAICompatibleClient(LLMClient):
                 converted.append(
                     {
                         "role": role,
-                        "content": message.get(
-                            "content",
-                            "",
+                        "content": cls._content(
+                            message.get("content", "")
                         ),
                     }
                 )

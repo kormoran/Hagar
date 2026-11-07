@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 import time
 import uuid
 
@@ -10,9 +11,14 @@ from typing import Any
 
 from core.events import EventSink
 from core.events import emit
+from core.images import ImageInput
 from core.tool_call import ToolCall
 from core.tool_result import ToolResult
 from llm.base import NativeToolsUnavailable
+
+
+class AgentCancelled(RuntimeError):
+    """Il turno è stato interrotto dall'utente."""
 
 
 class Agent:
@@ -37,6 +43,7 @@ class Agent:
         self.vault = vault
 
         self.event_sink = event_sink
+        self._cancel = threading.Event()
 
         self.max_tool_calls = (
             max_tool_calls
@@ -52,12 +59,40 @@ class Agent:
         )
 
     # ==================================================
+    # Cancellazione
+    # ==================================================
+
+    def cancel(self) -> None:
+        """Richiede l'interruzione del turno in corso."""
+
+        self._cancel.set()
+
+    def reset_cancel(self) -> None:
+        self._cancel.clear()
+
+    def _check_cancel(
+        self,
+        turn: str,
+    ) -> None:
+
+        if not self._cancel.is_set():
+            return
+
+        self._record(
+            "turn.cancelled",
+            turn=turn,
+        )
+
+        raise AgentCancelled("turn cancelled by user")
+
+    # ==================================================
     # Public API
     # ==================================================
 
     def ask(
         self,
         question: str,
+        images: list[ImageInput] | None = None,
     ) -> str:
         """
         Ciclo agentico multi-step.
@@ -72,11 +107,27 @@ class Agent:
         """
 
         turn = uuid.uuid4().hex[:8]
+        self.reset_cancel()
+
+        content: Any = question
+
+        if images:
+
+            content = [
+                {
+                    "type": "text",
+                    "text": question,
+                },
+                *[
+                    image.as_message_part()
+                    for image in images
+                ],
+            ]
 
         messages = [
             {
                 "role": "user",
-                "content": question,
+                "content": content,
             }
         ]
 
@@ -167,6 +218,8 @@ class Agent:
 
         while True:
 
+            self._check_cancel(turn)
+
             #
             # Richiesta al modello:
             # serve un tool?
@@ -200,6 +253,8 @@ class Agent:
             # Nessun tool richiesto:
             # genera la risposta finale.
             #
+
+            self._check_cancel(turn)
 
             if not tool_call.tool:
 
@@ -267,6 +322,8 @@ class Agent:
             #
 
             executed += 1
+
+            self._check_cancel(turn)
 
             tool_result = self._execute_and_record(
                 turn,
@@ -345,6 +402,8 @@ class Agent:
 
         while True:
 
+            self._check_cancel(turn)
+
             try:
 
                 reply = self.llm.native_step(
@@ -388,6 +447,8 @@ class Agent:
             #
             # Nessuna chiamata: è la risposta finale.
             #
+
+            self._check_cancel(turn)
 
             if not reply.tool_calls:
 
@@ -458,6 +519,8 @@ class Agent:
             for call in reply.tool_calls:
 
                 executed += 1
+
+                self._check_cancel(turn)
 
                 tool_result = (
                     self._execute_and_record(

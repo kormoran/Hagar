@@ -159,6 +159,10 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - Il browser riceve un token casuale nella pagina; le API lo richiedono
   nell’header `X-Hagar-Token`.
 - La chat mostra turni, tool call, risultati e conferme ASK.
+- Il pulsante **Stop** interrompe il turno in modo cooperativo.
+- Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
+  per i modelli vision. Le immagini non vengono salvate nella memoria né
+  nell'audit: al modello arriva il data URL, non il path host.
 - La sidebar in basso mostra i token cumulati della sessione: input,
   output e totale.
 - Le conferme ASK sono modali: il turno resta in attesa e il server

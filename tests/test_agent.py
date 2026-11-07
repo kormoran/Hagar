@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from core.agent import Agent
+from core.agent import AgentCancelled
 from core.tool_call import ToolCall
 from core.tool_definition import ToolDefinition
 from core.tool_registry import ToolRegistry
@@ -89,6 +90,27 @@ def test_answer_without_tools():
     assert len(llm.requests) == 1
     assert llm.requests[0][0]["content"] == "ciao"
     assert llm.chat_requests[0] == llm.requests[0]
+
+
+def test_cancel_stops_before_tool_execution():
+    llm = FakeLLM(
+        calls=[ToolCall(tool="demo.echo", arguments={})]
+    )
+    registry, recorder = make_registry()
+    agent = Agent(llm, registry, vault=None)
+
+    original = llm.request_tool_call
+
+    def request_and_cancel(messages, registry):
+        agent.cancel()
+        return original(messages, registry)
+
+    llm.request_tool_call = request_and_cancel
+
+    with pytest.raises(AgentCancelled):
+        agent.ask("annulla")
+
+    assert recorder.calls == []
 
 
 def test_tool_is_executed_and_result_is_sent_back():

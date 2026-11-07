@@ -74,9 +74,10 @@ restituisce gli stessi risultati.
 
 ## 0.4 0.4.x — GUI
 
-- pulsante **Stop** del turno;
+- pulsante **Stop** del turno — implementato;
+- vision: upload immagine nel composer, con adapter per provider —
+  implementato (OpenAI/LM Studio, Claude, Gemini);
 - cronologia chat visibile dopo un refresh;
-- vision: upload immagine nel composer, con adapter per provider;
 - lettura sola delle memorie dal browser;
 - eventuale comando `/usage` lato CLI.
 

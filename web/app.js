@@ -1,9 +1,13 @@
 const messages = document.getElementById('messages');
 const input = document.getElementById('input');
 const send = document.getElementById('send');
+const stop = document.getElementById('stop');
 const state = document.getElementById('state');
 const modal = document.getElementById('modal');
+const imageInput = document.getElementById('image-input');
+const previews = document.getElementById('previews');
 let pendingConfirmation = null;
+let pendingImages = [];
 let busy = false;
 let thinking = null;
 
@@ -25,6 +29,8 @@ function setBusy(value, label) {
   busy = value;
   send.disabled = value;
   input.disabled = value;
+  imageInput.disabled = value;
+  stop.disabled = !value;
   state.textContent = label || (value ? 'in corso...' : 'pronta');
 }
 
@@ -175,6 +181,16 @@ source.onmessage = (event) => {
     thinking = add('assistant', '…');
     return;
   }
+  if (type === 'turn.stop_requested') {
+    state.textContent = 'interruzione...';
+    return;
+  }
+  if (type === 'turn.cancelled') {
+    if (thinking) { thinking.remove(); thinking = null; }
+    add('tool', 'Turno interrotto.');
+    setBusy(false);
+    return;
+  }
   if (type === 'tool.call') {
     add('tool', '→ ' + data.tool + ' ' + JSON.stringify(data.arguments || {}));
     return;
@@ -225,16 +241,77 @@ source.onerror = () => {
   state.textContent = 'connessione persa';
 };
 
+stop.onclick = async () => {
+  stop.disabled = true;
+  state.textContent = 'interruzione...';
+  try {
+    await api('/api/stop', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  } catch (e) {
+    add('error', String(e));
+    setBusy(true);
+  }
+};
+
+function renderPreviews() {
+  previews.replaceChildren();
+  pendingImages.forEach((image, index) => {
+    const box = el('div', 'preview');
+    const img = document.createElement('img');
+    img.src = image;
+    const remove = el('button', '', '×');
+    remove.title = 'Rimuovi immagine';
+    remove.onclick = () => {
+      pendingImages.splice(index, 1);
+      renderPreviews();
+    };
+    box.appendChild(img);
+    box.appendChild(remove);
+    previews.appendChild(box);
+  });
+}
+
+function addImages(files) {
+  for (const file of files) {
+    if (pendingImages.length >= 4) break;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      add('error', 'Formato immagine non supportato: ' + file.type);
+      continue;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      add('error', 'Immagine troppo grande (max 10 MB).');
+      continue;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingImages.push(reader.result);
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+imageInput.onchange = () => {
+  addImages(Array.from(imageInput.files || []));
+  imageInput.value = '';
+};
+
 document.getElementById('composer').onsubmit = async (event) => {
   event.preventDefault();
   const text = input.value.trim();
-  if (!text || busy) return;
-  add('user', text);
+  if ((!text && !pendingImages.length) || busy) return;
+  const images = [...pendingImages];
+  add('user', text || '[immagine]');
+  if (images.length) add('tool', '🖼️ ' + images.length + ' immagine/i');
   input.value = '';
+  pendingImages = [];
+  renderPreviews();
   try {
     await api('/api/message', {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, images }),
     });
   } catch (e) {
     add('error', String(e));
