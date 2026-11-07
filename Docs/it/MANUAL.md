@@ -172,8 +172,10 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   alternativa la timeline degli eventi dell'agente.
 - Il pulsante **Stop** interrompe il turno in modo cooperativo.
 - Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
-  per i modelli vision. Le immagini non vengono salvate nella memoria né
-  nell'audit: al modello arriva il data URL, non il path host.
+  per i modelli vision. WebP viene convertito in PNG nella GUI perché LM
+  Studio non lo accetta direttamente. Le immagini non vengono salvate
+  nella memoria né nell'audit: al modello arriva il data URL, non il
+  path host.
 - La sidebar in basso mostra i token cumulati della sessione: input,
   output e totale.
 - Le conferme ASK sono modali: il turno resta in attesa e il server

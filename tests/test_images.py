@@ -96,3 +96,19 @@ def test_openai_converts_image_to_image_url():
     assert parts[1]["image_url"]["url"].startswith(
         "data:image/png;base64,"
     )
+
+
+def test_lmstudio_rejects_webp_with_clear_error():
+    from llm.lmstudio_client import LMStudioClient
+
+    with pytest.raises(RuntimeError, match="WebP"):
+
+        LMStudioClient._content(
+            [
+                {
+                    "type": "image",
+                    "mime_type": "image/webp",
+                    "data": "UklGRg==",
+                }
+            ]
+        )

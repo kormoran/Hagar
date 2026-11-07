@@ -20,6 +20,30 @@ class LMStudioClient(OpenAICompatibleClient):
 
     DEFAULT_BASE_URL = "http://localhost:1234/v1"
 
+    @classmethod
+    def _content(
+        cls,
+        content: Any,
+    ) -> Any:
+
+        if isinstance(content, list):
+
+            for part in content:
+
+                if (
+                    isinstance(part, dict)
+                    and part.get("mime_type")
+                    == "image/webp"
+                ):
+
+                    raise RuntimeError(
+                        "LM Studio non supporta WebP: "
+                        "usa PNG o JPEG, oppure converti "
+                        "l'immagine nella GUI."
+                    )
+
+        return super()._content(content)
+
     def __init__(
         self,
         model: str,

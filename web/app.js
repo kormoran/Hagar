@@ -461,6 +461,25 @@ function renderPreviews() {
   });
 }
 
+function pushImage(dataUrl) {
+  if (pendingImages.length >= 4) return;
+  pendingImages.push(dataUrl);
+  renderPreviews();
+}
+
+function convertWebpToPng(dataUrl, done) {
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    canvas.getContext('2d').drawImage(image, 0, 0);
+    done(canvas.toDataURL('image/png'));
+  };
+  image.onerror = () => add('error', 'Impossibile convertire il WebP.');
+  image.src = dataUrl;
+}
+
 function addImages(files) {
   for (const file of files) {
     if (pendingImages.length >= 4) break;
@@ -474,8 +493,11 @@ function addImages(files) {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      pendingImages.push(reader.result);
-      renderPreviews();
+      if (file.type === 'image/webp') {
+        convertWebpToPng(reader.result, pushImage);
+      } else {
+        pushImage(reader.result);
+      }
     };
     reader.readAsDataURL(file);
   }
