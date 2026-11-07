@@ -7,6 +7,7 @@ import requests
 from typing import Any
 
 from core.tool_call import ToolCall
+from core.usage import usage_from_anthropic
 from llm.base import (
     LLMClient,
     LLMReply,
@@ -100,6 +101,8 @@ class ClaudeClient(LLMClient):
         response.raise_for_status()
 
         data = response.json()
+
+        self._set_usage(usage_from_anthropic(data))
 
         blocks = data.get("content")
 
@@ -225,6 +228,7 @@ class ClaudeClient(LLMClient):
             assistant_message=(
                 self._assistant_message(text, calls)
             ),
+            usage=usage_from_anthropic(data),
         )
 
     @staticmethod

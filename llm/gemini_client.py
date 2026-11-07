@@ -7,6 +7,7 @@ import requests
 from typing import Any
 
 from core.tool_call import ToolCall
+from core.usage import usage_from_gemini
 from llm.base import (
     LLMClient,
     LLMReply,
@@ -95,6 +96,8 @@ class GeminiClient(LLMClient):
         response.raise_for_status()
 
         data = response.json()
+
+        self._set_usage(usage_from_gemini(data))
 
         candidates = data.get("candidates") or []
 
@@ -259,6 +262,7 @@ class GeminiClient(LLMClient):
             assistant_message=(
                 self._assistant_message(text, calls)
             ),
+            usage=usage_from_gemini(data),
         )
 
     @staticmethod

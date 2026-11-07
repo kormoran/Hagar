@@ -89,7 +89,13 @@ def user_message(text: str = "ciao") -> dict:
 def test_openai_chat(monkeypatch):
     http = install(
         monkeypatch,
-        {"choices": [{"message": {"content": "risposta"}}]},
+        {
+            "choices": [{"message": {"content": "risposta"}}],
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 3,
+            },
+        },
     )
 
     client = OpenAIClient(
@@ -98,6 +104,8 @@ def test_openai_chat(monkeypatch):
     )
 
     assert client.chat([user_message()]) == "risposta"
+    assert client.last_usage.input_tokens == 12
+    assert client.last_usage.output_tokens == 3
 
     call = http.calls[0]
 

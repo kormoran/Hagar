@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 from core.confirmations import QueueConfirmationProvider
 from core.events import ServiceEvent
 from core.service import HarnessService
+from core.usage import UsageLedger
 from memory.projects import ProjectError
 
 
@@ -89,6 +90,13 @@ class WebSession:
 
         self.confirmation.event_sink = self.bus.publish
 
+        self.usage = UsageLedger(self.bus.publish)
+
+        llm = getattr(harness, "llm", None)
+
+        if llm is not None:
+            llm.usage_sink = self.usage.record
+
         self.service = HarnessService(
             harness,
             event_sink=self.bus.publish,
@@ -158,6 +166,7 @@ class WebSession:
         data["confirmations"] = (
             self.confirmation.pending_requests()
         )
+        data["usage"] = self.usage.snapshot()
 
         return data
 
@@ -255,7 +264,17 @@ aside {
   background: var(--panel);
   padding: 18px;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
+#usage {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+#usage strong { color: var(--text); font-size: 16px; }
 main {
   display: flex;
   flex-direction: column;
@@ -371,6 +390,11 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflo
   <div id="projects" class="muted"></div>
   <h2>Tool</h2>
   <div id="tools"></div>
+  <div id="usage">
+    <div>Token sessione</div>
+    <strong id="usage-total">0</strong>
+    <div id="usage-detail" class="muted">in 0 · out 0</div>
+  </div>
 </aside>
 <main>
   <header>
@@ -444,6 +468,18 @@ async function api(path, options = {}) {
   return data;
 }
 
+function renderUsage(usage) {
+  if (!usage) return;
+  const total = usage.total_tokens || 0;
+  const input = usage.input_tokens || 0;
+  const output = usage.output_tokens || 0;
+  document.getElementById('usage-total').textContent =
+    total.toLocaleString('it-IT');
+  document.getElementById('usage-detail').textContent =
+    'in ' + input.toLocaleString('it-IT') +
+    ' · out ' + output.toLocaleString('it-IT');
+}
+
 function renderStatus(data) {
   document.getElementById('model').textContent =
     data.model.provider + ' / ' + data.model.name;
@@ -456,6 +492,7 @@ function renderStatus(data) {
   const a = data.audit || {};
   document.getElementById('audit').textContent =
     a.enabled ? 'attivo' : 'disattivato';
+  renderUsage(data.usage);
   if (Array.isArray(data.tools)) {
     const box = document.getElementById('tools');
     box.replaceChildren();
@@ -558,6 +595,7 @@ source.onmessage = (event) => {
   const type = payload.type;
   const data = payload.data || {};
   if (type === 'status') { renderStatus(data); return; }
+  if (type === 'usage.updated') { renderUsage(data); return; }
   if (type === 'turn.start') {
     setBusy(true, 'in corso...');
     thinking = add('assistant', '…');

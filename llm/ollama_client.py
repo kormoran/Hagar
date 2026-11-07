@@ -12,6 +12,7 @@ from llm.base import (
     NativeToolsUnavailable,
 )
 from core.tool_call import ToolCall
+from core.usage import usage_from_ollama
 
 
 class OllamaClient(LLMClient):
@@ -86,6 +87,8 @@ class OllamaClient(LLMClient):
             payload,
         )
 
+        self._set_usage(usage_from_ollama(response))
+
         return response["response"]
 
     # ==================================================
@@ -105,6 +108,8 @@ class OllamaClient(LLMClient):
                 "stream": False,
             },
         )
+
+        self._set_usage(usage_from_ollama(response))
 
         return response["message"]["content"]
 
@@ -207,6 +212,7 @@ class OllamaClient(LLMClient):
             assistant_message=(
                 self._assistant_message(text, calls)
             ),
+            usage=usage_from_ollama(data),
         )
 
     @staticmethod

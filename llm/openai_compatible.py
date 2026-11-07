@@ -8,6 +8,7 @@ import requests
 from typing import Any
 
 from core.tool_call import ToolCall
+from core.usage import usage_from_openai
 from llm.base import (
     LLMClient,
     LLMReply,
@@ -144,6 +145,8 @@ class OpenAICompatibleClient(LLMClient):
 
         data = response.json()
 
+        self._set_usage(usage_from_openai(data))
+
         choices = data.get("choices") or []
 
         if not choices:
@@ -274,6 +277,7 @@ class OpenAICompatibleClient(LLMClient):
             assistant_message=(
                 self._assistant_message(text, calls)
             ),
+            usage=usage_from_openai(data),
         )
 
     # ==================================================

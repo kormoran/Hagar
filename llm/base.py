@@ -15,6 +15,8 @@ from core.tool_definition import (
     ToolParameter,
 )
 from core.tool_registry import ToolRegistry
+from core.usage import TokenUsage
+from core.usage import UsageSink
 
 
 class NativeToolsUnavailable(RuntimeError):
@@ -28,7 +30,8 @@ class LLMReply:
 
     ``assistant_message`` è il messaggio canonico da riaccodare alla
     conversazione (ruolo assistant con ``tool_calls``), che ogni backend
-    traduce nel proprio formato.
+    traduce nel proprio formato. ``usage`` è l'usage della singola
+    chiamata, se il provider lo restituisce.
     """
 
     text: str = ""
@@ -36,6 +39,11 @@ class LLMReply:
         default_factory=list
     )
     assistant_message: dict[str, Any] | None = None
+    usage: TokenUsage = field(
+        default_factory=lambda: TokenUsage(
+            source="missing"
+        )
+    )
 
 
 class LLMClient(ABC):
@@ -72,11 +80,35 @@ class LLMClient(ABC):
 
         self.audit = audit
 
+        self.last_usage = TokenUsage(source="missing")
+        self.usage_sink: UsageSink | None = None
+
         #
         # Può essere spento dalla configurazione o dal fallback automatico.
         #
 
         self.native_tools = True
+
+    def _set_usage(
+        self,
+        usage: TokenUsage,
+    ) -> None:
+        """Registra l'usage della chiamata appena completata."""
+
+        self.last_usage = usage
+
+        if self.usage_sink is None:
+            return
+
+        try:
+            self.usage_sink(
+                usage,
+                self.provider,
+                self.model,
+            )
+        except Exception:
+            # La contabilità non deve rompere una risposta valida.
+            pass
 
     # ==================================================
     # Native tool calling
@@ -98,6 +130,8 @@ class LLMClient(ABC):
             messages,
             registry,
         )
+
+        self._set_usage(reply.usage)
 
         for call in reply.tool_calls:
 

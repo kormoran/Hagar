@@ -742,9 +742,24 @@ La GUI è un adapter: usa `HarnessService`, `CommandService` e
 su un `threading.Event`; il server resta libero e sblocca la richiesta con
 `POST /api/confirm`. Un timeout vale come rifiuto.
 
+La sidebar mostra i token cumulati della sessione: `UsageLedger` riceve
+l'usage da ogni chiamata LLM tramite `usage_sink` e pubblica
+`usage.updated` su SSE.
+
 Sicurezza: bind predefinito `127.0.0.1`, token casuale iniettato nella
 pagina, header `X-Hagar-Token` per le API e `?token=` per SSE. Non è
 multiutente e non espone ancora la modifica del Vault.
+
+## 3.11.4 Token usage (`core/usage.py`)
+
+`TokenUsage` normalizza input, output, cache e reasoning. Funzioni
+`usage_from_openai`, `usage_from_anthropic`, `usage_from_gemini` e
+`usage_from_ollama` leggono i campi nativi delle risposte.
+
+`LLMClient._set_usage()` aggiorna `last_usage` e chiama il `usage_sink`
+del client. `UsageLedger` accumula i totali per sessione e pubblica
+`usage.updated`; la GUI lo usa nella sidebar. L'usage del provider è la
+verità; una stima locale resta solo un fallback.
 
 ## 3.12 Avvio e packaging
 
@@ -845,7 +860,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 741 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 748 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

@@ -8,6 +8,7 @@ import requests
 from typing import Any
 
 from core.tool_call import ToolCall
+from core.usage import usage_from_openai
 from llm.base import (
     LLMClient,
     LLMReply,
@@ -130,6 +131,8 @@ class DeepSeekClient(LLMClient):
         response.raise_for_status()
 
         data = response.json()
+
+        self._set_usage(usage_from_openai(data))
 
         choices = data.get("choices") or []
 
@@ -259,6 +262,7 @@ class DeepSeekClient(LLMClient):
             assistant_message=(
                 self._assistant_message(text, calls)
             ),
+            usage=usage_from_openai(data),
         )
 
     @staticmethod

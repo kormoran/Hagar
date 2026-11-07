@@ -42,6 +42,10 @@ riferimento al commit quando utile.
 - Ctrl-C chiude subito `hagar web`: niente `shutdown()` dal thread di
   `serve_forever`, niente join dei thread SSE e summary saltato allo
   spegnimento.
+- Nuovo `core/usage.py`: parsing usage OpenAI/DeepSeek/LM Studio,
+  Claude, Gemini e Ollama, con `UsageLedger` per sessione.
+- La GUI mostra input, output e totale token nella sidebar, aggiornati
+  via evento `usage.updated`.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -174,7 +178,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 741 test superati, 2 skip su Windows; 743 superati, 0 skip su Debian
+- 748 test superati, 2 skip su Windows; 750 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

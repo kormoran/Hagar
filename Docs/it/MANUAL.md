@@ -151,6 +151,8 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - Il browser riceve un token casuale nella pagina; le API lo richiedono
   nell’header `X-Hagar-Token`.
 - La chat mostra turni, tool call, risultati e conferme ASK.
+- La sidebar in basso mostra i token cumulati della sessione: input,
+  output e totale.
 - Le conferme ASK sono modali: il turno resta in attesa e il server
   continua a rispondere. Un timeout equivale a rifiuto.
 - La GUI non è ancora multiutente e non espone il Vault in modifica.
