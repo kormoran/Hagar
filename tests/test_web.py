@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from core.confirmations import QueueConfirmationProvider
 from core.web import HagarHTTPServer
 from core.web import WebSession
+from core.web import serve
 
 
 class FakeAgent:
@@ -267,3 +268,24 @@ def test_connection_abort_does_not_print_traceback(capsys):
 
     finally:
         server.close()
+
+
+def test_serve_exits_on_keyboard_interrupt(monkeypatch):
+    def interrupt(self):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        HagarHTTPServer,
+        "serve_forever",
+        interrupt,
+    )
+
+    provider = QueueConfirmationProvider(timeout=1)
+
+    # Non deve bloccare su shutdown() o sul summary della sessione.
+    serve(
+        make_harness(),
+        provider,
+        host="127.0.0.1",
+        port=0,
+    )

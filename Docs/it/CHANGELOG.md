@@ -39,6 +39,9 @@ riferimento al commit quando utile.
   tool call e modale di conferma; token locale e bind `127.0.0.1`.
 - Le disconnessioni SSE del browser non producono più traceback su
   Windows (`ConnectionAbortedError`/WinError 10053).
+- Ctrl-C chiude subito `hagar web`: niente `shutdown()` dal thread di
+  `serve_forever`, niente join dei thread SSE e summary saltato allo
+  spegnimento.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -171,7 +174,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 740 test superati, 2 skip su Windows; 742 superati, 0 skip su Debian
+- 741 test superati, 2 skip su Windows; 743 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

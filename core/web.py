@@ -172,7 +172,10 @@ class WebSession:
             approved,
         )
 
-    def close(self) -> None:
+    def close(
+        self,
+        summarize: bool = True,
+    ) -> None:
 
         with self._lock:
 
@@ -182,13 +185,18 @@ class WebSession:
             self._closed = True
 
         self.confirmation.cancel_all()
-        self.service.finish_session(interactive=False)
+
+        # In una GUI il summary può attendere il modello per minuti:
+        # durante Ctrl-C non deve bloccare la chiusura del processo.
+        if summarize:
+            self.service.finish_session(interactive=False)
 
 
 class HagarHTTPServer(ThreadingHTTPServer):
     """Server HTTP locale; ogni connessione SSE ha il proprio thread."""
 
     daemon_threads = True
+    block_on_close = False
     allow_reuse_address = True
 
     def __init__(
@@ -1028,6 +1036,8 @@ def serve(
 
     finally:
 
-        server.shutdown()
+        # serve_forever è già uscito: chiamare shutdown() dallo stesso
+        # thread può bloccare l'uscita. server_close() chiude la socket e
+        # i thread handlers sono daemon.
         server.server_close()
-        session.close()
+        session.close(summarize=False)
