@@ -825,6 +825,12 @@ timeline.
 (temp + `os.replace`) e il comando rifiuta una destinazione non vuota
 senza `--force`.
 
+`memory_fts` è una tabella FTS5 nello stesso database, con colonne
+`entity`, `entity_id`, `kind`, `project`, `status`, `title`, `body`.
+`SqliteMemoryIndex.search` usa `MATCH`, `bm25()` e `snippet()`; se FTS5
+non è disponibile ricade su `LIKE`. `memory/import_markdown.py` importa
+la stessa struttura con upsert e ricostruisce l'indice FTS.
+
 ## 3.11.4 Token usage (`core/usage.py`)
 
 `TokenUsage` normalizza input, output, cache e reasoning. Funzioni
@@ -1017,7 +1023,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 817 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 820 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

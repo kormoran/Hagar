@@ -106,6 +106,44 @@ def test_index_compatibility(tmp_path):
     assert results
     assert store.index.document(results[0]["path"])["content"]
     assert store.index.stats()["skills"] == 1
+    assert store.database.fts is True
+
+
+def test_fts_ranking_and_snippets(tmp_path):
+    store = make_store(tmp_path)
+    store.append_turn(
+        "t1",
+        "come configurare il deploy",
+        "Il deploy usa SQLite e il runner dei test.",
+    )
+    store.create_skill(
+        "Deploy Hagar",
+        "Procedura di deploy con SQLite e backup.",
+    )
+
+    results = store.index.search("deploy")
+
+    assert results
+    assert any(item["kind"] == "chat" for item in results)
+    assert any(item["kind"] == "procedure" for item in results)
+    assert all(item["snippet"] for item in results)
+
+
+def test_schema_v1_is_migrated_to_fts(tmp_path):
+    store = make_store(tmp_path)
+    store.append_turn("t1", "deploy", "SQLite")
+
+    with store.database.connection() as connection:
+        connection.execute("DROP TABLE memory_fts")
+        connection.execute(
+            "UPDATE meta SET value = '1' "
+            "WHERE key = 'schema_version'"
+        )
+
+    store.database.ensure()
+
+    assert store.database.fts is True
+    assert store.index.search("deploy")
 
 
 def test_memory_commands_list_sessions_and_backup(tmp_path):
@@ -141,3 +179,9 @@ def test_memory_commands_list_sessions_and_backup(tmp_path):
     assert (
         tmp_path / "export" / "Hagar" / "chat"
     ).is_dir()
+
+    imported = commands.handle(
+        f"/memory import {tmp_path / 'export'}"
+    )
+    assert imported.ok is True
+    assert imported.data["skipped"] >= 1

@@ -232,6 +232,16 @@ class SqliteMemoryStore:
                 ),
             )
             summary_id = cursor.lastrowid
+            self.database.fts_upsert(
+                connection,
+                entity="summary",
+                entity_id=str(summary_id),
+                kind="summary",
+                project=project,
+                status=None,
+                title=f"Summary {self.session_id}",
+                body=summary.strip(),
+            )
 
         return Path(f"sqlite:summary/{summary_id}")
 
@@ -341,6 +351,16 @@ class SqliteMemoryStore:
                     question,
                     answer,
                 ),
+            )
+            self.database.fts_upsert(
+                connection,
+                entity="turn",
+                entity_id=turn_id,
+                kind="chat",
+                project=None,
+                status=None,
+                title=question,
+                body=answer,
             )
 
         return Turn(
@@ -660,6 +680,16 @@ class SqliteMemoryStore:
                     self.model,
                 ),
             )
+            self.database.fts_upsert(
+                connection,
+                entity="skill",
+                entity_id=slug,
+                kind=kind,
+                project=None,
+                status="candidate",
+                title=title.strip(),
+                body=content.strip(),
+            )
 
         skill = Skill(
             id=slug,
@@ -750,6 +780,22 @@ class SqliteMemoryStore:
 
             if cursor.rowcount == 0:
                 raise MemoryError(f"skill not found: {skill_id}")
+
+            row = connection.execute(
+                "SELECT id, title, kind, content "
+                "FROM skills WHERE id = ?",
+                (skill_id,),
+            ).fetchone()
+            self.database.fts_upsert(
+                connection,
+                entity="skill",
+                entity_id=skill_id,
+                kind=row["kind"],
+                project=None,
+                status=status,
+                title=row["title"],
+                body=row["content"],
+            )
 
         skill = self.get_skill(skill_id)
         if skill is None:
@@ -914,8 +960,7 @@ class SqliteMemoryIndex:
 
     def rebuild(self) -> int:
         with self.store.database.connection() as connection:
-            connection.execute("REINDEX")
-        return 0
+            return self.store.database.rebuild_fts(connection)
 
     def stats(self) -> dict[str, Any]:
         return self.store.stats()
@@ -934,6 +979,114 @@ class SqliteMemoryIndex:
             return []
 
         amount = max(1, min(int(limit), 100))
+
+        words = re.findall(r"\w+", needle, flags=re.UNICODE)
+        fts_query = " OR ".join(
+            '"' + word.replace('"', '""') + '"'
+            for word in words
+        )
+
+        if self.store.database.fts and fts_query:
+
+            clauses = []
+            values: list[Any] = [fts_query]
+
+            if project is not None:
+                clauses.append("project = ?")
+                values.append(project)
+            if kind is not None:
+                clauses.append("kind = ?")
+                values.append(kind)
+            if status is not None:
+                clauses.append("status = ?")
+                values.append(status)
+
+            where = (
+                " AND " + " AND ".join(clauses)
+                if clauses
+                else ""
+            )
+
+            try:
+
+                with self.store.database.connection() as connection:
+
+                    rows = connection.execute(
+                        """
+                        SELECT entity, entity_id, kind, project, status,
+                               title,
+                               snippet(
+                                   memory_fts, 6, '[', ']', '…', 20
+                               ) AS snippet,
+                               bm25(memory_fts) AS rank
+                        FROM memory_fts
+                        WHERE memory_fts MATCH ?
+                        """
+                        + where
+                        + """
+                        ORDER BY rank
+                        LIMIT ?
+                        """,
+                        [*values, amount],
+                    ).fetchall()
+
+            except Exception:
+                rows = []
+
+            if rows:
+
+                return [
+                    {
+                        "path": self._path(
+                            row["entity"],
+                            row["entity_id"],
+                            row["project"],
+                        ),
+                        "kind": row["kind"],
+                        "project": row["project"],
+                        "status": row["status"],
+                        "title": row["title"],
+                        "snippet": row["snippet"],
+                    }
+                    for row in rows
+                ]
+
+        return self._fallback_search(
+            needle,
+            project,
+            kind,
+            status,
+            amount,
+        )
+
+    @staticmethod
+    def _path(
+        entity: str,
+        entity_id: str,
+        project: str | None,
+    ) -> str:
+
+        if entity == "skill":
+            return f"sqlite:skills/{entity_id}"
+        if entity == "turn":
+            return f"sqlite:turn/{entity_id}"
+        if entity == "summary":
+            return f"sqlite:summary/{entity_id}"
+        if entity == "project":
+            return f"sqlite:projects/{entity_id}"
+        if entity == "decision":
+            return f"sqlite:projects/{project}/{entity_id}"
+        return f"sqlite:{entity}/{entity_id}"
+
+    def _fallback_search(
+        self,
+        needle: str,
+        project: str | None,
+        kind: str | None,
+        status: str | None,
+        amount: int,
+    ) -> list[dict[str, Any]]:
+
         results: list[dict[str, Any]] = []
 
         for skill in self.store.list_skills(limit=1000):

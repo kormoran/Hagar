@@ -118,6 +118,16 @@ class SqliteProjectStore:
                 """,
                 (project_id, name.strip(), moment, moment),
             )
+            self.database.fts_upsert(
+                connection,
+                entity="project",
+                entity_id=project_id,
+                kind="project",
+                project=project_id,
+                status="active",
+                title=name.strip(),
+                body="",
+            )
 
         project = self.get_project(project_id)
 
@@ -153,6 +163,21 @@ class SqliteProjectStore:
                     f"project not found: {project_id}"
                 )
 
+            row = connection.execute(
+                "SELECT title, summary FROM projects WHERE id = ?",
+                (project_id,),
+            ).fetchone()
+            self.database.fts_upsert(
+                connection,
+                entity="project",
+                entity_id=project_id,
+                kind="project",
+                project=project_id,
+                status=status,
+                title=row["title"],
+                body=row["summary"],
+            )
+
         project = self.get_project(project_id)
 
         if project is None:
@@ -181,6 +206,21 @@ class SqliteProjectStore:
                 raise ProjectError(
                     f"project not found: {project_id}"
                 )
+
+            row = connection.execute(
+                "SELECT title, status FROM projects WHERE id = ?",
+                (project_id,),
+            ).fetchone()
+            self.database.fts_upsert(
+                connection,
+                entity="project",
+                entity_id=project_id,
+                kind="project",
+                project=project_id,
+                status=row["status"],
+                title=row["title"],
+                body=summary.strip(),
+            )
 
         project = self.get_project(project_id)
 
@@ -287,6 +327,16 @@ class SqliteProjectStore:
                 "UPDATE projects SET last_activity = ? WHERE id = ?",
                 (moment, project_id),
             )
+            self.database.fts_upsert(
+                connection,
+                entity="decision",
+                entity_id=decision_id,
+                kind="decision",
+                project=project_id,
+                status=status,
+                title=title.strip(),
+                body=decision.strip() + "\n" + rationale.strip(),
+            )
 
         loaded = self.get_decision(project_id, decision_id)
 
@@ -390,6 +440,22 @@ class SqliteProjectStore:
                 raise ProjectError(
                     f"decision not found: {decision_id}"
                 )
+
+            row = connection.execute(
+                "SELECT title, decision, rationale "
+                "FROM decisions WHERE project_id = ? AND id = ?",
+                (project_id, decision_id),
+            ).fetchone()
+            self.database.fts_upsert(
+                connection,
+                entity="decision",
+                entity_id=decision_id,
+                kind="decision",
+                project=project_id,
+                status=status,
+                title=row["title"],
+                body=row["decision"] + "\n" + row["rationale"],
+            )
 
         updated = self.get_decision(project_id, decision_id)
 

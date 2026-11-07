@@ -11,7 +11,7 @@ from pathlib import Path
 from memory.store import MemoryError
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def default_memory_path() -> Path:
@@ -45,6 +45,7 @@ class MemoryDatabase:
     ) -> None:
 
         self.path = Path(path or default_memory_path())
+        self.fts = False
 
     def connect(self) -> sqlite3.Connection:
 
@@ -102,6 +103,8 @@ class MemoryDatabase:
             row = connection.execute(
                 "SELECT value FROM meta WHERE key = 'schema_version'"
             ).fetchone()
+
+            current = 0
 
             if row is not None:
 
@@ -205,11 +208,145 @@ class MemoryDatabase:
                     ON decisions(project_id, status, created_at);
                 """
             )
+            self._ensure_fts(connection)
+
+            if current < SCHEMA_VERSION:
+                self.rebuild_fts(connection)
+
             connection.execute(
                 "INSERT OR REPLACE INTO meta(key, value) "
                 "VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
             )
+
+    def _ensure_fts(self, connection) -> bool:
+
+        try:
+            connection.execute(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts
+                USING fts5(
+                    entity UNINDEXED,
+                    entity_id UNINDEXED,
+                    kind UNINDEXED,
+                    project UNINDEXED,
+                    status UNINDEXED,
+                    title,
+                    body,
+                    tokenize = 'unicode61'
+                )
+                """
+            )
+            self.fts = True
+
+        except sqlite3.OperationalError:
+            self.fts = False
+
+        return self.fts
+
+    def fts_delete(
+        self,
+        connection,
+        entity: str,
+        entity_id: str,
+    ) -> None:
+
+        if not self.fts:
+            return
+
+        connection.execute(
+            "DELETE FROM memory_fts "
+            "WHERE entity = ? AND entity_id = ?",
+            (entity, entity_id),
+        )
+
+    def fts_upsert(
+        self,
+        connection,
+        *,
+        entity: str,
+        entity_id: str,
+        kind: str,
+        project: str | None,
+        status: str | None,
+        title: str,
+        body: str,
+    ) -> None:
+
+        if not self.fts:
+            return
+
+        self.fts_delete(connection, entity, entity_id)
+        connection.execute(
+            """
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity,
+                entity_id,
+                kind,
+                project,
+                status,
+                title or "",
+                body or "",
+            ),
+        )
+
+    def rebuild_fts(self, connection=None) -> int:
+
+        if connection is None:
+
+            with self.connection() as own:
+                return self.rebuild_fts(own)
+
+        if not self.fts:
+            return 0
+
+        connection.execute("DELETE FROM memory_fts")
+
+        script = (
+            """
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            )
+            SELECT 'turn', turn_id, 'chat', NULL, NULL,
+                   question, answer
+            FROM turns;
+
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            )
+            SELECT 'skill', id, kind, NULL, status, title, content
+            FROM skills;
+
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            )
+            SELECT 'summary', CAST(id AS TEXT), 'summary', project,
+                   NULL, 'Summary ' || session_id, body
+            FROM summaries;
+
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            )
+            SELECT 'project', id, 'project', id, status, title, summary
+            FROM projects;
+
+            INSERT INTO memory_fts(
+                entity, entity_id, kind, project, status, title, body
+            )
+            SELECT 'decision', id, 'decision', project_id, status,
+                   title, decision || '\n' || rationale
+            FROM decisions;
+            """
+        )
+        connection.executescript(script)
+
+        return connection.execute(
+            "SELECT COUNT(*) FROM memory_fts"
+        ).fetchone()[0]
 
     def backup(self, target: str | Path) -> Path:
         """Backup consistente con VACUUM INTO."""

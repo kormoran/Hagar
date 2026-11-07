@@ -108,6 +108,8 @@ descrizione.
 - [ ] persistenza/orphan retention (solo se necessaria);
 - [x] progetti e decisioni nello stesso database SQLite;
 - [x] export Markdown dal database (`/memory export`);
+- [x] import Markdown nel database (`/memory import`);
+- [x] FTS5 nel database primario con ranking e snippet;
 - [x] timeout a parete di 5 minuti per subagente;
 - [x] policy del figlio strettamente più restrittiva del padre;
 - [x] `agent_id` negli eventi di padre, figli e registry;

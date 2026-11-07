@@ -100,6 +100,8 @@ riferimento al commit quando utile.
   database; backend Markdown solo legacy.
 - Export Markdown del database con `/memory export <path> [--force]`:
   chat, skill, summary, progetti e decisioni, scrittura atomica.
+- Import Markdown con `/memory import <path> [--force]`; FTS5 nel
+  database primario con `bm25`/`snippet` e fallback `LIKE`.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -245,7 +247,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 817 test superati, 2 skip su Windows; 819 superati, 0 skip su Debian
+- 820 test superati, 2 skip su Windows; 822 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

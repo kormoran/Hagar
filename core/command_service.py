@@ -8,8 +8,8 @@ from typing import Any
 from core.audit import read_entries
 from core.permissions import capability_names
 from core.service import HarnessService
-from memory.export import MarkdownExportError
 from memory.export import MarkdownExporter
+from memory.import_markdown import MarkdownImporter
 from memory.projects import ProjectError
 
 
@@ -730,6 +730,7 @@ class CommandService:
                     "  /memory stats",
                     "  /memory backup <path>",
                     "  /memory export <path> [--force]",
+                    "  /memory import <path> [--force]",
                     "  /memory confirm <slug>",
                     "  /memory archive <slug>",
                     "  /memory archive search <testo>",
@@ -1001,6 +1002,72 @@ class CommandService:
                 lines=[
                     f"Export Markdown: {result['files']} file",
                     f"Destinazione: {result['root']}",
+                ],
+                data=result,
+            )
+
+        if command == "import":
+
+            arguments = arguments[1:]
+            replace = "--force" in arguments
+            path_parts = [
+                item for item in arguments
+                if item != "--force"
+            ]
+            path = " ".join(path_parts).strip()
+
+            if not path:
+                return CommandResult(
+                    command="/memory import",
+                    ok=False,
+                    error="missing path",
+                    lines=[
+                        "Uso: /memory import <path> [--force]"
+                    ],
+                )
+
+            database = getattr(memory, "database", None)
+
+            if database is None:
+                return CommandResult(
+                    command="/memory import",
+                    ok=False,
+                    error="import only for sqlite backend",
+                    lines=[
+                        "L'import è disponibile solo con backend SQLite."
+                    ],
+                )
+
+            try:
+
+                result = MarkdownImporter(
+                    database,
+                    path,
+                    replace=replace,
+                ).run()
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/memory import",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore import: {exc}"],
+                )
+
+            return CommandResult(
+                command="/memory import",
+                lines=[
+                    f"Import Markdown: {result['source']}",
+                    (
+                        f"chat={result['sessions']} "
+                        f"turni={result['turns']} "
+                        f"skill={result['skills']} "
+                        f"summary={result['summaries']} "
+                        f"progetti={result['projects']} "
+                        f"decisioni={result['decisions']} "
+                        f"skipped={result['skipped']}"
+                    ),
                 ],
                 data=result,
             )
