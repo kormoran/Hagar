@@ -104,6 +104,7 @@ summary e skill restano disponibili.
 | `/memory reindex` | ottimizza/ricostruisce gli indici SQLite |
 | `/memory stats` | stato e conteggi del database |
 | `/memory backup <path>` | copia consistente del database |
+| `/memory export <path> [--force]` | esporta chat, skill, summary e progetti in Markdown |
 | `/memory review` | revisione interattiva delle candidate |
 | `/memory confirm <slug>` | conferma una skill |
 | `/memory archive <slug>` | archivia una skill |

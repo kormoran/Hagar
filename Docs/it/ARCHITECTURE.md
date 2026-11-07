@@ -819,6 +819,12 @@ servono un contratto provider audio-native diverso, formati/decoder e una
 scelta esplicita tra ASR e comprensione audio; è in roadmap senza
 timeline.
 
+`memory/export.py` esporta il database SQLite in Markdown:
+`Hagar/chat/`, `Hagar/skills/`, `Hagar/summaries/`,
+`Hagar/projects/<id>/index.md` e `decisions/`. La scrittura è atomica
+(temp + `os.replace`) e il comando rifiuta una destinazione non vuota
+senza `--force`.
+
 ## 3.11.4 Token usage (`core/usage.py`)
 
 `TokenUsage` normalizza input, output, cache e reasoning. Funzioni
@@ -1011,7 +1017,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 814 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 817 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

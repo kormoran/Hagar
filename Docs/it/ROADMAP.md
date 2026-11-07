@@ -107,7 +107,7 @@ descrizione.
 - [x] audit `artifact.discarded` per artifact non esportati;
 - [ ] persistenza/orphan retention (solo se necessaria);
 - [x] progetti e decisioni nello stesso database SQLite;
-- [ ] export Markdown opzionale dal database;
+- [x] export Markdown dal database (`/memory export`);
 - [x] timeout a parete di 5 minuti per subagente;
 - [x] policy del figlio strettamente più restrittiva del padre;
 - [x] `agent_id` negli eventi di padre, figli e registry;

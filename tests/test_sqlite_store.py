@@ -133,3 +133,11 @@ def test_memory_commands_list_sessions_and_backup(tmp_path):
     )
     assert backup.ok is True
     assert (tmp_path / "backup.db").exists()
+
+    exported = commands.handle(
+        f"/memory export {tmp_path / 'export'}"
+    )
+    assert exported.ok is True
+    assert (
+        tmp_path / "export" / "Hagar" / "chat"
+    ).is_dir()

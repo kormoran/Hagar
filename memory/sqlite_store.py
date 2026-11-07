@@ -235,12 +235,44 @@ class SqliteMemoryStore:
 
         return Path(f"sqlite:summary/{summary_id}")
 
+    def list_summaries(
+        self,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+
+        with self.database.connection() as connection:
+
+            rows = connection.execute(
+                """
+                SELECT id, session_id, project, body, created_at,
+                       transcript_sha256, archived_transcripts
+                FROM summaries
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (max(1, int(limit)),),
+            ).fetchall()
+
+        return [
+            {
+                "id": row["id"],
+                "session_id": row["session_id"],
+                "project": row["project"],
+                "body": row["body"],
+                "created_at": row["created_at"],
+                "transcript_sha256": row["transcript_sha256"],
+                "archived_transcripts": json.loads(
+                    row["archived_transcripts"] or "[]"
+                ),
+            }
+            for row in rows
+        ]
+
     def latest_summary(
         self,
         project: str | None = None,
         free_only: bool = False,
     ) -> str | None:
-
         clauses = []
         values: list[Any] = []
 

@@ -98,6 +98,8 @@ riferimento al commit quando utile.
   `memory/database.py`, WAL e backup; comandi `/memory sessions`,
   `/memory chat` e `/memory backup`. Progetti e decisioni nello stesso
   database; backend Markdown solo legacy.
+- Export Markdown del database con `/memory export <path> [--force]`:
+  chat, skill, summary, progetti e decisioni, scrittura atomica.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -243,7 +245,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 814 test superati, 2 skip su Windows; 816 superati, 0 skip su Debian
+- 817 test superati, 2 skip su Windows; 819 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

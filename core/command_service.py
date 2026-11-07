@@ -8,6 +8,8 @@ from typing import Any
 from core.audit import read_entries
 from core.permissions import capability_names
 from core.service import HarnessService
+from memory.export import MarkdownExportError
+from memory.export import MarkdownExporter
 from memory.projects import ProjectError
 
 
@@ -727,6 +729,7 @@ class CommandService:
                     "  /memory reindex",
                     "  /memory stats",
                     "  /memory backup <path>",
+                    "  /memory export <path> [--force]",
                     "  /memory confirm <slug>",
                     "  /memory archive <slug>",
                     "  /memory archive search <testo>",
@@ -954,6 +957,52 @@ class CommandService:
                 command="/memory backup",
                 lines=[f"Backup: {target}"],
                 data={"path": str(target)},
+            )
+
+        if command == "export":
+
+            arguments = arguments[1:]
+            force = "--force" in arguments
+            path_parts = [
+                item for item in arguments
+                if item != "--force"
+            ]
+            path = " ".join(path_parts).strip()
+
+            if not path:
+                return CommandResult(
+                    command="/memory export",
+                    ok=False,
+                    error="missing path",
+                    lines=[
+                        "Uso: /memory export <path> [--force]"
+                    ],
+                )
+
+            try:
+
+                result = MarkdownExporter(
+                    memory,
+                    getattr(self.harness, "project_store", None),
+                    path,
+                ).export(force=force)
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/memory export",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore export: {exc}"],
+                )
+
+            return CommandResult(
+                command="/memory export",
+                lines=[
+                    f"Export Markdown: {result['files']} file",
+                    f"Destinazione: {result['root']}",
+                ],
+                data=result,
             )
 
         if command == "stats":
