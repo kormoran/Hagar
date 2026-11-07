@@ -29,6 +29,9 @@ from typing import Callable
 
 from core.agent import Agent
 from core.agent import AgentCancelled
+from core.agent_data import ArtifactStore
+from core.agent_data import Mailbox
+from core.agent_data import register_child_data_tools
 from core.filesystem import DirectoryPermissions
 from core.filesystem import FileSystemSandbox
 from core.filesystem_tools import FileSystemToolProvider
@@ -42,6 +45,7 @@ READ_ONLY_CAPABILITIES = (
     Capability.FILESYSTEM_READ
     | Capability.MEMORY_READ
     | Capability.COMPUTE
+    | Capability.AGENT_DATA
 )
 
 EXCLUDED_TOOLS = frozenset({
@@ -74,6 +78,7 @@ class AgentResult:
     error: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     duration_ms: float = 0.0
+    artifacts: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
 
@@ -84,6 +89,7 @@ class AgentResult:
             "error": self.error,
             "usage": self.usage,
             "duration_ms": self.duration_ms,
+            "artifacts": list(self.artifacts),
         }
 
 
@@ -132,6 +138,8 @@ class SubagentManager:
         self.max_concurrent = max(1, int(max_concurrent))
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
+        self.artifacts = ArtifactStore()
+        self.mailbox = Mailbox()
 
     # ==================================================
     # Stato
@@ -253,6 +261,7 @@ class SubagentManager:
     def _child_registry(
         self,
         filesystem: FileSystemSandbox,
+        agent_id: str,
     ) -> ToolRegistry:
 
         registry = ToolRegistry(
@@ -280,6 +289,12 @@ class SubagentManager:
             if tool.name.startswith("agent."):
                 continue
 
+            if tool.name.startswith("artifact."):
+                continue
+
+            if tool.name.startswith("mailbox."):
+                continue
+
             if tool.name in EXCLUDED_TOOLS:
                 continue
 
@@ -290,6 +305,15 @@ class SubagentManager:
                 continue
 
             registry.register(tool)
+
+        register_child_data_tools(
+            registry,
+            self.artifacts,
+            self.mailbox,
+            agent_id=agent_id,
+            parent_id=self.parent_id or "parent",
+            filesystem=filesystem,
+        )
 
         return registry
 
@@ -396,7 +420,8 @@ class SubagentManager:
             child_agent = Agent(
                 llm=llm,
                 tool_registry=self._child_registry(
-                    self._child_filesystem(workspace)
+                    self._child_filesystem(workspace),
+                    job.agent_id,
                 ),
                 vault=None,
                 audit=self.audit,
@@ -454,6 +479,11 @@ class SubagentManager:
                 answer=answer,
                 usage=usage.snapshot(),
                 duration_ms=duration_ms,
+                artifacts=tuple(
+                    ref.artifact_id
+                    for ref in self.artifacts.list()
+                    if ref.owner == job.agent_id
+                ),
             )
 
         except AgentCancelled:
@@ -597,3 +627,6 @@ class SubagentManager:
 
         with self._lock:
             self._jobs.clear()
+
+        self.artifacts.reset()
+        self.mailbox.clear()

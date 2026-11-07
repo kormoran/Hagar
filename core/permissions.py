@@ -39,6 +39,7 @@ class Capability(IntFlag):
     MCP_CALL = auto()
     COMPUTE = auto()
     AGENT_SPAWN = auto()
+    AGENT_DATA = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -138,7 +139,10 @@ def capabilities_from_permissions(
     capabilities |= Capability.MCP_CALL
 
     if agents:
-        capabilities |= Capability.AGENT_SPAWN
+        capabilities |= (
+            Capability.AGENT_SPAWN
+            | Capability.AGENT_DATA
+        )
 
     return capabilities
 

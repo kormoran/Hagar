@@ -3,7 +3,8 @@
 **Stato:** implementato
 **Data:** 2026-11-07  
 **Tool:** `agent.spawn`, `agent.status`, `agent.wait`, `agent.result`,
-`agent.cancel`, `agent.run` (compatibilità sincrona)
+`agent.cancel`, `agent.run` (compatibilità sincrona), `artifact.*`,
+`mailbox.*`
 
 ## 1. Cosa fanno
 
@@ -31,7 +32,7 @@ Ogni figlio:
 - usa lo stesso modello locale del padre, ma un client LLM separato;
 - ha un registry separato;
 - vede solo i tool con capability `FILESYSTEM_READ`,
-  `MEMORY_READ` e `COMPUTE`;
+  `MEMORY_READ` e `COMPUTE`, più `AGENT_DATA`;
 - non può usare `agent.*` né `filesystem.chdir`;
 - legge solo il proprio workspace;
 - non scrive nella memoria;
@@ -74,19 +75,56 @@ Regole:
 Il padre scrive solo nel proprio workspace. Il workspace del figlio è
 fuori dalle radici del padre, quindi non è raggiungibile dai suoi tool.
 
+## 2.1 Outbox, artifact e mailbox
+
+Il figlio non scrive nel workspace. Per produrre dati usa l'outbox:
+
+```text
+artifact.put(text, kind?, mime_type?)       -> artifact_id
+artifact.put_file(path, mime_type?)          -> artifact_id
+mailbox.send(text, artifacts?)               -> message
+```
+
+`artifact.put_file` legge un file dal workspace read-only del figlio e
+lo copia nello store gestito da Hagar.
+
+Il padre legge con:
+
+```text
+artifact.list()
+artifact.read(artifact_id, offset?, length?)
+mailbox.inbox(cursor?, limit?)
+mailbox.read(message_id)
+mailbox.ack(message_id)
+```
+
+Limiti iniziali:
+
+| Elemento | Limite |
+|---|---|
+| artifact singolo | 50 MB |
+| totale artifact per turno | 256 MB |
+| artifact per turno | 200 |
+| lettura per chiamata | 256 KB |
+| testo di un messaggio | 64 KB |
+| messaggi per mailbox | 100 |
+
+Gli artifact sono file temporanei fuori dal Vault, con hash SHA-256 e
+metadati. La mailbox contiene solo testo e riferimenti `artifact_id`.
+Alla fine del turno store e mailbox vengono svuotati.
+
 ## 3. Limiti dell’implementazione
 
 - massimo **2** subagenti attivi (configurabile nel manager come
   `max_concurrent`);
 - solo modelli locali;
 - nessun annidamento: il registry del figlio esclude `agent.*`;
-- nessun export di file prodotti dal figlio: il workspace viene
-  distrutto;
 - nessun budget token/tempo oltre a `max_tool_calls`;
 - nessun timeout a parete sul singolo turno del figlio;
 - nessuna GUI dedicata;
 - nessuna scrittura di memoria;
 - conferme negate;
+- artifact e mailbox sono effimeri: spariscono a fine turno;
 - gli eventi interni del figlio (`turn.*`, `tool.*`) non hanno ancora
   un campo `agent` nell’audit.
 
@@ -105,6 +143,7 @@ Alla fine del turno del padre:
 | Tool registry | completo | filtrato read-only |
 | Filesystem | workspace padre | workspace privato in sola lettura |
 | Memoria | `MemoryStore` | `memory=None`, nessuna scrittura |
+| Artifact/mailbox | lettura | outbox del figlio |
 | Conferme | provider normale | `DenyAllConfirmation` |
 | Usage | ledger padre | ledger separato |
 | Audit | condiviso, con lock | eventi `agent.*` |
@@ -124,7 +163,12 @@ sottoinsieme di:
 FILESYSTEM_READ
 MEMORY_READ
 COMPUTE
+AGENT_DATA
 ```
+
+Il figlio riceve `artifact.put`, `artifact.put_file` e `mailbox.send`.
+Non riceve `artifact.read`, `artifact.list`, `mailbox.inbox`,
+`mailbox.read` o `mailbox.ack`: quelli sono del padre.
 
 Sono esclusi esplicitamente:
 

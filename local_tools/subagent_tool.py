@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from core.agent_data import register_parent_data_tools
 from core.permissions import Capability
 from core.subagents import AgentSpec
 from core.subagents import SubagentBusy
@@ -182,6 +183,13 @@ class SubagentToolProvider:
                 ],
                 handler=self.run,
             )
+        )
+
+        register_parent_data_tools(
+            registry,
+            self.manager.artifacts,
+            self.manager.mailbox,
+            self.manager.parent_id or "parent",
         )
 
     @staticmethod

@@ -436,7 +436,7 @@ Sono il **tetto di sistema**. Default: `read=true`, gli altri `false`.
 | `write` | filesystem write/create/delete, memory write |
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
-| `agents` | `AGENT_SPAWN`, per `agent.*` |
+| `agents` | `AGENT_SPAWN` e `AGENT_DATA`, per `agent.*`/`artifact.*`/`mailbox.*` |
 
 `COMPUTE` e `MCP_CALL` sono sempre nel tetto, ma la policy può negarli.
 Se il tetto non concede una capability, la policy non può concederla.

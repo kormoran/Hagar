@@ -59,6 +59,13 @@ subjects:
         effect: allow
         tools: ["agent.*"]
 
+      # Scambio dati padre/figli: artifact e mailbox interni.
+      - capabilities: [AGENT_DATA]
+        effect: allow
+        tools:
+          - "artifact.*"
+          - "mailbox.*"
+
       # Rete: chiedi sempre (feed e future API).
       - capabilities: [NETWORK]
         effect: ask

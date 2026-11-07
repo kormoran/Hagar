@@ -60,6 +60,11 @@ EXPECTED_TOOLS = {
     "agent.wait",
     "agent.result",
     "agent.cancel",
+    "artifact.read",
+    "artifact.list",
+    "mailbox.inbox",
+    "mailbox.read",
+    "mailbox.ack",
 }
 
 DEFAULT_POLICY = {

@@ -26,13 +26,14 @@ class Audit:
 
 
 class FakeLLM:
-    def __init__(self, release=None, read_path=None):
+    def __init__(self, release=None, read_path=None, outbox=None):
         self.registry = None
         self.prompts = []
         self.usage_sink = None
         self.release = release
         self.read_path = read_path
         self.read_output = None
+        self.outbox = outbox
 
     def request_tool_call(self, messages, registry):
         self.registry = registry
@@ -42,6 +43,19 @@ class FakeLLM:
             self.read_output = registry.execute(
                 "filesystem.read_file",
                 path=self.read_path,
+            )
+
+        if self.outbox is not None:
+            artifact = registry.execute(
+                "artifact.put",
+                text=self.outbox,
+            )
+            import json
+            ref = json.loads(artifact)
+            registry.execute(
+                "mailbox.send",
+                text="risultato",
+                artifacts=[ref["artifact_id"]],
             )
 
         return ToolCall(tool=None, arguments={})
@@ -125,6 +139,10 @@ def test_subagent_runs_with_read_only_tools():
     assert "demo.read" in llm.registry.tool_names()
     assert "demo.write" not in llm.registry.tool_names()
     assert "agent.run" not in llm.registry.tool_names()
+    assert "artifact.put" in llm.registry.tool_names()
+    assert "mailbox.send" in llm.registry.tool_names()
+    assert "artifact.read" not in llm.registry.tool_names()
+    assert "mailbox.inbox" not in llm.registry.tool_names()
     assert "Contesto fornito dal padre" in str(llm.prompts[0]["content"])
     assert audit.events[0][0] == "agent.spawned"
     assert audit.events[0][1]["reason"] == "test"
@@ -253,4 +271,32 @@ def test_two_subagents_can_run_concurrently():
 
     assert manager.wait(first, timeout=3) is not None
     assert manager.wait(second, timeout=3) is not None
+    manager.finish_turn()
+
+
+def test_subagent_outbox_and_mailbox():
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        Audit(),
+        parent_id="parent",
+        llm_factory=lambda model, audit: FakeLLM(
+            outbox="contenuto outbox"
+        ),
+    )
+
+    result = manager.run(
+        AgentSpec(task="produci", reason="test")
+    )
+
+    assert result.status == "completed"
+    assert len(result.artifacts) == 1
+
+    messages = manager.mailbox.inbox("parent")
+    assert len(messages) == 1
+    assert messages[0].artifacts == result.artifacts
+
+    artifact = manager.artifacts.read(result.artifacts[0])
+    assert artifact["text"] == "contenuto outbox"
+
     manager.finish_turn()

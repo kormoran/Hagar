@@ -939,7 +939,15 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
 - stesso modello locale ma client LLM separato;
 - workspace temporaneo privato per ogni figlio;
 - input copiati dal workspace del padre;
-- registry filtrato a `FILESYSTEM_READ`, `MEMORY_READ` e `COMPUTE`;
+- outbox `artifact.put`/`artifact.put_file` e `mailbox.send` per il
+  figlio;
+- artifact store temporaneo (max 50 MB per artifact, 256 MB per turno)
+  e mailbox in memoria (max 64 KB per messaggio);
+- lettura bounded del padre con `artifact.read`, `artifact.list`,
+  `mailbox.inbox/read/ack`;
+- capability `AGENT_DATA`;
+- registry filtrato a `FILESYSTEM_READ`, `MEMORY_READ`, `COMPUTE` e
+  `AGENT_DATA`;
 - esclusione di `filesystem.chdir` e `agent.*`;
 - nessuna scrittura di memoria;
 - conferme negate con `DenyAllConfirmation`;
@@ -970,7 +978,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 788 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 793 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
