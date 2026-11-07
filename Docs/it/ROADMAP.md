@@ -1,10 +1,135 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.2.0 (in sviluppo)
-Ultimo aggiornamento: 2026-11-03
+Versione corrente: 0.3.0 pubblicata
+Ultimo aggiornamento: 2026-11-07
 
 Le decisioni prese sono indicate come tali; i punti ancora aperti sono
-elencati alla fine di ogni area.
+elencati alla fine di ogni area. Le sezioni 1–9 sono lo storico fino
+alla 0.3.0; il piano operativo corrente è la sezione 0.
+
+---
+
+# 0. Piano corrente (post-0.3.0)
+
+## 0.1 Stato
+
+Pubblicato:
+
+- release GitHub `v0.3.0`;
+- CI Linux/macOS/Windows con Python 3.11, 3.12 e 3.13;
+- action aggiornate a Node 24;
+- documentazione italiana più traduzioni in inglese, spagnolo, cinese,
+  russo, portoghese e arabo;
+- backend `lmstudio`, `openai`/`chatgpt` e `model.timeout`.
+
+Completato dopo la release, non ancora rilasciato:
+
+- `HarnessService`: turni, stato, progetti, eventi e fine sessione senza
+  `input()`/`stdout`;
+- `CommandService`: `/help`, `/tools`, `/status`, `/mcp`, `/audit`,
+  `/project`, `/memory` con `CommandResult` strutturato;
+- event bridge `Agent`/`ToolRegistry` → `tool.call`, `tool.result`,
+  `permission.*`;
+- GUI web locale `hagar web` con SSE, chat, progetti, stato e conferme
+  ASK modali;
+- `QueueConfirmationProvider` con timeout e risoluzione da GUI;
+- `core/usage.py`: parsing token per OpenAI/LM Studio/DeepSeek, Claude,
+  Gemini e Ollama; `UsageLedger` per sessione;
+- sidebar GUI con token input/output/totale aggiornati via
+  `usage.updated`.
+
+## 0.2 Ordine delle prossime release
+
+| Release | Obiettivo | Dipendenze |
+|---|---|---|
+| **0.4.0** | Indice SQLite delle memorie | nessuna |
+| **0.4.x** | GUI: stop turno, cronologia, vision | 0.4.0 |
+| **0.5.0** | Subagenti | usage + policy per agente |
+| **0.6.0** | Broker LLM | subagenti + model registry |
+| **0.7.0** | Tool SQL read-only | policy + config database |
+
+L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
+limiti; niente broker senza subagenti e model registry.**
+
+## 0.3 0.4.0 — Indice SQLite delle memorie
+
+Decisione: **Markdown resta la fonte di verità**. SQLite è un indice
+derivato e ricostruibile.
+
+- posizione: dati locali dell’app, non dentro il Vault sincronizzato;
+- schema: note, skill, decisioni, sessioni, tag, FTS5;
+- sync incrementale per path/hash/mtime;
+- `rebuild()` atomico, indice cancellabile e ricostruibile;
+- fallback alla ricerca lessicale se FTS5 non è disponibile;
+- tool `memory.search` con filtri progetto/kind/status;
+- `/memory reindex` e `/memory stats`;
+- nessun path reale esposto al modello.
+
+Criterio di uscita: cancellare il DB non perde memoria; ricostruirlo
+restituisce gli stessi risultati.
+
+## 0.4 0.4.x — GUI
+
+- pulsante **Stop** del turno;
+- cronologia chat visibile dopo un refresh;
+- vision: upload immagine nel composer, con adapter per provider;
+- lettura sola delle memorie dal browser;
+- eventuale comando `/usage` lato CLI.
+
+La vision non deve entrare nella memoria come base64: solo hash e
+descrizione.
+
+## 0.5 0.5.0 — Subagenti
+
+- `AgentSpec` con modello, tool, capability, mount, scope memoria,
+  budget token/costo/tempo e profondità;
+- `AgentManager` con spawn/status/wait/cancel/result;
+- thread prima, processi solo se serve isolamento reale;
+- policy per agente: il figlio non può superare il tetto del padre;
+- sandbox e registry filtrati per agente;
+- audit con `agent_id`/`parent_id`;
+- usage separato per agente;
+- conferme ASK non interattive: deny salvo approvazione del padre o
+  della GUI.
+
+## 0.6 0.6.0 — Broker LLM
+
+- `ModelRegistry` con context window, tool calling, prezzi, latenza e
+  località;
+- `TaskProfile` con tool richiesti, sensibilità dati, budget e contesto;
+- routing a regole/punteggio, non “un LLM sceglie il modello”;
+- proposta di `AgentSpec` validata dall’host;
+- il broker non concede mai permessi: può solo proporre un sottoinsieme;
+- override umano e audit `broker.decision`.
+
+## 0.7 0.7.0 — Tool SQL
+
+- solo lettura nella prima versione;
+- SQLite `mode=ro`, `PRAGMA query_only`, una sola istruzione;
+- niente `ATTACH`, `PRAGMA` di scrittura o `load_extension`;
+- timeout, limite righe/byte e audit della query;
+- alias di database configurati, mai path arbitrari;
+- capability `DATABASE_READ`;
+- scrittura e database di rete solo in una fase successiva, con
+  `DATABASE_WRITE` e `NETWORK`.
+
+## 0.8 Punti aperti
+
+- release workflow idempotente se la release esiste già;
+- PyPI: rimandato, non blocca la 0.4;
+- MCP OAuth Atlassian: Basic funziona, il flusso OAuth resta da
+  validare;
+- test live MCP/OAuth e provider remoti;
+- manutenzione delle traduzioni: si rigenerano solo a release, non a
+  ogni commit;
+- concorrenza e scritture atomiche del Vault: da valutare prima di
+  subagenti con memoria condivisa.
+
+## 0.9 Documentazione
+
+`Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory
+`Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` e `Docs/ar` si
+rigenerano solo quando si prepara una release.
 
 ---
 
