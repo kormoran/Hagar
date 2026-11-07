@@ -244,6 +244,19 @@ class ConsoleCommands:
 
             self.output("Memoria: disattivata")
 
+        elif hasattr(memory, "stats"):
+
+            stats = memory.stats()
+            self.output(
+                f"Memoria: SQLite {stats.get('path')}"
+            )
+            self.output(
+                f"  sessioni={stats.get('sessions', 0)}; "
+                f"turni={stats.get('turns', 0)}; "
+                f"skill={stats.get('skills', 0)}; "
+                f"summary={stats.get('summaries', 0)}"
+            )
+
         else:
 
             counts = {}

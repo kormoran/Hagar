@@ -722,8 +722,11 @@ class CommandService:
                     "  /memory list [status]",
                     "  /memory show <slug>",
                     "  /memory search <testo>",
+                    "  /memory sessions",
+                    "  /memory chat <session>",
                     "  /memory reindex",
                     "  /memory stats",
+                    "  /memory backup <path>",
                     "  /memory confirm <slug>",
                     "  /memory archive <slug>",
                     "  /memory archive search <testo>",
@@ -857,9 +860,100 @@ class CommandService:
             return CommandResult(
                 command="/memory reindex",
                 lines=[
-                    f"Indice ricostruito: {changed} documenti."
+                    (
+                        "Indici SQLite ottimizzati."
+                        if hasattr(memory, "database")
+                        else f"Indice ricostruito: {changed} documenti."
+                    )
                 ],
                 data={"changed": changed},
+            )
+
+        if command == "sessions":
+
+            sessions = memory.list_sessions(limit=50)
+            lines = [f"Chat: {len(sessions)}"]
+
+            for session in sessions:
+                lines.append(
+                    f"  {session['id']}  {session['title']} "
+                    f"({session['turns']} turni"
+                    + (", archiviata" if session["archived"] else "")
+                    + ")"
+                )
+
+            return CommandResult(
+                command="/memory sessions",
+                lines=lines,
+                data={"sessions": sessions},
+            )
+
+        if command == "chat":
+
+            if len(arguments) < 2:
+                return CommandResult(
+                    command="/memory chat",
+                    ok=False,
+                    error="missing session id",
+                    lines=["Uso: /memory chat <session>"],
+                )
+
+            session = arguments[1]
+            turns = memory.read_session(session)
+
+            if not turns:
+                return CommandResult(
+                    command="/memory chat",
+                    ok=False,
+                    error="chat not found",
+                    lines=[f"Chat non trovata: {session}"],
+                )
+
+            lines = [f"Chat {session}: {len(turns)} turni"]
+
+            for turn in turns:
+                lines.append(
+                    f"  [{turn['timestamp']}] {turn['turn']}"
+                )
+                lines.append(
+                    f"    U: {turn['question'][:300]}"
+                )
+                lines.append(
+                    f"    H: {turn['answer'][:300]}"
+                )
+
+            return CommandResult(
+                command="/memory chat",
+                lines=lines,
+                data={"session": session, "turns": turns},
+            )
+
+        if command == "backup":
+
+            if len(arguments) < 2:
+                return CommandResult(
+                    command="/memory backup",
+                    ok=False,
+                    error="missing path",
+                    lines=["Uso: /memory backup <path>"],
+                )
+
+            database = getattr(memory, "database", None)
+
+            if database is None:
+                return CommandResult(
+                    command="/memory backup",
+                    ok=False,
+                    error="backup only for sqlite backend",
+                    lines=["Il backup è disponibile solo con backend SQLite."],
+                )
+
+            target = database.backup(arguments[1])
+
+            return CommandResult(
+                command="/memory backup",
+                lines=[f"Backup: {target}"],
+                data={"path": str(target)},
             )
 
         if command == "stats":
@@ -877,11 +971,24 @@ class CommandService:
                     lines=[f"Errore indice: {exc}"],
                 )
 
-            lines = [
-                f"Indice: {stats['documents']} documenti",
-                f"File: {stats['path']}",
-                f"FTS5: {'sì' if stats['fts'] else 'no'}",
-            ]
+            if "documents" in stats:
+
+                lines = [
+                    f"Indice: {stats['documents']} documenti",
+                    f"File: {stats['path']}",
+                    f"FTS5: {'sì' if stats.get('fts') else 'no'}",
+                ]
+
+            else:
+
+                lines = [
+                    f"Backend: {stats.get('backend', 'sqlite')}",
+                    f"File: {stats.get('path')}",
+                    f"Sessioni: {stats.get('sessions', 0)}",
+                    f"Turni: {stats.get('turns', 0)}",
+                    f"Skill: {stats.get('skills', 0)}",
+                    f"Summary: {stats.get('summaries', 0)}",
+                ]
 
             return CommandResult(
                 command="/memory stats",

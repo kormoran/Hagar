@@ -184,7 +184,7 @@ class Harness:
     audit: AuditLog
     policy: PolicySet
     policy_error: str | None = None
-    memory: MemoryStore | None = None
+    memory: Any = None
     memory_error: str | None = None
     project_store: ProjectStore | None = None
     project_id: str | None = None
@@ -299,7 +299,7 @@ def build_harness(
 
     vault = Vault(config.vault.path)
 
-    memory: MemoryStore | None = None
+    memory: Any = None
     memory_error: str | None = None
     project_store: ProjectStore | None = None
     project_state: dict[str, str | None] = {"id": None}
@@ -308,31 +308,56 @@ def build_harness(
 
         try:
 
-            if not vault.exists():
+            if config.memory.backend == "sqlite":
 
-                raise MemoryError(
-                    f"Vault not found: {config.vault.path}"
+                from memory.sqlite_store import SqliteMemoryStore
+
+                memory = SqliteMemoryStore(
+                    session_id=audit.session_id,
+                    path=config.memory.database,
+                    context_turns=config.memory.context_turns,
+                    context_skills=config.memory.context_skills,
+                    max_skill_chars=config.memory.max_skill_chars,
+                    model=config.model.name,
+                )
+                memory.ensure()
+
+                audit.record(
+                    "memory.enabled",
+                    backend="sqlite",
+                    path=str(memory.database.path),
+                    context_turns=config.memory.context_turns,
+                    context_skills=config.memory.context_skills,
                 )
 
-            memory = MemoryStore(
-                vault,
-                session_id=audit.session_id,
-                subdir=config.memory.vault_subdir,
-                context_turns=config.memory.context_turns,
-                context_skills=config.memory.context_skills,
-                max_skill_chars=config.memory.max_skill_chars,
-                model=config.model.name,
-            )
+            else:
 
-            memory.ensure()
+                if not vault.exists():
 
-            audit.record(
-                "memory.enabled",
-                root=str(config.vault.path),
-                subdir=config.memory.vault_subdir,
-                context_turns=config.memory.context_turns,
-                context_skills=config.memory.context_skills,
-            )
+                    raise MemoryError(
+                        f"Vault not found: {config.vault.path}"
+                    )
+
+                memory = MemoryStore(
+                    vault,
+                    session_id=audit.session_id,
+                    subdir=config.memory.vault_subdir,
+                    context_turns=config.memory.context_turns,
+                    context_skills=config.memory.context_skills,
+                    max_skill_chars=config.memory.max_skill_chars,
+                    model=config.model.name,
+                )
+
+                memory.ensure()
+
+                audit.record(
+                    "memory.enabled",
+                    backend="markdown",
+                    root=str(config.vault.path),
+                    subdir=config.memory.vault_subdir,
+                    context_turns=config.memory.context_turns,
+                    context_skills=config.memory.context_skills,
+                )
 
         except Exception as exc:
 
@@ -342,11 +367,12 @@ def build_harness(
 
             audit.record(
                 "memory.disabled",
+                backend=config.memory.backend,
                 root=str(config.vault.path),
                 error=memory_error,
             )
 
-        if memory is not None:
+        if memory is not None and config.memory.backend == "markdown":
 
             try:
 
@@ -866,10 +892,19 @@ def _main(
 
     if harness.memory is not None:
 
+        stats = (
+            harness.memory.stats()
+            if hasattr(harness.memory, "stats")
+            else {
+                "path": str(config.vault.path),
+                "backend": "markdown",
+            }
+        )
         print(
             "Memory:",
-            config.vault.path,
-            f"(contesto {config.memory.context_turns} turni, "
+            stats.get("path"),
+            f"(backend {stats.get('backend', 'sqlite')}, "
+            f"contesto {config.memory.context_turns} turni, "
             f"{config.memory.context_skills} skill)",
         )
 

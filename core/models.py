@@ -113,13 +113,15 @@ class PolicyConfig:
 @dataclass(slots=True)
 class MemoryConfig:
     """
-    Memoria su vault Obsidian.
+    Memoria persistente.
 
-    ``enabled`` richiede che ``vault.path`` esista: in caso contrario la
-    memoria viene disattivata con un avviso, senza fermare il harness.
+    ``backend=sqlite`` usa un database locale come fonte di verità.
+    ``backend=markdown`` mantiene il vecchio Vault per compatibilità.
     """
 
     enabled: bool = True
+    backend: str = "sqlite"
+    database: str | None = None
     vault_subdir: str = "Hagar"
     context_turns: int = 10
     context_skills: int = 3

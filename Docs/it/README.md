@@ -119,7 +119,7 @@ hagar.yaml          Script di configurazione predefinito
 policy.yaml			Configurazione dei permessi per i tool (integrati ed MCP)
 core/               config, agent, audit log, registry, sandbox, service e web server
 llm/                LLM backends (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), client MCP
-memory/             accesso al vault e indice SQLite (memory/index.py)
+memory/             memoria SQLite (sqlite_store.py) e backend markdown legacy
 web/                HTML, CSS e JavaScript della GUI locale
 tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
@@ -206,22 +206,23 @@ non valido, ogni policy viene impostata su `DENY`, l'errore viene registrato nel
 
 ## 3.5 Memoria
 
-Il sistema mantiene una memoria episodica della conversazione all'interno del vault di Obsidian
-(`<vault>/Hagar/chat/`) e inserisce gli ultimi `memory.context_turns` in ogni prompt. Il modello può salvare memorie persistenti tramite
-`memory.create_skill` (archiviate come `candidate` con indicazione della provenienza),
-elencarle con `memory.list_skills` e consultare i passaggi precedenti
-tramite `memory.get_context`.
+La memoria è un database SQLite locale e rappresenta la fonte di verità:
+sessioni, turni, skill e summary. Il modello può salvare memorie con
+`memory.create_skill`, elencarle con `memory.list_skills` e consultare i
+passaggi precedenti con `memory.get_context`.
 
 ```yaml
 memory:
-enabled: true
-vault_subdir: Hagar
-context_turns: 10
-max_skill_chars: 4000
+  enabled: true
+  backend: sqlite
+  context_turns: 10
+  max_skill_chars: 4000
 ```
 
-Se il vault è assente o non accessibile in scrittura, la funzionalità di memoria viene disabilitata
-con la generazione di un avviso, mentre il sistema continua a funzionare. Le scritture in memoria passano attraverso il motore delle policy (`MEMORY_READ`/`MEMORY_WRITE`; per impostazione predefinita, le operazioni di scrittura richiedono una conferma). Si veda ARCHITECTURE §3.11 per la struttura del vault.
+Il database predefinito è `%LOCALAPPDATA%/Hagar/memory.db` (oppure
+`HAGAR_MEMORY_DB`). Il backend `markdown` resta solo per compatibilità.
+Le scritture passano dal motore delle policy. I comandi `/memory` di CLI
+permettono di ispezionare chat, skill e statistiche.
 ---
 
 # 4. Documentazione

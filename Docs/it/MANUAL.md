@@ -98,9 +98,12 @@ summary e skill restano disponibili.
 | `/memory` o `/memory help` o `/memory ?` | aiuto |
 | `/memory list [candidate\|confirmed\|archived]` | elenca le skill e i conteggi |
 | `/memory show <slug>` | mostra una skill |
-| `/memory search <testo>` | cerca nell'indice SQLite |
-| `/memory reindex` | ricostruisce l'indice dal Vault |
-| `/memory stats` | stato e conteggi dell'indice |
+| `/memory search <testo>` | cerca nelle memorie SQLite |
+| `/memory sessions` | elenca le chat registrate |
+| `/memory chat <session>` | mostra i turni di una chat |
+| `/memory reindex` | ottimizza/ricostruisce gli indici SQLite |
+| `/memory stats` | stato e conteggi del database |
+| `/memory backup <path>` | copia consistente del database |
 | `/memory review` | revisione interattiva delle candidate |
 | `/memory confirm <slug>` | conferma una skill |
 | `/memory archive <slug>` | archivia una skill |
@@ -112,10 +115,15 @@ esattamente `search` o `read` non è archiviabile con questo comando.
 
 Non esiste un comando di cancellazione: si archivia soltanto.
 
-L'indice SQLite è derivato dal Markdown: può essere cancellato e
-ricostruito con `/memory reindex`. Il database sta nei dati locali
-dell'app, non nel Vault sincronizzato. Se FTS5 non è disponibile, la
-ricerca usa un fallback lessicale.
+Il backend predefinito è SQLite (`memory.backend: sqlite`). Il database
+sta nei dati locali dell'app, non nel Vault:
+
+```text
+%LOCALAPPDATA%/Hagar/memory.db
+```
+
+oppure `HAGAR_MEMORY_DB`. Il backend `markdown` resta solo per
+compatibilità. Il Vault non è più aggiornato dal backend SQLite.
 
 ## 2.4 Cosa non è un comando
 

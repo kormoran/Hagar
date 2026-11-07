@@ -653,6 +653,28 @@ class ConfigLoader:
             "Hagar",
         )
 
+        memory_backend = memory_data.get(
+            "backend",
+            "sqlite",
+        )
+
+        if memory_backend not in {"sqlite", "markdown"}:
+
+            raise ConfigError(
+                "memory.backend must be 'sqlite' or 'markdown'"
+            )
+
+        memory_database = memory_data.get("database")
+
+        if memory_database is not None and (
+            not isinstance(memory_database, str)
+            or not memory_database.strip()
+        ):
+
+            raise ConfigError(
+                "memory.database must be a non-empty string"
+            )
+
         if not isinstance(memory_subdir, str) or not memory_subdir.strip():
 
             raise ConfigError(
@@ -676,6 +698,12 @@ class ConfigLoader:
 
         memory = MemoryConfig(
             enabled=memory_enabled,
+            backend=memory_backend,
+            database=(
+                memory_database.strip()
+                if memory_database is not None
+                else None
+            ),
             vault_subdir=memory_subdir.strip(),
             context_turns=_non_negative_int(
                 memory_data,

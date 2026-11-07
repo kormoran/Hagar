@@ -444,8 +444,19 @@ class HarnessService:
 
         else:
 
+            stats = (
+                memory.stats()
+                if hasattr(memory, "stats")
+                else {
+                    "backend": "markdown",
+                    "path": str(config.vault.path),
+                }
+            )
+
             memory_status = {
                 "enabled": True,
+                "backend": stats.get("backend", "sqlite"),
+                "path": stats.get("path"),
                 "vault": str(config.vault.path),
                 "subdir": config.memory.vault_subdir,
             }

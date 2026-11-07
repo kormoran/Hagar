@@ -561,6 +561,13 @@ risultato resta `DENY` (fail closed).
 
 ## 3.11 Memoria (`memory/store.py`, `memory/tools.py`)
 
+**Backend predefinito: SQLite.** `memory/sqlite_store.py` e
+`memory/database.py` usano un database locale (`%LOCALAPPDATA%/Hagar/memory.db`
+o `HAGAR_MEMORY_DB`) come fonte di verità per sessioni, turni, skill e
+summary. SQLite usa WAL, transazioni e `busy_timeout`; il backup è
+`VACUUM INTO`. Il backend `markdown` descritto sotto resta disponibile
+solo per compatibilità e non è più il default.
+
 **Episodica.** L'harness accoda ogni turno concluso in una nota per
 sessione:
 
@@ -646,6 +653,9 @@ conteggio delle decisioni attive. Ogni decisione ha stato
 `candidate`/`active`/`superseded`/`archived`, alternative, motivazione,
 provenance e `auto_saved`. Le decisioni non si riscrivono: una nuova
 decisione può sostituirne una vecchia.
+
+Con `memory.backend: sqlite` i progetti non sono ancora migrati e
+restano disattivati; il backend Markdown legacy continua a supportarli.
 
 All’avvio Hagar mostra i progetti attivi e “attività libera”:
 
@@ -1000,7 +1010,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 804 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 812 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

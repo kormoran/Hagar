@@ -21,6 +21,7 @@ from core.permissions import (
 from core.tool_call import ToolCall
 from core.tool_definition import ToolDefinition
 from llm.deepseek_client import DeepSeekClient
+from memory.sqlite_store import SqliteMemoryStore
 from memory.store import MemoryStore
 from memory.vault import Vault
 
@@ -146,6 +147,8 @@ def write_config(
 
     if memory is not None:
         data["memory"] = memory
+    else:
+        data["memory"] = {"backend": "markdown"}
 
     if policy is not None:
 
@@ -901,7 +904,41 @@ def test_memory_tools_work_end_to_end(tmp_path):
     ).exists()
 
 
+def test_sqlite_memory_is_default_without_vault(tmp_path):
+    database = tmp_path / "memory.db"
+    path, _ = write_config(
+        tmp_path,
+        memory={
+            "backend": "sqlite",
+            "database": str(database),
+        },
+        vault_exists=False,
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert isinstance(harness.memory, SqliteMemoryStore)
+    assert harness.memory_error is None
+    assert harness.memory.database.path == database
+    assert harness.project_store is None
+
+
+def test_memory_backend_defaults_to_sqlite(tmp_path, monkeypatch):
+    monkeypatch.setenv("HAGAR_MEMORY_DB", str(tmp_path / "memory.db"))
+    path, _ = write_config(
+        tmp_path,
+        memory={},
+        vault_exists=False,
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert isinstance(harness.memory, SqliteMemoryStore)
+    assert harness.memory_error is None
+
+
 def test_memory_disabled_by_config(tmp_path):
+
     path, _ = write_config(
         tmp_path,
         memory={"enabled": False},
