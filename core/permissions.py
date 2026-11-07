@@ -962,9 +962,16 @@ class ConsoleConfirmation:
     def __init__(
         self,
         stream=None,
+        broker=None,
     ) -> None:
 
         self.stream = stream or sys.stdout
+        self.broker = broker
+
+    def cancel(self) -> None:
+
+        if self.broker is not None:
+            self.broker.cancel()
 
     def confirm(
         self,
@@ -994,6 +1001,12 @@ class ConsoleConfirmation:
             print(
                 f"Motivo: {request.reason}",
                 file=self.stream,
+            )
+
+        if self.broker is not None:
+
+            return self.broker.confirm(
+                "lo faccio? (y/N, F5=allow, F8=deny) "
             )
 
         try:

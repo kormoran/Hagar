@@ -200,6 +200,10 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   continua a rispondere. Un timeout equivale a rifiuto. Le richieste dei
   subagenti mostrano `agent_id` e `parent_id`; il padre LLM non può
   approvarle. Il timeout del subagente è 180 secondi.
+- In CLI un solo thread possiede l'input. Quando è attiva una conferma,
+  il titolo del terminale chiede attenzione e sono accettati `F5` =
+  allow, `F8` = deny, oltre a `y/N`. Se il terminale non supporta i tasti
+  funzione, restano `y/N` e la GUI.
 - La GUI non è ancora multiutente e non espone modifiche dirette alla memoria.
 - Ctrl-C chiude il server e tenta la fine sessione.
 

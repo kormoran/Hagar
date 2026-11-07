@@ -513,8 +513,13 @@ Il modello è una matrice soggetto × oggetto:
 `ASK` non è una decisione: è una domanda a un umano. Il
 `ConfirmationProvider` la pone — `ConsoleConfirmation` chiede
 `lo faccio? (y/N)` con default N — e senza canale di conferma vale
-`DENY`. Una GUI potrà implementare lo stesso protocollo con un dialog
+`DENY`. Una GUI può implementare lo stesso protocollo con un dialog
 modale.
+
+In CLI `core/input_broker.py` è l'unico proprietario della console:
+distribuisce prompt, conferme e i tasti `F5`/`F8`, imposta il titolo del
+terminale come segnale di attenzione e ripristina la modalità normale alla
+fine. Su stdin non interattivo ricade su `input()`.
 
 ```yaml
 version: 1
@@ -1023,7 +1028,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 820 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 823 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

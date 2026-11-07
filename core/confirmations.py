@@ -222,6 +222,11 @@ class ParentBridgeConfirmation:
 
         if not done.wait(self.timeout):
 
+            cancel = getattr(self.provider, "cancel", None)
+
+            if callable(cancel):
+                cancel()
+
             if self.audit is not None:
 
                 self.audit.record(

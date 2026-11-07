@@ -102,6 +102,8 @@ riferimento al commit quando utile.
   chat, skill, summary, progetti e decisioni, scrittura atomica.
 - Import Markdown con `/memory import <path> [--force]`; FTS5 nel
   database primario con `bm25`/`snippet` e fallback `LIKE`.
+- CLI con `ConsoleInputBroker`: un solo lettore di console, titolo di
+  attenzione e conferme ASK con `F5` allow / `F8` deny; fallback `y/N`.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -247,7 +249,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 820 test superati, 2 skip su Windows; 822 superati, 0 skip su Debian
+- 823 test superati, 2 skip su Windows; 825 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

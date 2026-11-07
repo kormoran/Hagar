@@ -19,6 +19,7 @@ from core.filesystem import (
     FileSystemSandbox,
 )
 from core.filesystem_tools import FileSystemToolProvider
+from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
 from core.plugins import PluginContext
 from core.plugins import load_tool_plugins
@@ -847,10 +848,11 @@ def _main(
     try:
 
         config = _load_config(args)
+        broker = ConsoleInputBroker()
 
         harness = build_harness(
             config,
-            confirmation=ConsoleConfirmation(),
+            confirmation=ConsoleConfirmation(broker=broker),
         )
 
     except ConfigError as exc:
@@ -961,6 +963,7 @@ def _main(
             ),
             interactive=sys.stdin.isatty(),
             audit=harness.audit,
+            input_func=broker.read_line,
         )
 
         try:
@@ -999,16 +1002,19 @@ def _main(
             harness,
             project_cli,
             service,
+            broker=broker,
         )
 
     finally:
 
-        _finish_session(harness, service)
+        _finish_session(harness, service, broker)
 
         harness.audit.record(
             "harness.stop",
             reason="exit",
         )
+
+        broker.close()
 
 
 def _set_project(
@@ -1022,6 +1028,7 @@ def _set_project(
 def _finish_session(
     harness: Harness,
     service: HarnessService | None = None,
+    broker: ConsoleInputBroker | None = None,
 ) -> None:
 
     if service is None:
@@ -1029,6 +1036,11 @@ def _finish_session(
 
     service.finish_session(
         interactive=sys.stdin.isatty(),
+        input_func=(
+            broker.read_line
+            if broker is not None
+            else None
+        ),
     )
 
 
@@ -1036,15 +1048,23 @@ def _interactive_loop(
     harness: Harness,
     project_cli: ProjectCLI | None = None,
     service: HarnessService | None = None,
+    broker: ConsoleInputBroker | None = None,
 ) -> None:
 
     if service is None:
         service = HarnessService(harness)
 
+    if broker is None:
+        broker = ConsoleInputBroker()
+
+    if project_cli is not None:
+        project_cli.input_func = broker.read_line
+
     memory_cli = (
         MemoryCLI(
             harness.memory,
             harness.audit,
+            input_func=broker.read_line,
         )
         if harness.memory is not None
         else None
@@ -1059,7 +1079,7 @@ def _interactive_loop(
 
         try:
 
-            question = input("> ")
+            question = broker.read_line("> ")
 
         except (EOFError, KeyboardInterrupt):
 

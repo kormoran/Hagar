@@ -119,8 +119,7 @@ descrizione.
 - [ ] `audio.open`/`AudioInput`: il canale allegati è condiviso con le
   immagini, ma servono provider audio-nativi, formati e semantica ASR
   diversi; nessuna timeline;
-- [ ] conferme ASK via console quando il prompt è bloccato (la GUI è
-  già supportata).
+- [x] conferme ASK da console con input broker, F5/F8 e fallback GUI;
 
 ## 0.6 0.6.0 — Broker LLM
 
