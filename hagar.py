@@ -430,6 +430,7 @@ def build_harness(
             or DenyAllConfirmation()
         ),
         audit=audit,
+        agent_id=audit.session_id,
     )
 
     # ==========================================
@@ -622,6 +623,7 @@ def build_harness(
         context_project_memories=(
             config.memory.context_project_memories
         ),
+        agent_id=audit.session_id,
     )
 
     # ==========================================

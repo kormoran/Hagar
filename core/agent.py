@@ -21,6 +21,10 @@ class AgentCancelled(RuntimeError):
     """Il turno è stato interrotto dall'utente."""
 
 
+class AgentTimedOut(RuntimeError):
+    """Il turno ha superato la deadline a parete."""
+
+
 class Agent:
 
     def __init__(
@@ -36,6 +40,8 @@ class Agent:
         max_context_chars: int = 6000,
         context_project_memories: int = 10,
         event_sink: EventSink | None = None,
+        agent_id: str | None = None,
+        deadline: float | None = None,
     ) -> None:
 
         self.llm = llm
@@ -43,6 +49,8 @@ class Agent:
         self.vault = vault
 
         self.event_sink = event_sink
+        self.agent_id = agent_id
+        self.deadline = deadline
         self._cancel = threading.Event()
 
         self.max_tool_calls = (
@@ -76,11 +84,25 @@ class Agent:
     ) -> None:
 
         if not self._cancel.is_set():
+            if (
+                self.deadline is not None
+                and time.monotonic() > self.deadline
+            ):
+                self._record(
+                    "turn.timed_out",
+                    turn=turn,
+                    agent_id=self.agent_id,
+                )
+                raise AgentTimedOut(
+                    "wall-clock deadline exceeded"
+                )
+
             return
 
         self._record(
             "turn.cancelled",
             turn=turn,
+            agent_id=self.agent_id,
         )
 
         raise AgentCancelled("turn cancelled by user")
@@ -293,6 +315,8 @@ class Agent:
                         "la generazione della "
                         f"risposta finale: {exc}"
                     )
+
+                self._check_cancel(turn)
 
                 self._record(
                     "turn.answer",
@@ -905,6 +929,9 @@ class Agent:
 
         if self.audit is None:
             return
+
+        if self.agent_id:
+            fields.setdefault("agent_id", self.agent_id)
 
         try:
 

@@ -818,11 +818,12 @@ def test_agent_turn_is_audited(tmp_path):
 
     assert harness.agent.ask("ciao") == "risposta"
 
+    entries = read_entries(
+        tmp_path / "logs" / "audit.jsonl"
+    )
     events = [
         entry["event"]
-        for entry in read_entries(
-            tmp_path / "logs" / "audit.jsonl"
-        )
+        for entry in entries
     ]
 
     assert events == [
@@ -834,6 +835,13 @@ def test_agent_turn_is_audited(tmp_path):
         "turn.answer",
         "memory.turn",
     ]
+
+    turn_start = next(
+        entry
+        for entry in entries
+        if entry["event"] == "turn.start"
+    )
+    assert turn_start["agent_id"] == harness.audit.session_id
 
 
 def test_deepseek_provider_is_selected(

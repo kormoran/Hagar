@@ -42,6 +42,7 @@ class ToolRegistry:
         confirmation: ConfirmationProvider | None = None,
         audit: Any = None,
         event_sink: EventSink | None = None,
+        agent_id: str | None = None,
     ) -> None:
 
         self._tools: dict[
@@ -54,6 +55,7 @@ class ToolRegistry:
         self.confirmation = confirmation
         self.audit = audit
         self.event_sink = event_sink
+        self.agent_id = agent_id
 
     # ==================================================
     # Registration
@@ -423,6 +425,9 @@ class ToolRegistry:
     ) -> None:
 
         if self.audit is not None:
+
+            if self.agent_id:
+                fields.setdefault("agent_id", self.agent_id)
 
             self.audit.record(
                 event,

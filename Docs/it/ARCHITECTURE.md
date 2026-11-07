@@ -935,6 +935,11 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
 - `reason` obbligatorio nello spawn, registrato in audit;
 - capability `AGENT_SPAWN` separata: il figlio non la riceve e non può
   creare altri agenti;
+- policy del figlio strettamente più restrittiva; policy uguali o più
+  ampie vengono rifiutate con `SubagentPolicyError`;
+- timeout a parete di 5 minuti, cooperativo, con stato `timed_out`;
+- `agent_id` in tutti gli eventi audit del padre, del figlio e del
+  registry;
 - fino a due subagenti concorrenti;
 - stesso modello locale ma client LLM separato;
 - workspace temporaneo privato per ogni figlio;
@@ -982,7 +987,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 797 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 799 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

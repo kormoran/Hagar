@@ -29,6 +29,7 @@ from typing import Callable
 
 from core.agent import Agent
 from core.agent import AgentCancelled
+from core.agent import AgentTimedOut
 from core.agent_data import ArtifactStore
 from core.agent_data import Mailbox
 from core.agent_data import register_child_data_tools
@@ -37,6 +38,7 @@ from core.filesystem import FileSystemSandbox
 from core.filesystem_tools import FileSystemToolProvider
 from core.permissions import Capability
 from core.permissions import DenyAllConfirmation
+from core.permissions import PermissionEvaluator
 from core.tool_registry import ToolRegistry
 from core.usage import UsageLedger
 
@@ -61,6 +63,10 @@ class SubagentLimit(SubagentBusy):
     """Troppi subagenti attivi."""
 
 
+class SubagentPolicyError(RuntimeError):
+    """La policy del figlio non è più restrittiva di quella del padre."""
+
+
 @dataclass(frozen=True)
 class AgentSpec:
     task: str
@@ -68,6 +74,7 @@ class AgentSpec:
     context: str = ""
     inputs: tuple[str, ...] = ()
     max_tool_calls: int = 8
+    max_seconds: float = 300.0
 
 
 @dataclass(frozen=True)
@@ -102,6 +109,7 @@ class _Job:
     error: str | None = None
     workspace: Path | None = None
     agent: Agent | None = None
+    child_ceiling: Capability = Capability.NONE
     started: float = field(default_factory=time.perf_counter)
     done: threading.Event = field(
         default_factory=threading.Event
@@ -124,6 +132,7 @@ class SubagentManager:
         llm_factory: Callable[[Any, Any], Any] | None = None,
         max_tool_calls: int = 8,
         max_concurrent: int = 2,
+        max_seconds: float = 300.0,
     ) -> None:
 
         self.config = config
@@ -136,6 +145,7 @@ class SubagentManager:
         self.llm_factory = llm_factory
         self.max_tool_calls = int(max_tool_calls)
         self.max_concurrent = max(1, int(max_concurrent))
+        self.max_seconds = float(max_seconds)
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
         self.artifacts = ArtifactStore()
@@ -258,17 +268,45 @@ class SubagentManager:
             ),
         )
 
+    def _child_ceiling(self) -> Capability:
+        """Il figlio deve avere un tetto strettamente più basso."""
+
+        evaluator = self.parent_registry.evaluator
+
+        if evaluator is None:
+
+            raise SubagentPolicyError(
+                "parent policy is unavailable"
+            )
+
+        parent_ceiling = evaluator.ceiling
+        child_ceiling = (
+            parent_ceiling
+            & READ_ONLY_CAPABILITIES
+        )
+
+        if child_ceiling == parent_ceiling:
+
+            raise SubagentPolicyError(
+                "subagent policy is not more restrictive "
+                "than the parent policy"
+            )
+
+        return child_ceiling
+
     def _child_registry(
         self,
         filesystem: FileSystemSandbox,
         agent_id: str,
+        child_ceiling: Capability,
     ) -> ToolRegistry:
 
         registry = ToolRegistry(
-            evaluator=self.parent_registry.evaluator,
+            evaluator=PermissionEvaluator(child_ceiling),
             subject=self.parent_registry.subject,
             confirmation=DenyAllConfirmation(),
             audit=self.audit,
+            agent_id=agent_id,
         )
 
         FileSystemToolProvider(filesystem).register_tools(registry)
@@ -341,6 +379,22 @@ class SubagentManager:
 
             raise ValueError("subagent reason is required")
 
+        try:
+            child_ceiling = self._child_ceiling()
+
+        except SubagentPolicyError as exc:
+
+            if self.audit is not None:
+
+                self.audit.record(
+                    "agent.policy_rejected",
+                    agent_id="a-policy",
+                    parent=self.parent_id,
+                    reason=str(exc),
+                )
+
+            raise
+
         agent_id = "a-" + uuid.uuid4().hex[:8]
 
         with self._lock:
@@ -354,6 +408,7 @@ class SubagentManager:
             job = _Job(
                 agent_id=agent_id,
                 spec=spec,
+                child_ceiling=child_ceiling,
             )
             self._jobs[agent_id] = job
 
@@ -361,6 +416,7 @@ class SubagentManager:
 
             self.audit.record(
                 "agent.spawned",
+                agent_id=agent_id,
                 agent=agent_id,
                 parent=self.parent_id,
                 task=spec.task,
@@ -369,6 +425,20 @@ class SubagentManager:
                 max_tool_calls=min(
                     int(spec.max_tool_calls),
                     self.max_tool_calls,
+                ),
+                max_seconds=min(
+                    float(spec.max_seconds),
+                    self.max_seconds,
+                ),
+                child_capabilities=sorted(
+                    name
+                    for name in (
+                        "FILESYSTEM_READ",
+                        "MEMORY_READ",
+                        "COMPUTE",
+                        "AGENT_DATA",
+                    )
+                    if child_ceiling & Capability[name]
                 ),
             )
 
@@ -391,11 +461,16 @@ class SubagentManager:
 
             self.audit.record(
                 "agent.started",
+                agent_id=job.agent_id,
                 agent=job.agent_id,
                 parent=self.parent_id,
             )
 
         started = time.perf_counter()
+        deadline = started + min(
+            float(job.spec.max_seconds),
+            self.max_seconds,
+        )
         workspace: Path | None = None
 
         try:
@@ -422,6 +497,7 @@ class SubagentManager:
                 tool_registry=self._child_registry(
                     self._child_filesystem(workspace),
                     job.agent_id,
+                    job.child_ceiling,
                 ),
                 vault=None,
                 audit=self.audit,
@@ -442,6 +518,8 @@ class SubagentManager:
                     "context_project_memories",
                     10,
                 ),
+                agent_id=job.agent_id,
+                deadline=deadline,
             )
             job.agent = child_agent
 
@@ -484,6 +562,19 @@ class SubagentManager:
                     for ref in self.artifacts.list()
                     if ref.owner == job.agent_id
                 ),
+            )
+
+        except AgentTimedOut:
+
+            duration_ms = round(
+                (time.perf_counter() - started) * 1000,
+                1,
+            )
+            result = AgentResult(
+                agent_id=job.agent_id,
+                status="timed_out",
+                error="wall-clock deadline exceeded",
+                duration_ms=duration_ms,
             )
 
         except AgentCancelled:
@@ -534,11 +625,16 @@ class SubagentManager:
                     "agent.finished"
                     if result.status == "completed"
                     else (
-                        "agent.cancelled"
-                        if result.status == "cancelled"
-                        else "agent.failed"
+                        "agent.timed_out"
+                        if result.status == "timed_out"
+                        else (
+                            "agent.cancelled"
+                            if result.status == "cancelled"
+                            else "agent.failed"
+                        )
                     )
                 ),
+                agent_id=job.agent_id,
                 agent=job.agent_id,
                 parent=self.parent_id,
                 status=result.status,
@@ -618,6 +714,7 @@ class SubagentManager:
 
             self.audit.record(
                 "artifact.discarded",
+                agent_id=item["owner"],
                 artifact=item["artifact_id"],
                 owner=item["owner"],
                 kind=item["kind"],

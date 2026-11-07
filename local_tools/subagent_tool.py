@@ -8,6 +8,7 @@ from core.agent_data import register_parent_data_tools
 from core.permissions import Capability
 from core.subagents import AgentSpec
 from core.subagents import SubagentBusy
+from core.subagents import SubagentPolicyError
 from core.tool_definition import (
     ToolDefinition,
     ToolParameter,
@@ -237,6 +238,13 @@ class SubagentToolProvider:
                 "error": str(exc),
             })
 
+        except SubagentPolicyError as exc:
+
+            return self._dump({
+                "status": "failed",
+                "error": str(exc),
+            })
+
         return self._dump({
             "agent_id": agent_id,
             "status": "running",
@@ -312,6 +320,13 @@ class SubagentToolProvider:
             )
 
         except SubagentBusy as exc:
+
+            return self._dump({
+                "status": "failed",
+                "error": str(exc),
+            })
+
+        except SubagentPolicyError as exc:
 
             return self._dump({
                 "status": "failed",

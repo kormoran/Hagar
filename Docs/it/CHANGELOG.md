@@ -85,6 +85,10 @@ riferimento al commit quando utile.
 - `reason` obbligatorio nello spawn e capability `AGENT_SPAWN` separata:
   il figlio non può crearne altri; `permissions.agents` controlla il
   tetto di sistema.
+- Policy del subagente strettamente più restrittiva del padre; policy
+  uguali o non più limitate vengono rifiutate.
+- Timeout a parete di 5 minuti per subagente, cooperativo, con stato
+  `timed_out`; `agent_id` in tutti gli eventi audit.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -230,7 +234,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 797 test superati, 2 skip su Windows; 799 superati, 0 skip su Debian
+- 799 test superati, 2 skip su Windows; 801 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

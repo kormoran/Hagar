@@ -8,10 +8,17 @@ import pytest
 
 from core.filesystem import DirectoryPermissions
 from core.filesystem import FileSystemSandbox
+from core.permissions import ALL_CAPABILITIES
+from core.permissions import Capability
+from core.permissions import Effect
+from core.permissions import PermissionEvaluator
+from core.permissions import Subject
 from core.subagents import AgentSpec
+from core.subagents import READ_ONLY_CAPABILITIES
 from core.subagents import SubagentBusy
 from core.subagents import SubagentLimit
 from core.subagents import SubagentManager
+from core.subagents import SubagentPolicyError
 from core.tool_call import ToolCall
 from core.tool_definition import ToolDefinition
 from core.tool_registry import ToolRegistry
@@ -80,7 +87,13 @@ def make_config():
 
 
 def make_parent_registry():
-    registry = ToolRegistry()
+    registry = ToolRegistry(
+        evaluator=PermissionEvaluator(ALL_CAPABILITIES),
+        subject=Subject(
+            name="assistant",
+            default=Effect.ALLOW,
+        ),
+    )
 
     registry.register(
         ToolDefinition(
@@ -146,7 +159,9 @@ def test_subagent_runs_with_read_only_tools():
     assert "Contesto fornito dal padre" in str(llm.prompts[0]["content"])
     assert audit.events[0][0] == "agent.spawned"
     assert audit.events[0][1]["reason"] == "test"
+    assert audit.events[0][1]["agent_id"] == result.agent_id
     assert audit.events[-1][0] == "agent.finished"
+    assert audit.events[-1][1]["agent_id"] == result.agent_id
 
 
 def test_second_subagent_is_rejected_while_busy():
@@ -200,6 +215,52 @@ def test_reason_is_required():
 
     with pytest.raises(ValueError, match="reason"):
         manager.spawn(AgentSpec(task="senza motivo", reason=""))
+
+
+def test_policy_must_be_strictly_more_restrictive():
+    parent = ToolRegistry(
+        evaluator=PermissionEvaluator(
+            READ_ONLY_CAPABILITIES,
+        ),
+        subject=Subject(
+            name="assistant",
+            default=Effect.ALLOW,
+        ),
+    )
+    manager = SubagentManager(
+        make_config(),
+        parent,
+        Audit(),
+        llm_factory=lambda model, audit: FakeLLM(),
+    )
+
+    with pytest.raises(SubagentPolicyError):
+        manager.spawn(
+            AgentSpec(task="test", reason="test")
+        )
+
+
+def test_wall_clock_timeout():
+    class SlowLLM(FakeLLM):
+        def chat(self, messages):
+            import time
+            time.sleep(0.05)
+            return "troppo tardi"
+
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        Audit(),
+        llm_factory=lambda model, audit: SlowLLM(),
+        max_seconds=0.01,
+    )
+
+    result = manager.run(
+        AgentSpec(task="slow", reason="test")
+    )
+
+    assert result.status == "timed_out"
+    assert "deadline" in result.error
 
 
 def test_input_is_copied_into_private_workspace(tmp_path):

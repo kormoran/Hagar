@@ -27,6 +27,23 @@ per cui il padre delega il lavoro. Il tool richiede la capability
 `AGENT_SPAWN`; il figlio non la riceve, quindi non può crearne altri.
 `permissions.agents: true` è il tetto di sistema necessario.
 
+La policy del figlio deve essere **strettamente più restrittiva** di
+quella del padre. Il manager calcola:
+
+```text
+child_ceiling = parent_ceiling
+              & (FILESYSTEM_READ | MEMORY_READ | COMPUTE | AGENT_DATA)
+```
+
+Se il risultato è uguale al tetto del padre, `agent.spawn` fallisce con
+`SubagentPolicyError`. Quindi anche policy identiche vengono rifiutate.
+Se il padre non ha un evaluator, lo spawn viene rifiutato.
+
+Ogni agente ha un timeout a parete di **5 minuti** (`300` secondi). Il
+limite è cooperativo: viene controllato ai checkpoint del ciclo agente;
+non interrompe una chiamata HTTP già in corso. Allo scadere lo stato del
+figlio è `timed_out` e l’audit registra `agent.timed_out`.
+
 Ogni figlio:
 
 - usa lo stesso modello locale del padre, ma un client LLM separato;
@@ -130,14 +147,14 @@ Alla fine del turno store e mailbox vengono svuotati.
   `max_concurrent`);
 - solo modelli locali;
 - nessun annidamento: il registry del figlio esclude `agent.*`;
-- nessun budget token/tempo oltre a `max_tool_calls`;
-- nessun timeout a parete sul singolo turno del figlio;
+- timeout a parete di 5 minuti, cooperativo;
+- nessun budget token oltre a `max_tool_calls`;
 - nessuna GUI dedicata;
 - nessuna scrittura di memoria;
 - conferme negate;
 - artifact e mailbox sono effimeri: spariscono a fine turno;
-- gli eventi interni del figlio (`turn.*`, `tool.*`) non hanno ancora
-  un campo `agent` nell’audit.
+- gli eventi interni del figlio (`turn.*`, `tool.*`) hanno `agent_id` in
+  audit.
 
 Alla fine del turno del padre:
 
@@ -203,8 +220,10 @@ Eventi registrati dal manager:
 
 ```text
 agent.spawned
+agent.policy_rejected
 agent.started
 agent.finished
+agent.timed_out
 agent.cancelled
 agent.failed
 artifact.discarded
@@ -213,11 +232,13 @@ artifact.discarded
 Campi principali:
 
 ```text
+agent_id
 agent
 parent
 task
 inputs
 max_tool_calls
+max_seconds
 status
 usage
 duration_ms
@@ -230,6 +251,12 @@ sha256
 read_count
 reason
 ```
+
+Tutti gli eventi del padre e dei figli portano `agent_id`. Gli eventi
+del registry e dell’Agent usano l’id dell’agente che ha eseguito
+l’azione; gli eventi del manager aggiungono `agent_id` e `parent`.
+`agent.policy_rejected` viene emesso se lo spawn non ha una policy
+strettamente più restrittiva.
 
 `artifact.discarded` viene emesso a fine turno per ogni artifact non
 salvato con `artifact.save_to`:
