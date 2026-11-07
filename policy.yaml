@@ -66,6 +66,11 @@ subjects:
           - "artifact.*"
           - "mailbox.*"
 
+      # Esportare un artifact nel workspace del padre scrive su file.
+      - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
+        effect: ask
+        tools: ["artifact.save_to"]
+
       # Rete: chiedi sempre (feed e future API).
       - capabilities: [NETWORK]
         effect: ask

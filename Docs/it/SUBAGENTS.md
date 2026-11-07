@@ -93,10 +93,21 @@ Il padre legge con:
 ```text
 artifact.list()
 artifact.read(artifact_id, offset?, length?)
+artifact.save_to(artifact_id, path, overwrite?)
 mailbox.inbox(cursor?, limit?)
 mailbox.read(message_id)
 mailbox.ack(message_id)
 ```
+
+`artifact.save_to` copia l'intero artifact in un path scrivibile del
+sandbox del padre senza far passare il contenuto dal contesto. È
+l'operazione da usare per artifact più grandi della finestra del modello:
+il modello legge solo i chunk che gli servono e salva il file completo
+con `save_to`.
+
+`save_to` richiede `AGENT_DATA`, `FILESYSTEM_WRITE` e
+`FILESYSTEM_CREATE`; la policy lo tratta come una scrittura e può
+chiedere conferma. Non accetta path host arbitrari.
 
 Limiti iniziali:
 

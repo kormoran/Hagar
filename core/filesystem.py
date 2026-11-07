@@ -1418,6 +1418,54 @@ class FileSystemSandbox:
 
         self._record_write(required_space)
 
+    def write_bytes(
+        self,
+        path: str | Path,
+        data: bytes,
+        overwrite: bool = True,
+    ) -> None:
+        """Scrive byte in un file, con i controlli del sandbox.
+
+        A differenza di ``write_file`` può creare un nuovo file, ma
+        richiede il permesso ``create`` e rispetta i limiti di scrittura.
+        """
+
+        target = self.resolve_path(path)
+        required_space = len(data)
+
+        if target.exists():
+
+            if not overwrite:
+                raise FileExistsError(self._display(target))
+
+            error = self.FS_Guardian(
+                "write",
+                target,
+                required_space,
+            )
+
+        else:
+
+            error = self.FS_Guardian(
+                "create",
+                target,
+                required_space,
+            )
+
+        if error:
+            raise PermissionError(error)
+
+        if target.is_dir():
+            raise IsADirectoryError(self._display(target))
+
+        self._check_write_limits(
+            target,
+            required_space,
+        )
+
+        target.write_bytes(data)
+        self._record_write(required_space)
+
     def create_file(
         self,
         path: str | Path,

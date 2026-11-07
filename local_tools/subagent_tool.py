@@ -190,6 +190,7 @@ class SubagentToolProvider:
             self.manager.artifacts,
             self.manager.mailbox,
             self.manager.parent_id or "parent",
+            self.manager.parent_filesystem,
         )
 
     @staticmethod

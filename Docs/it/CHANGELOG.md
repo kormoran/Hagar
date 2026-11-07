@@ -89,6 +89,9 @@ riferimento al commit quando utile.
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
   `AGENT_DATA`, quote e cleanup a fine turno.
+- `artifact.save_to` copia l'intero artifact in un path scrivibile del
+  sandbox del padre; richiede `AGENT_DATA`, `FILESYSTEM_WRITE` e
+  `FILESYSTEM_CREATE`, con eventuale conferma policy.
 - Audit disattivato: tab disabilitata con etichetta `audit off`.
 - Thinking mostra il reasoning esposto dal provider, altrimenti la
   timeline degli eventi.
@@ -224,7 +227,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 793 test superati, 2 skip su Windows; 795 superati, 0 skip su Debian
+- 794 test superati, 2 skip su Windows; 796 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from core.agent_data import ArtifactStore
 from core.agent_data import Mailbox
+from core.filesystem import DirectoryPermissions
+from core.filesystem import FileSystemSandbox
 
 
 def test_text_artifact_read_is_bounded():
@@ -77,3 +79,52 @@ def test_mailbox_is_per_recipient():
 
     assert mailbox.inbox("parent")
     assert mailbox.inbox("a-2") == []
+
+
+def test_artifact_save_to_writes_whole_file(tmp_path):
+    root = tmp_path / "workspace"
+    root.mkdir()
+    filesystem = FileSystemSandbox(
+        roots={
+            root: DirectoryPermissions(
+                read=True,
+                write=True,
+                create=True,
+            )
+        },
+        current_directory=root,
+        aliases={"workspace": root},
+    )
+    store = ArtifactStore()
+
+    try:
+        ref = store.put_text(
+            "contenuto completo",
+            owner="a-1",
+        )
+        result = store.save_to(
+            ref.artifact_id,
+            filesystem,
+            "/home/ai/workspace/report.txt",
+        )
+
+        assert result["size"] == ref.size
+        assert (root / "report.txt").read_text(
+            encoding="utf-8"
+        ) == "contenuto completo"
+
+        try:
+            store.save_to(
+                ref.artifact_id,
+                filesystem,
+                "/home/ai/workspace/report.txt",
+            )
+
+        except FileExistsError:
+            pass
+
+        else:
+            raise AssertionError("overwrite should be refused")
+
+    finally:
+        store.cleanup()

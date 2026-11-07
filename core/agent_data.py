@@ -200,7 +200,6 @@ class ArtifactStore:
         offset: int = 0,
         length: int = MAX_READ_BYTES,
     ) -> dict[str, Any]:
-
         ref = self.get(artifact_id)
         offset = max(0, int(offset))
         length = max(1, min(int(length), MAX_READ_BYTES))
@@ -240,6 +239,37 @@ class ArtifactStore:
             ).decode("ascii")
 
         return result
+
+    def save_to(
+        self,
+        artifact_id: str,
+        filesystem,
+        path: str,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        """Copia l'artifact completo nel sandbox, senza passare dal contesto."""
+
+        ref = self.get(artifact_id)
+
+        with self._lock:
+            source = self._paths[artifact_id]
+
+        data = source.read_bytes()
+        target = filesystem.resolve_path(path)
+        existed = target.exists()
+        filesystem.write_bytes(
+            path,
+            data,
+            overwrite=overwrite,
+        )
+
+        return {
+            "artifact_id": artifact_id,
+            "path": filesystem.virtual_path(target),
+            "size": ref.size,
+            "sha256": ref.sha256,
+            "overwritten": existed and overwrite,
+        }
 
     def reset(self) -> None:
         """Svuota lo store mantenendo la directory e l'oggetto."""
@@ -413,6 +443,7 @@ def register_parent_data_tools(
     store: ArtifactStore,
     mailbox: Mailbox,
     parent_id: str,
+    filesystem=None,
 ) -> None:
     """Tool visibili al padre per leggere artifact e mailbox."""
 
@@ -465,6 +496,54 @@ def register_parent_data_tools(
             ]),
         )
     )
+
+    if filesystem is not None:
+
+        registry.register(
+            ToolDefinition(
+                name="artifact.save_to",
+                description=(
+                    "Copy a whole artifact into a writable path in the "
+                    "parent sandbox. The content does not pass through "
+                    "the model context."
+                ),
+                category="artifact",
+                capabilities=(
+                    Capability.AGENT_DATA
+                    | Capability.FILESYSTEM_WRITE
+                    | Capability.FILESYSTEM_CREATE
+                ),
+                parameters=[
+                    ToolParameter(
+                        name="artifact_id",
+                        param_type="string",
+                        description="Artifact id.",
+                    ),
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description=(
+                            "Destination path in the parent sandbox."
+                        ),
+                    ),
+                    ToolParameter(
+                        name="overwrite",
+                        param_type="boolean",
+                        description="Overwrite an existing file.",
+                        required=False,
+                        default=False,
+                    ),
+                ],
+                handler=lambda artifact_id, path, overwrite=False: _json(
+                    store.save_to(
+                        artifact_id,
+                        filesystem,
+                        path,
+                        overwrite=overwrite,
+                    )
+                ),
+            )
+        )
 
     registry.register(
         ToolDefinition(

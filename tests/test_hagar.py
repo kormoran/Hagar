@@ -62,6 +62,7 @@ EXPECTED_TOOLS = {
     "agent.cancel",
     "artifact.read",
     "artifact.list",
+    "artifact.save_to",
     "mailbox.inbox",
     "mailbox.read",
     "mailbox.ack",

@@ -945,6 +945,8 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
   e mailbox in memoria (max 64 KB per messaggio);
 - lettura bounded del padre con `artifact.read`, `artifact.list`,
   `mailbox.inbox/read/ack`;
+- `artifact.save_to` copia l'intero artifact in un path scrivibile del
+  sandbox del padre, senza passare dal contesto;
 - capability `AGENT_DATA`;
 - registry filtrato a `FILESYSTEM_READ`, `MEMORY_READ`, `COMPUTE` e
   `AGENT_DATA`;
@@ -978,7 +980,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 793 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 794 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
