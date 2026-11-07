@@ -81,6 +81,8 @@ class ArtifactStore:
         self._lock = threading.Lock()
         self._items: dict[str, ArtifactRef] = {}
         self._paths: dict[str, Path] = {}
+        self._reads: dict[str, int] = {}
+        self._saved: set[str] = set()
         self._total = 0
 
     def _put_bytes(
@@ -135,6 +137,7 @@ class ArtifactStore:
             )
             self._items[artifact_id] = ref
             self._paths[artifact_id] = path
+            self._reads[artifact_id] = 0
             self._total += len(data)
 
             return ref
@@ -210,6 +213,11 @@ class ArtifactStore:
         data = path.read_bytes()
         chunk = data[offset:offset + length]
 
+        with self._lock:
+            self._reads[artifact_id] = (
+                self._reads.get(artifact_id, 0) + 1
+            )
+
         result: dict[str, Any] = {
             "artifact_id": artifact_id,
             "kind": ref.kind,
@@ -263,6 +271,9 @@ class ArtifactStore:
             overwrite=overwrite,
         )
 
+        with self._lock:
+            self._saved.add(artifact_id)
+
         return {
             "artifact_id": artifact_id,
             "path": filesystem.virtual_path(target),
@@ -281,7 +292,26 @@ class ArtifactStore:
 
             self._items.clear()
             self._paths.clear()
+            self._reads.clear()
+            self._saved.clear()
             self._total = 0
+
+    def snapshot(self) -> list[dict[str, Any]]:
+        """Metadati e stato di consumo, senza contenuto."""
+
+        with self._lock:
+
+            return [
+                {
+                    **ref.as_dict(),
+                    "read_count": self._reads.get(
+                        artifact_id,
+                        0,
+                    ),
+                    "saved": artifact_id in self._saved,
+                }
+                for artifact_id, ref in self._items.items()
+            ]
 
     def cleanup(self) -> None:
 

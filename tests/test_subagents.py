@@ -300,3 +300,94 @@ def test_subagent_outbox_and_mailbox():
     assert artifact["text"] == "contenuto outbox"
 
     manager.finish_turn()
+
+
+def test_unread_artifact_is_audited_when_discarded():
+    audit = Audit()
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        audit,
+        llm_factory=lambda model, audit: FakeLLM(),
+    )
+    manager.artifacts.put_text(
+        "mai letto",
+        owner="a-1",
+    )
+
+    manager.finish_turn()
+
+    events = [
+        fields
+        for event, fields in audit.events
+        if event == "artifact.discarded"
+    ]
+    assert len(events) == 1
+    assert events[0]["reason"] == "unread"
+
+
+def test_read_but_unsaved_artifact_is_audited():
+    audit = Audit()
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        audit,
+        llm_factory=lambda model, audit: FakeLLM(),
+    )
+    ref = manager.artifacts.put_text(
+        "letto ma non salvato",
+        owner="a-1",
+    )
+    manager.artifacts.read(ref.artifact_id)
+
+    manager.finish_turn()
+
+    events = [
+        fields
+        for event, fields in audit.events
+        if event == "artifact.discarded"
+    ]
+    assert len(events) == 1
+    assert events[0]["reason"] == "read_but_not_saved"
+    assert events[0]["read_count"] == 1
+
+
+def test_saved_artifact_is_not_reported_as_discarded(tmp_path):
+    root = tmp_path / "workspace"
+    root.mkdir()
+    parent_fs = FileSystemSandbox(
+        roots={
+            root: DirectoryPermissions(
+                read=True,
+                write=True,
+                create=True,
+            )
+        },
+        current_directory=root,
+        aliases={"workspace": root},
+    )
+    audit = Audit()
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        audit,
+        parent_filesystem=parent_fs,
+        llm_factory=lambda model, audit: FakeLLM(),
+    )
+    ref = manager.artifacts.put_text(
+        "salvato",
+        owner="a-1",
+    )
+    manager.artifacts.save_to(
+        ref.artifact_id,
+        parent_fs,
+        "/home/ai/workspace/report.txt",
+    )
+
+    manager.finish_turn()
+
+    assert not [
+        event
+        for event, _ in audit.events
+        if event == "artifact.discarded"
+    ]

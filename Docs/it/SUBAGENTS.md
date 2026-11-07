@@ -207,6 +207,7 @@ agent.started
 agent.finished
 agent.cancelled
 agent.failed
+artifact.discarded
 ```
 
 Campi principali:
@@ -221,7 +222,25 @@ status
 usage
 duration_ms
 error
+artifact
+owner
+kind
+size
+sha256
+read_count
+reason
 ```
+
+`artifact.discarded` viene emesso a fine turno per ogni artifact non
+salvato con `artifact.save_to`:
+
+```text
+reason=unread                → mai letto
+reason=read_but_not_saved    → letto ma non esportato
+```
+
+Gli artifact esportati non producono l'evento: il file è già nel
+workspace del padre. Il contenuto non viene mai scritto nell'audit.
 
 `AuditLog.record` è protetto da lock, così le scritture concorrenti non
 interlacciano la catena hash.

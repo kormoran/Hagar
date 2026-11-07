@@ -600,6 +600,34 @@ class SubagentManager:
 
         return result
 
+    def _audit_discarded_artifacts(self) -> None:
+
+        if self.audit is None:
+            return
+
+        for item in self.artifacts.snapshot():
+
+            if item["saved"]:
+                continue
+
+            reason = (
+                "unread"
+                if item["read_count"] == 0
+                else "read_but_not_saved"
+            )
+
+            self.audit.record(
+                "artifact.discarded",
+                artifact=item["artifact_id"],
+                owner=item["owner"],
+                kind=item["kind"],
+                mime_type=item["mime_type"],
+                size=item["size"],
+                sha256=item["sha256"],
+                read_count=item["read_count"],
+                reason=reason,
+            )
+
     def finish_turn(self, timeout: float = 30.0) -> None:
         """Attende i figli, annulla i rimasti e dimentica i risultati."""
 
@@ -624,6 +652,8 @@ class SubagentManager:
 
             if remaining:
                 job.done.wait(remaining)
+
+        self._audit_discarded_artifacts()
 
         with self._lock:
             self._jobs.clear()

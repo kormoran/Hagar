@@ -955,6 +955,8 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
 - conferme negate con `DenyAllConfirmation`;
 - usage separato;
 - audit `agent.spawned/started/finished/cancelled/failed`;
+- a fine turno, `artifact.discarded` per artifact non esportato, con
+  motivo `unread` o `read_but_not_saved` e metadati senza contenuto;
 - cleanup di workspace e job a fine turno.
 
 `AuditLog.record` è serializzato con lock per le scritture concorrenti.
@@ -980,7 +982,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 794 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 797 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

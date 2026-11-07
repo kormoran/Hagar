@@ -102,7 +102,8 @@ descrizione.
 - [x] `reason` obbligatorio e capability `AGENT_SPAWN` separata;
 - [x] artifact store, mailbox e outbox `artifact.put`/`mailbox.send`,
   con capability `AGENT_DATA` e cleanup;
-- [ ] export diretto di file dal workspace (oggi c'è l'outbox);
+- [x] audit `artifact.discarded` per artifact non esportati;
+- [ ] persistenza/orphan retention (solo se necessaria);
 - [ ] timeout a parete e budget token/tempo;
 - [ ] policy per agente: il figlio non può superare il tetto del padre;
 - [ ] audit con `agent_id`/`parent_id` su tutti gli eventi;
