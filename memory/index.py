@@ -573,6 +573,54 @@ class MemoryIndex:
             for row in rows
         ]
 
+    def documents(
+        self,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """Note di memoria, escluse chat, archivio e summary."""
+
+        self.sync()
+
+        limit = max(1, min(int(limit), 500))
+
+        with self._connection() as connection:
+
+            rows = connection.execute(
+                """
+                SELECT path, kind, project, status, title, mtime, size
+                FROM documents
+                WHERE kind NOT IN ('chat', 'archive', 'summary')
+                ORDER BY mtime DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+    def document(
+        self,
+        path: str,
+    ) -> dict[str, Any] | None:
+        """Legge una nota di memoria senza accesso arbitrario al filesystem."""
+
+        self.sync()
+
+        with self._connection() as connection:
+
+            row = connection.execute(
+                """
+                SELECT path, kind, project, status, title,
+                       content, mtime, size
+                FROM documents
+                WHERE path = ?
+                  AND kind NOT IN ('chat', 'archive', 'summary')
+                """,
+                (path,),
+            ).fetchone()
+
+        return dict(row) if row is not None else None
+
     def stats(self) -> dict[str, Any]:
 
         self.sync()

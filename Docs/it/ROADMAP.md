@@ -78,12 +78,13 @@ restituisce gli stessi risultati.
 - vision: upload immagine nel composer, con adapter per provider —
   implementato (OpenAI/LM Studio, Claude, Gemini);
 - cronologia chat visibile dopo un refresh — implementata come elenco
-  delle chat passate con ricarica dal Vault e **+ Nuova chat**;
-- tab Chat, Chat history, Tool output, Audit e Thinking — implementate;
-  Audit si disabilita se il log è spento, Thinking usa il reasoning se
-  disponibile e altrimenti la timeline.
-- lettura sola delle memorie dal browser;
-- eventuale comando `/usage` lato CLI.
+  delle chat passate con ricarica dal Vault, ripresa della sessione e
+  **+ Nuova chat**;
+- tab Chat, Chat history, Tool output, Audit, Thinking e Memories —
+  implementate; Audit si disabilita se il log è spento, Thinking usa il
+  reasoning se disponibile e altrimenti la timeline;
+- browser memorie in sola lettura — implementato;
+- comando `/usage` lato CLI — implementato.
 
 La vision non deve entrare nella memoria come base64: solo hash e
 descrizione.

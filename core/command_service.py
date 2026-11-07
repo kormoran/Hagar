@@ -65,6 +65,10 @@ class CommandService:
 
             return self._status()
 
+        if command == "/usage":
+
+            return self._usage()
+
         if command == "/mcp":
 
             return self._mcp()
@@ -101,6 +105,7 @@ class CommandService:
             "  /help                 questo elenco",
             "  /tools [categoria]    tool disponibili e capability",
             "  /status               modello, progetto, memoria, audit",
+            "  /usage                token consumati nella sessione",
             "  /mcp                  server MCP e tool importati",
             "  /audit [n]            ultimi n eventi",
             "  /project ...          gestione progetti",
@@ -247,6 +252,40 @@ class CommandService:
             command="/status",
             lines=lines,
             data=status,
+        )
+
+    # ==================================================
+    # Usage
+    # ==================================================
+
+    def _usage(self) -> CommandResult:
+
+        usage = self.service.usage.snapshot()
+
+        lines = [
+            f"Token sessione: {usage['total_tokens']}",
+            (
+                f"  input: {usage['input_tokens']} · "
+                f"output: {usage['output_tokens']}"
+            ),
+        ]
+
+        if usage["cached_input_tokens"]:
+            lines.append(
+                f"  cached input: {usage['cached_input_tokens']}"
+            )
+
+        if usage["reasoning_tokens"]:
+            lines.append(
+                f"  reasoning: {usage['reasoning_tokens']}"
+            )
+
+        lines.append(f"  chiamate LLM: {usage['calls']}")
+
+        return CommandResult(
+            command="/usage",
+            lines=lines,
+            data=usage,
         )
 
     # ==================================================

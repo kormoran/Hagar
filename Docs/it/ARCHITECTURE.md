@@ -736,21 +736,24 @@ comandi slash, tranne `/memory review`.
 - `GET /static/style.css` e `/static/app.js` (asset in `web/`);
 - `GET /api/events` stream SSE;
 - `POST /api/message`, `/api/confirm`, `/api/project`, `/api/stop`,
-  `/api/new-chat`;
+  `/api/new-chat`, `/api/resume`;
 - `GET /api/status`, `/api/projects`, `/api/pending`;
 - `GET /api/history`, `/api/history/<session>`;
-- `GET /api/tools`, `/api/audit`, `/api/thinking`.
+- `GET /api/tools`, `/api/audit`, `/api/thinking`;
+- `GET /api/memories`, `/api/memory?path=...`.
 
-Le tab della GUI sono Chat, Chat history, Tool output, Audit e Thinking.
-La sidebar tiene progetto, stato e token; la cronologia è nella tab
-dedicata. `SessionLog` conserva gli eventi della sessione per Tool
+Le tab della GUI sono Chat, Chat history, Tool output, Audit, Thinking e
+Memories. La sidebar tiene progetto, stato e token; la cronologia è nella
+tab dedicata. `SessionLog` conserva gli eventi della sessione per Tool
 output e timeline; Audit legge il JSONL; Thinking privilegia il
-reasoning esposto dal provider e altrimenti mostra la timeline.
+reasoning esposto dal provider e altrimenti mostra la timeline. Memories
+legge l'indice, escludendo chat, archivio e summary.
 
-La sidebar sinistra elenca le chat di `chat/` e `archive/chat/`; un
-click carica i turni dal Vault in sola lettura. `POST /api/new-chat`
-chiama `MemoryStore.new_session()` e cambia la sessione di audit, senza
-toccare i transcript precedenti.
+Un click su una chat passata chiama `POST /api/resume`: il transcript
+viene ricaricato e la sessione di audit/memoria torna a quell'id, così i
+nuovi turni continuano la stessa chat. `POST /api/new-chat` chiama
+`MemoryStore.new_session()` e cambia la sessione, senza toccare i
+transcript precedenti.
 
 Gli asset statici vivono in `web/` (`index.html`, `style.css`,
 `app.js`). `render_index()` inietta solo il token; il resto è servito
@@ -797,8 +800,9 @@ persistente: la memoria conserva solo la domanda e la risposta.
 `usage_from_ollama` leggono i campi nativi delle risposte.
 
 `LLMClient._set_usage()` aggiorna `last_usage` e chiama il `usage_sink`
-del client. `UsageLedger` accumula i totali per sessione e pubblica
-`usage.updated`; la GUI lo usa nella sidebar. L'usage del provider è la
+del client. `HarnessService` possiede il `UsageLedger`, lo collega al
+client e pubblica `usage.updated`; la GUI lo usa nella sidebar e `/usage`
+lo legge da CLI. L'usage del provider è la
 verità; una stima locale resta solo un fallback.
 
 ## 3.11.5 Memory index (`memory/index.py`)
@@ -915,7 +919,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 774 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 777 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

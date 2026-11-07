@@ -5,9 +5,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 774 test superati, 2 skip su Windows (symlink non disponibili senza
+- 777 test superati, 2 skip su Windows (symlink non disponibili senza
   Developer Mode).
-- 776 test superati, 0 skip su Debian Linux (2026-11-06); i due test
+- 779 test superati, 0 skip su Debian Linux (2026-11-06); i due test
   symlink girano davvero. Questo è il primo controllo multipiattaforma
   reale prima della release.
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure
@@ -31,7 +31,8 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 | indice memorie | `test_memory_index.py` |
 | vision e stop | `test_images.py`, `test_agent.py`, `test_web.py` |
 | cronologia chat | `test_history.py` |
-| tab GUI e session log | `test_web.py`, `core/session_log.py` |
+| tab GUI e session log | `test_web.py` |
+| memorie e usage | `test_memory_index.py`, `test_command_service.py` |
 | tool locali | `test_local_tools.py`, `test_time_tools.py`, `test_text_url_tools.py` |
 | registry e definizioni | `test_tool_definition.py`, `test_tool_registry.py` |
 | agent e audit | `test_agent.py`, `test_audit.py` |

@@ -12,6 +12,7 @@ from core.events import EventSink
 from core.events import ServiceEvent
 from core.events import emit
 from core.images import ImageInput
+from core.usage import UsageLedger
 from memory.projects import ProjectError
 from memory.session import SessionSummarizer
 
@@ -44,6 +45,13 @@ class HarnessService:
             "event_sink",
         ):
             registry.event_sink = self._emit_event
+
+        self.usage = UsageLedger(self._emit_event)
+
+        llm = getattr(self.harness, "llm", None)
+
+        if llm is not None and hasattr(llm, "usage_sink"):
+            llm.usage_sink = self.usage.record
 
     # ==================================================
     # Eventi
@@ -288,6 +296,8 @@ class HarnessService:
                 session=session_id,
             )
 
+        self.usage.reset()
+
         self._emit(
             "chat.new",
             session_id=session_id,
@@ -314,6 +324,85 @@ class HarnessService:
             raise RuntimeError("memory is disabled")
 
         return memory.read_session(session_id)
+
+    def resume_chat(self, session_id: str) -> list[dict[str, Any]]:
+        """Riprende una chat: nuova sessione di lavoro sullo stesso id."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        memory.select_session(session_id)
+
+        audit = getattr(self.harness, "audit", None)
+
+        if audit is not None:
+            audit.session_id = session_id
+            audit.record(
+                "chat.resume",
+                session=session_id,
+            )
+
+        self.usage.reset()
+        self._emit(
+            "chat.resumed",
+            session_id=session_id,
+        )
+
+        return memory.read_session(session_id)
+
+    def memories(
+        self,
+        query: str = "",
+        limit: int = 200,
+    ) -> dict[str, Any]:
+        """Elenco o ricerca delle note di memoria, sola lettura."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            return {
+                "enabled": False,
+                "query": query,
+                "documents": [],
+            }
+
+        if query.strip():
+
+            results = memory.index.search(
+                query,
+                limit=min(int(limit), 100),
+            )
+
+            documents = [
+                result
+                for result in results
+                if result.get("kind")
+                not in {"chat", "archive", "summary"}
+            ]
+
+            return {
+                "enabled": True,
+                "query": query,
+                "documents": documents,
+            }
+
+        return {
+            "enabled": True,
+            "query": "",
+            "documents": memory.index.documents(limit=limit),
+        }
+
+    def read_memory(self, path: str) -> dict[str, Any] | None:
+        """Contenuto di una nota di memoria indicizzata."""
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        return memory.index.document(path)
 
     # ==================================================
     # Stato

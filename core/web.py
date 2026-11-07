@@ -27,7 +27,6 @@ from core.images import ImageInput
 from core.images import ImageInputError
 from core.service import HarnessService
 from core.session_log import SessionLog
-from core.usage import UsageLedger
 from memory.projects import ProjectError
 
 
@@ -131,13 +130,6 @@ class WebSession:
         self.log = SessionLog()
 
         self.confirmation.event_sink = self._publish
-
-        self.usage = UsageLedger(self._publish)
-
-        llm = getattr(harness, "llm", None)
-
-        if llm is not None:
-            llm.usage_sink = self.usage.record
 
         self.service = HarnessService(
             harness,
@@ -250,6 +242,33 @@ class WebSession:
 
         return self.service.load_chat(session_id)
 
+    def resume_chat(self, session_id: str) -> list[dict[str, Any]]:
+
+        with self._lock:
+
+            if self._busy:
+                raise RuntimeError(
+                    "a turn is already running"
+                )
+
+        self.log.clear()
+        return self.service.resume_chat(session_id)
+
+    def memories(
+        self,
+        query: str = "",
+        limit: int = 200,
+    ) -> dict[str, Any]:
+
+        return self.service.memories(query, limit)
+
+    def read_memory(
+        self,
+        path: str,
+    ) -> dict[str, Any] | None:
+
+        return self.service.read_memory(path)
+
     def status(self) -> dict[str, Any]:
 
         data = self.service.status()
@@ -261,7 +280,7 @@ class WebSession:
         data["confirmations"] = (
             self.confirmation.pending_requests()
         )
-        data["usage"] = self.usage.snapshot()
+        data["usage"] = self.service.usage.snapshot()
 
         return data
 
@@ -519,6 +538,56 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if parsed.path == "/api/memories":
+
+            params = parse_qs(parsed.query)
+            query = params.get("query", [""])[0]
+
+            try:
+                limit = int(params.get("limit", ["200"])[0])
+            except ValueError:
+                limit = 200
+
+            try:
+                data = self.session.memories(query, limit)
+            except Exception as exc:
+                self._error(
+                    f"memory index unavailable: {exc}",
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+                return
+
+            self._json(data)
+            return
+
+        if parsed.path == "/api/memory":
+
+            params = parse_qs(parsed.query)
+            path = params.get("path", [""])[0]
+
+            if not path:
+                self._error("path is required")
+                return
+
+            try:
+                document = self.session.read_memory(path)
+            except Exception as exc:
+                self._error(
+                    f"memory index unavailable: {exc}",
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+                return
+
+            if document is None:
+                self._error(
+                    "memory not found",
+                    HTTPStatus.NOT_FOUND,
+                )
+                return
+
+            self._json({"memory": document})
+            return
+
         if parsed.path == "/api/tools":
 
             self._json(
@@ -706,6 +775,39 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 return
 
             self._json({"session": session_id})
+            return
+
+        if parsed.path == "/api/resume":
+
+            session_id = str(
+                payload.get("session", "")
+            ).strip()
+
+            if not session_id:
+
+                self._error("session is required")
+                return
+
+            try:
+
+                turns = self.session.resume_chat(
+                    session_id,
+                )
+
+            except RuntimeError as exc:
+
+                self._error(
+                    str(exc),
+                    HTTPStatus.CONFLICT,
+                )
+                return
+
+            self._json(
+                {
+                    "session": session_id,
+                    "turns": turns,
+                }
+            )
             return
 
         if parsed.path == "/api/confirm":

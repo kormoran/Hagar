@@ -38,6 +38,7 @@
     <button class="tab" data-tab="tools">Tool output</button>
     <button class="tab" id="audit-tab" data-tab="audit">Audit</button>
     <button class="tab" data-tab="thinking">Thinking</button>
+    <button class="tab" data-tab="memories">Memories</button>
   </nav>
 
   <section id="panel-chat" class="panel active">
@@ -82,6 +83,17 @@
   <section id="panel-thinking" class="panel">
     <div class="panel-head"><strong>Thinking</strong></div>
     <div id="thinking-log" class="log"></div>
+  </section>
+
+  <section id="panel-memories" class="panel">
+    <div class="panel-head">
+      <strong>Memories</strong>
+      <input id="memory-search" type="search" placeholder="Cerca nelle memorie..." autocomplete="off">
+    </div>
+    <div class="memory-layout">
+      <div id="memory-list" class="memory-list"></div>
+      <pre id="memory-content" class="memory-content">Seleziona una memoria.</pre>
+    </div>
   </section>
 </main>
 <div id="modal" role="dialog" aria-modal="true">

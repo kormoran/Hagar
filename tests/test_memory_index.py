@@ -73,6 +73,24 @@ def test_search_finds_content(tmp_path):
     assert results[0]["kind"] == "skill"
 
 
+def test_documents_excludes_chat_and_reads_content(tmp_path):
+    vault, index = make_index(tmp_path)
+    write_notes(vault)
+
+    documents = index.documents()
+
+    assert {item["kind"] for item in documents} == {
+        "skill",
+        "decision",
+    }
+
+    skill = index.document("Hagar/skills/uv.md")
+
+    assert skill is not None
+    assert "TOCTOU" in skill["content"]
+    assert index.document("Hagar/chat/session-1.md") is None
+
+
 def test_search_filters_project_and_kind(tmp_path):
     vault, index = make_index(tmp_path)
     write_notes(vault)

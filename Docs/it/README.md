@@ -104,8 +104,8 @@ hagar --config hagar.yaml web --port 8765
 
 La GUI web usa `http://127.0.0.1:8765/`, un token casuale per le API,
 conferme ASK modali, stop del turno, upload immagini, tab per chat,
-cronologia, tool output, audit e thinking, e token cumulati della
-sessione nella sidebar. Per i dettagli vedi `MANUAL.md` §3.0.
+cronologia, tool output, audit, thinking e memorie, e token cumulati
+della sessione nella sidebar. Per i dettagli vedi `MANUAL.md` §3.0.
 
 La configurazione viene cercata nell'ordine seguente: parametro `--config`,
 variabile d'ambiente `HAGAR_CONFIG` e infine file `./hagar.yaml`.

@@ -62,6 +62,7 @@ modello**: Hagar risponde `Comando sconosciuto` e suggerisce `/help`.
 | `/help` o `/?` | elenca i comandi disponibili |
 | `/tools [categoria]` | elenca i tool e le capability; il filtro è opzionale |
 | `/status` | mostra modello, progetto, memoria, audit e sandbox |
+| `/usage` | mostra i token consumati nella sessione |
 | `/mcp` | elenca server MCP, endpoint e tool importati |
 | `/audit [n]` | mostra gli ultimi `n` eventi; default 10, massimo 50 |
 | `exit` | esce |
@@ -162,14 +163,18 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - In alto ci sono le tab **Chat**, **Chat history**, **Tool output**,
   **Audit** e **Thinking**.
 - **Chat history** elenca le chat passate, una riga per chat; un click
-  ricarica il transcript dal Vault in sola lettura.
+  riprende la chat: il transcript viene ricaricato dal Vault e i nuovi
+  turni si aggiungono alla stessa sessione.
 - Il pulsante **+ Nuova chat** apre una nuova sessione e azzera il
   contesto; la chat precedente resta nella cronologia.
+- **Memories** è un browser in sola lettura delle note indicizzate
+  (skill, progetti, decisioni); permette ricerca e apertura del testo.
 - **Tool output** mostra i tool call e i risultati della sessione.
 - **Audit** mostra gli eventi del log; se l'audit è disattivato la tab è
   disabilitata e mostra `audit off`.
 - **Thinking** mostra il reasoning esposto dal provider, se presente; in
   alternativa la timeline degli eventi dell'agente.
+- **Memories** mostra le note del Vault in sola lettura, con ricerca.
 - Il pulsante **Stop** interrompe il turno in modo cooperativo.
 - Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
   per i modelli vision. WebP viene convertito in PNG nella GUI perché LM

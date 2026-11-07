@@ -61,12 +61,16 @@ riferimento al commit quando utile.
 - Body JSON della GUI fino a 64 MB, per accettare immagini ad alta
   risoluzione in base64.
 - Cronologia chat nella tab dedicata: elenco di `chat/` e
-  `archive/chat/`, caricamento del transcript in sola lettura.
+  `archive/chat/`; un click riprende la stessa sessione e i nuovi turni
+  continuano il transcript.
 - Pulsante **+ Nuova chat** con `MemoryStore.new_session()` e reset del
   contesto; i transcript precedenti restano nel Vault.
-- Tab GUI: Chat, Chat history, Tool output, Audit, Thinking.
+- Tab GUI: Chat, Chat history, Tool output, Audit, Thinking, Memories.
 - `SessionLog` in memoria per tool call/risultati e timeline;
   `/api/tools`, `/api/audit`, `/api/thinking`.
+- Browser memorie in sola lettura: `/api/memories`, `/api/memory`.
+- `/usage` in CLI per i token cumulati della sessione; stesso ledger
+  usato dalla GUI.
 - Audit disattivato: tab disabilitata con etichetta `audit off`.
 - Thinking mostra il reasoning esposto dal provider, altrimenti la
   timeline degli eventi.
@@ -202,7 +206,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 774 test superati, 2 skip su Windows; 776 superati, 0 skip su Debian
+- 777 test superati, 2 skip su Windows; 779 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

@@ -14,6 +14,10 @@ const auditOff = document.getElementById('audit-off');
 const auditLog = document.getElementById('audit-log');
 const toolLog = document.getElementById('tool-log');
 const thinkingLog = document.getElementById('thinking-log');
+const memoryTab = document.querySelector('[data-tab="memories"]');
+const memorySearch = document.getElementById('memory-search');
+const memoryList = document.getElementById('memory-list');
+const memoryContent = document.getElementById('memory-content');
 let pendingConfirmation = null;
 let pendingImages = [];
 let busy = false;
@@ -86,7 +90,13 @@ function renderStatus(data) {
   auditTab.disabled = !a.enabled;
   auditTab.textContent = a.enabled ? 'Audit' : 'Audit off';
   auditOff.hidden = Boolean(a.enabled);
+  const memory = data.memory || {};
+  memoryTab.disabled = !memory.enabled;
+  memoryTab.textContent = memory.enabled ? 'Memories' : 'Memories off';
   if (!a.enabled && auditTab.classList.contains('active')) {
+    switchTab('chat');
+  }
+  if (!memory.enabled && memoryTab.classList.contains('active')) {
     switchTab('chat');
   }
   renderUsage(data.usage);
@@ -182,6 +192,49 @@ async function refreshThinking() {
   } catch (e) { console.error(e); }
 }
 
+async function refreshMemories() {
+  if (memoryTab.disabled) return;
+  try {
+    const query = memorySearch.value.trim();
+    const data = await api(
+      '/api/memories?query=' + encodeURIComponent(query)
+    );
+    memoryList.replaceChildren();
+    if (!data.documents.length) {
+      memoryList.appendChild(el('div', 'empty', 'nessuna memoria'));
+      return;
+    }
+    for (const item of data.documents) {
+      const button = el('button', '', item.title || item.path);
+      button.title = item.path;
+      button.onclick = () => openMemory(item.path);
+      memoryList.appendChild(button);
+      const meta = [item.kind, item.project].filter(Boolean).join(' · ');
+      if (meta) memoryList.appendChild(el('div', 'meta', meta));
+    }
+  } catch (e) {
+    memoryList.replaceChildren(el('div', 'error', String(e)));
+  }
+}
+
+async function openMemory(path) {
+  try {
+    const data = await api(
+      '/api/memory?path=' + encodeURIComponent(path)
+    );
+    const memory = data.memory;
+    memoryContent.textContent =
+      (memory.title || memory.path) + '\n\n' + memory.content;
+  } catch (e) {
+    memoryContent.textContent = String(e);
+  }
+}
+
+memorySearch.oninput = () => {
+  clearTimeout(memorySearch._timer);
+  memorySearch._timer = setTimeout(refreshMemories, 250);
+};
+
 function switchTab(name) {
   for (const button of tabButtons) {
     button.classList.toggle('active', button.dataset.tab === name);
@@ -193,6 +246,7 @@ function switchTab(name) {
   if (name === 'tools') refreshTools();
   if (name === 'audit') refreshAudit();
   if (name === 'thinking') refreshThinking();
+  if (name === 'memories') refreshMemories();
 }
 
 for (const button of tabButtons) {
@@ -254,18 +308,21 @@ async function refreshHistory() {
 async function loadChat(sessionId) {
   if (busy) return;
   try {
-    const data = await api(
-      '/api/history/' + encodeURIComponent(sessionId)
-    );
+    const data = await api('/api/resume', {
+      method: 'POST',
+      body: JSON.stringify({ session: sessionId }),
+    });
     messages.replaceChildren();
     for (const turn of data.turns) {
       add('user', turn.question);
       add('assistant', turn.answer);
     }
-    readOnly = true;
-    setBusy(false, 'chat storica · sola lettura');
+    readOnly = false;
+    setBusy(false, 'chat ripresa');
     switchTab('chat');
     messages.scrollTop = messages.scrollHeight;
+    await refreshStatus();
+    await refreshHistory();
   } catch (e) {
     add('error', String(e));
   }

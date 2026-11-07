@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from core.command_service import CommandService
 from core.permissions import Capability
 from core.service import HarnessService
+from core.usage import TokenUsage
 
 
 class FakeAudit:
@@ -212,7 +213,6 @@ def test_help_lists_commands():
     _, commands = make_service()
 
     result = commands.handle("/help")
-
     assert result.ok is True
     assert "/tools" in "\n".join(result.lines)
     assert "/memory" in "\n".join(result.lines)
@@ -367,3 +367,21 @@ def test_unknown_slash_command_is_structured():
     assert result.ok is False
     assert result.command == "/nope"
     assert "sconosciuto" in "\n".join(result.lines)
+
+
+def test_usage_reports_session_tokens():
+    _, commands = make_service()
+
+    commands.service.usage.record(
+        TokenUsage(input_tokens=12, output_tokens=5),
+        provider="lmstudio",
+        model="local-model",
+    )
+
+    result = commands.handle("/usage")
+
+    assert result.ok is True
+    assert result.command == "/usage"
+    assert result.data["total_tokens"] == 17
+    assert result.data["calls"] == 1
+    assert "17" in "\n".join(result.lines)

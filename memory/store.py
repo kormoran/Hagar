@@ -399,6 +399,25 @@ class MemoryStore:
         self.current_turn = None
         return new_id
 
+    def select_session(
+        self,
+        session_id: str,
+    ) -> str:
+        """Riprende una sessione esistente, anche archiviata."""
+
+        if not re.fullmatch(
+            r"[A-Za-z0-9._-]+",
+            session_id,
+        ):
+
+            raise MemoryError(
+                "session id contains invalid characters"
+            )
+
+        self.session_id = session_id
+        self.current_turn = None
+        return session_id
+
     def list_sessions(
         self,
         limit: int = 100,
@@ -931,21 +950,26 @@ class MemoryStore:
 
         turns: list[Turn] = []
 
-        for path in self.vault.list_files(
+        for directory in (
             self.chat_dir,
-            "*.md",
+            self.archive_chat_dir,
         ):
 
-            try:
+            for path in self.vault.list_files(
+                directory,
+                "*.md",
+            ):
 
-                text = path.read_text(encoding="utf-8")
+                try:
 
-            except OSError:
-                continue
+                    text = path.read_text(encoding="utf-8")
 
-            turns.extend(
-                _parse_turns(text, path.stem)
-            )
+                except OSError:
+                    continue
+
+                turns.extend(
+                    _parse_turns(text, path.stem)
+                )
 
         turns.sort(key=lambda turn: turn.timestamp)
 
