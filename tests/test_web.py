@@ -319,6 +319,29 @@ def test_message_accepts_image_data_url():
         server.close()
 
 
+def test_message_body_can_exceed_one_megabyte():
+    server = RunningServer()
+
+    try:
+        image = (
+            "data:image/png;base64,"
+            + ("A" * 1_500_000)
+        )
+        status, body = server.request(
+            "POST",
+            "/api/message",
+            {
+                "text": "immagine grande",
+                "images": [image],
+            },
+        )
+
+        assert status == 202, body
+
+    finally:
+        server.close()
+
+
 def test_confirmation_resolve_via_http():
     server = RunningServer()
 

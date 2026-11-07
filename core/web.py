@@ -36,6 +36,9 @@ STATIC_TYPES = {
     "app.js": "application/javascript; charset=utf-8",
 }
 
+# Quattro immagini da 10 MB in base64 occupano circa 53 MB.
+MAX_BODY_BYTES = 64 * 1024 * 1024
+
 
 def _read_web_asset(name: str) -> bytes:
     """Legge un asset dal package o dal sorgente in editable mode."""
@@ -411,7 +414,7 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
         except ValueError:
             return None
 
-        if length < 0 or length > 1_000_000:
+        if length < 0 or length > MAX_BODY_BYTES:
             return None
 
         raw = self.rfile.read(length)

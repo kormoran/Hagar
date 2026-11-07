@@ -58,6 +58,8 @@ riferimento al commit quando utile.
   MIME e limite 10 MB; adapter OpenAI/LM Studio, Claude e Gemini.
 - Upload immagini nella GUI con anteprima e rimozione; WebP convertito
   in PNG prima dell'invio. Nessuna immagine salvata in memoria o audit.
+- Body JSON della GUI fino a 64 MB, per accettare immagini ad alta
+  risoluzione in base64.
 - Cronologia chat nella tab dedicata: elenco di `chat/` e
   `archive/chat/`, caricamento del transcript in sola lettura.
 - Pulsante **+ Nuova chat** con `MemoryStore.new_session()` e reset del
@@ -200,7 +202,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 773 test superati, 2 skip su Windows; 775 superati, 0 skip su Debian
+- 774 test superati, 2 skip su Windows; 776 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma
