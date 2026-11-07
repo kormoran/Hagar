@@ -924,6 +924,8 @@ class ConfirmationRequest:
     capabilities: Capability
     arguments: Mapping[str, Any]
     reason: str
+    agent_id: str | None = None
+    parent_id: str | None = None
 
 
 class ConfirmationProvider(Protocol):

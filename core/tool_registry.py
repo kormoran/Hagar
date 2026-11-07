@@ -43,6 +43,7 @@ class ToolRegistry:
         audit: Any = None,
         event_sink: EventSink | None = None,
         agent_id: str | None = None,
+        parent_id: str | None = None,
     ) -> None:
 
         self._tools: dict[
@@ -56,6 +57,7 @@ class ToolRegistry:
         self.audit = audit
         self.event_sink = event_sink
         self.agent_id = agent_id
+        self.parent_id = parent_id
 
     # ==================================================
     # Registration
@@ -391,6 +393,8 @@ class ToolRegistry:
                             ),
                             arguments=dict(arguments),
                             reason=reason,
+                            agent_id=self.agent_id,
+                            parent_id=self.parent_id,
                         )
                     )
                 )

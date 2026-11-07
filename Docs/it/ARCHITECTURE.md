@@ -957,7 +957,8 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
   `AGENT_DATA`;
 - esclusione di `filesystem.chdir` e `agent.*`;
 - nessuna scrittura di memoria;
-- conferme negate con `DenyAllConfirmation`;
+- ASK del figlio inoltrate all'utente dal `ParentBridgeConfirmation`,
+  timeout 180 secondi e DENY alla scadenza; il padre LLM non approva;
 - usage separato;
 - audit `agent.spawned/started/finished/cancelled/failed`;
 - a fine turno, `artifact.discarded` per artifact non esportato, con
@@ -987,7 +988,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 799 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 802 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

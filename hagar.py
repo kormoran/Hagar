@@ -475,6 +475,7 @@ def build_harness(
         project_state=project_state,
         parent_id=audit.session_id,
         max_concurrent=2,
+        confirmation=confirmation,
     )
 
     plugin_failures = load_tool_plugins(
@@ -735,7 +736,7 @@ def _run_web(
         config = _load_config(args)
 
         provider = QueueConfirmationProvider(
-            timeout=300,
+            timeout=180,
         )
 
         harness = build_harness(

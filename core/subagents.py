@@ -33,6 +33,7 @@ from core.agent import AgentTimedOut
 from core.agent_data import ArtifactStore
 from core.agent_data import Mailbox
 from core.agent_data import register_child_data_tools
+from core.confirmations import ParentBridgeConfirmation
 from core.filesystem import DirectoryPermissions
 from core.filesystem import FileSystemSandbox
 from core.filesystem_tools import FileSystemToolProvider
@@ -133,6 +134,7 @@ class SubagentManager:
         max_tool_calls: int = 8,
         max_concurrent: int = 2,
         max_seconds: float = 300.0,
+        confirmation: Any = None,
     ) -> None:
 
         self.config = config
@@ -146,6 +148,7 @@ class SubagentManager:
         self.max_tool_calls = int(max_tool_calls)
         self.max_concurrent = max(1, int(max_concurrent))
         self.max_seconds = float(max_seconds)
+        self.confirmation = confirmation
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
         self.artifacts = ArtifactStore()
@@ -304,9 +307,20 @@ class SubagentManager:
         registry = ToolRegistry(
             evaluator=PermissionEvaluator(child_ceiling),
             subject=self.parent_registry.subject,
-            confirmation=DenyAllConfirmation(),
+            confirmation=(
+                ParentBridgeConfirmation(
+                    self.confirmation,
+                    timeout=180,
+                    audit=self.audit,
+                    agent_id=agent_id,
+                    parent_id=self.parent_id,
+                )
+                if self.confirmation is not None
+                else DenyAllConfirmation()
+            ),
             audit=self.audit,
             agent_id=agent_id,
+            parent_id=self.parent_id,
         )
 
         FileSystemToolProvider(filesystem).register_tools(registry)

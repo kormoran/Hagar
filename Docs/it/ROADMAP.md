@@ -107,9 +107,11 @@ descrizione.
 - [x] timeout a parete di 5 minuti per subagente;
 - [x] policy del figlio strettamente più restrittiva del padre;
 - [x] `agent_id` negli eventi di padre, figli e registry;
+- [x] ASK dei figli inoltrate all'utente con timeout 180 secondi e DENY;
 - [ ] budget token/costo;
 - [ ] `parent_id` su ogni evento interno del figlio;
-- [ ] conferme ASK non interattive delegate al padre o alla GUI.
+- [ ] conferme ASK via console quando il prompt è bloccato (la GUI è
+  già supportata).
 
 ## 0.6 0.6.0 — Broker LLM
 

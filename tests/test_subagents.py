@@ -13,6 +13,7 @@ from core.permissions import Capability
 from core.permissions import Effect
 from core.permissions import PermissionEvaluator
 from core.permissions import Subject
+from core.confirmations import ParentBridgeConfirmation
 from core.subagents import AgentSpec
 from core.subagents import READ_ONLY_CAPABILITIES
 from core.subagents import SubagentBusy
@@ -238,6 +239,30 @@ def test_policy_must_be_strictly_more_restrictive():
         manager.spawn(
             AgentSpec(task="test", reason="test")
         )
+
+
+def test_child_confirmation_is_bridged_to_human():
+    class Human:
+        def confirm(self, request):
+            return False
+
+    llm = FakeLLM()
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        Audit(),
+        confirmation=Human(),
+        llm_factory=lambda model, audit: llm,
+    )
+
+    manager.run(
+        AgentSpec(task="test", reason="test")
+    )
+
+    assert isinstance(
+        llm.registry.confirmation,
+        ParentBridgeConfirmation,
+    )
 
 
 def test_wall_clock_timeout():

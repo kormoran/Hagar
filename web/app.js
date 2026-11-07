@@ -379,6 +379,8 @@ function openConfirmation(data) {
     'Conferma: ' + data.tool;
   document.getElementById('confirm-reason').textContent =
     data.reason || '';
+  document.getElementById('confirm-agent').textContent =
+    data.agent_id || 'main';
   document.getElementById('confirm-tool').textContent = data.tool;
   document.getElementById('confirm-capabilities').textContent =
     (data.capabilities || []).join(', ');

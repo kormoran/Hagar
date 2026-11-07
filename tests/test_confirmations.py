@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 import time
 
+from core.confirmations import ParentBridgeConfirmation
 from core.confirmations import QueueConfirmationProvider
 from core.permissions import Capability
 from core.permissions import ConfirmationRequest
@@ -110,3 +111,40 @@ def test_cancel_all_clears_pending():
 
     assert result == [False]
     assert provider.pending_requests() == []
+
+
+def test_parent_bridge_forwards_approval():
+    class Provider:
+        def confirm(self, request):
+            return True
+
+    bridge = ParentBridgeConfirmation(Provider(), timeout=1)
+
+    assert bridge.confirm(make_request()) is True
+
+
+def test_parent_bridge_timeout_is_deny():
+    class SlowProvider:
+        def confirm(self, request):
+            time.sleep(0.2)
+            return True
+
+    class Audit:
+        def __init__(self):
+            self.events = []
+
+        def record(self, event, **fields):
+            self.events.append((event, fields))
+
+    audit = Audit()
+    bridge = ParentBridgeConfirmation(
+        SlowProvider(),
+        timeout=0.05,
+        audit=audit,
+        agent_id="a-1",
+        parent_id="parent",
+    )
+
+    assert bridge.confirm(make_request()) is False
+    assert audit.events[0][0] == "confirmation.timeout"
+    assert audit.events[0][1]["agent_id"] == "a-1"

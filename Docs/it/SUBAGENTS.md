@@ -53,7 +53,12 @@ Ogni figlio:
 - non può usare `agent.*` né `filesystem.chdir`;
 - legge solo il proprio workspace;
 - non scrive nella memoria;
-- non può chiedere conferme all’utente.
+- inoltra le richieste ASK all’utente tramite un bridge, con timeout di
+  180 secondi e DENY alla scadenza.
+
+Il padre LLM non può approvare un ASK: la richiesta va sempre al canale
+umano (GUI o console). Il bridge aggiunge `agent_id` e `parent_id` alla
+richiesta.
 
 ## 2. Workspace privato
 
@@ -151,7 +156,8 @@ Alla fine del turno store e mailbox vengono svuotati.
 - nessun budget token oltre a `max_tool_calls`;
 - nessuna GUI dedicata;
 - nessuna scrittura di memoria;
-- conferme negate;
+- ASK del figlio inoltrate all’utente con timeout 180 secondi; alla
+  scadenza DENY;
 - artifact e mailbox sono effimeri: spariscono a fine turno;
 - gli eventi interni del figlio (`turn.*`, `tool.*`) hanno `agent_id` in
   audit.
@@ -172,7 +178,7 @@ Alla fine del turno del padre:
 | Filesystem | workspace padre | workspace privato in sola lettura |
 | Memoria | `MemoryStore` | `memory=None`, nessuna scrittura |
 | Artifact/mailbox | lettura | outbox del figlio |
-| Conferme | provider normale | `DenyAllConfirmation` |
+| Conferme | utente | bridge verso l’utente, timeout 180 |
 | Usage | ledger padre | ledger separato |
 | Audit | condiviso, con lock | eventi `agent.*` |
 
@@ -226,6 +232,7 @@ agent.finished
 agent.timed_out
 agent.cancelled
 agent.failed
+confirmation.timeout
 artifact.discarded
 ```
 
@@ -265,6 +272,10 @@ salvato con `artifact.save_to`:
 reason=unread                → mai letto
 reason=read_but_not_saved    → letto ma non esportato
 ```
+
+`confirmation.timeout` viene emesso se l’ASK del figlio resta senza
+risposta per 180 secondi; l’esito è DENY. La GUI mostra la richiesta con
+`agent_id`/`parent_id` e il padre non può risolverla.
 
 Gli artifact esportati non producono l'evento: il file è già nel
 workspace del padre. Il contenuto non viene mai scritto nell'audit.

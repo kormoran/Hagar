@@ -184,7 +184,9 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - La sidebar in basso mostra i token cumulati della sessione: input,
   output e totale.
 - Le conferme ASK sono modali: il turno resta in attesa e il server
-  continua a rispondere. Un timeout equivale a rifiuto.
+  continua a rispondere. Un timeout equivale a rifiuto. Le richieste dei
+  subagenti mostrano `agent_id` e `parent_id`; il padre LLM non può
+  approvarle. Il timeout del subagente è 180 secondi.
 - La GUI non è ancora multiutente e non espone il Vault in modifica.
 - Ctrl-C chiude il server e tenta la fine sessione.
 

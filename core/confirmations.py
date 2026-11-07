@@ -87,6 +87,8 @@ class QueueConfirmationProvider:
             ),
             arguments=dict(request.arguments),
             reason=request.reason,
+            agent_id=request.agent_id,
+            parent_id=request.parent_id,
             timeout=self.timeout,
             created_at=pending.created_at,
         )
@@ -154,6 +156,8 @@ class QueueConfirmationProvider:
                 ),
                 "arguments": dict(item.request.arguments),
                 "reason": item.request.reason,
+                "agent_id": item.request.agent_id,
+                "parent_id": item.request.parent_id,
             }
             for item in pending
         ]
@@ -169,3 +173,67 @@ class QueueConfirmationProvider:
                 item.event.set()
 
         return len(pending)
+
+
+class ParentBridgeConfirmation:
+    """Inoltra un ASK del figlio al canale umano, con timeout."""
+
+    def __init__(
+        self,
+        provider: Any,
+        timeout: int = 180,
+        audit: Any = None,
+        agent_id: str | None = None,
+        parent_id: str | None = None,
+    ) -> None:
+
+        self.provider = provider
+        self.timeout = int(timeout)
+        self.audit = audit
+        self.agent_id = agent_id
+        self.parent_id = parent_id
+
+    def confirm(
+        self,
+        request: ConfirmationRequest,
+    ) -> bool:
+
+        if self.provider is None:
+            return False
+
+        result = {"approved": False}
+        done = threading.Event()
+
+        def ask() -> None:
+
+            try:
+                result["approved"] = bool(
+                    self.provider.confirm(request)
+                )
+            finally:
+                done.set()
+
+        thread = threading.Thread(
+            target=ask,
+            name="hagar-subagent-confirmation",
+            daemon=True,
+        )
+        thread.start()
+
+        if not done.wait(self.timeout):
+
+            if self.audit is not None:
+
+                self.audit.record(
+                    "confirmation.timeout",
+                    agent_id=self.agent_id,
+                    parent=self.parent_id,
+                    tool=request.tool,
+                    capabilities=capability_names(
+                        request.capabilities
+                    ),
+                )
+
+            return False
+
+        return bool(result["approved"])
