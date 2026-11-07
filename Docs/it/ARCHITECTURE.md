@@ -712,9 +712,21 @@ soggette alle policy (`MEMORY_READ`/`MEMORY_WRITE`).
 
 Gli eventi sono `ServiceEvent(type, data, ts)` e possono essere consumati
 da un sink (CLI, GUI, test). La CLI attuale usa il service per i turni, la
-selezione progetto e la chiusura sessione; i comandi interattivi
-`/project` e `/memory` restano adapter temporanei. La GUI userà la stessa
-API senza duplicare la logica dell'agente.
+selezione progetto e la chiusura sessione.
+
+## 3.11.2 Command service (`core/command_service.py`)
+
+`CommandService` trasforma i comandi slash in `CommandResult`:
+
+```text
+command, ok, lines, data, error, requires_input
+```
+
+Gestisce `/help`, `/tools`, `/status`, `/mcp`, `/audit`, `/project` e
+`/memory` senza scrivere su stdout. La CLI stampa `lines`; la GUI userà
+`data`. La review interattiva di `/memory` resta affidata a `MemoryCLI`
+perché richiede input umano. La CLI usa il command service per tutti i
+comandi slash, tranne `/memory review`.
 
 ## 3.12 Avvio e packaging
 
@@ -815,7 +827,7 @@ nel registry e vivono fuori dal core, in un package separato.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 719 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 730 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (705 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

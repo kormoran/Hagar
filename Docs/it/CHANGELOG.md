@@ -29,6 +29,10 @@ riferimento al commit quando utile.
 - Eventi `tool.call`, `tool.result`, `permission.decision` e
   `permission.confirmation` inoltrati da `Agent` e `ToolRegistry` al
   sink del service; l'output dei tool è troncato negli eventi.
+- Nuovo `CommandService` per `/help`, `/tools`, `/status`, `/mcp`,
+  `/audit`, `/project` e `/memory`, con `CommandResult` strutturato.
+- La CLI usa il command service per i comandi slash; `/memory review`
+  resta interattiva.
 - Base per la futura GUI, senza `input()` o `print()` nel service.
 
 # 0.3.0 — 2026-11-05
@@ -161,7 +165,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 719 test superati, 2 skip su Windows; 721 superati, 0 skip su Debian
+- 730 test superati, 2 skip su Windows; 732 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

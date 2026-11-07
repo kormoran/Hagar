@@ -12,7 +12,7 @@ from typing import Callable
 from core.agent import Agent
 from core.audit import AuditLog
 from core.config import ConfigError, ConfigLoader
-from core.console_commands import ConsoleCommands
+from core.command_service import CommandService
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -906,7 +906,10 @@ def _interactive_loop(
         else None
     )
 
-    console_commands = ConsoleCommands(harness)
+    command_service = CommandService(
+        harness,
+        service,
+    )
 
     while True:
 
@@ -930,43 +933,29 @@ def _interactive_loop(
         if not stripped:
             continue
 
-        if (
-            stripped == "/project"
-            or stripped.startswith("/project ")
-        ):
+        if stripped.startswith("/"):
 
-            if project_cli is None:
+            print()
 
-                print()
-                print("Progetti disattivati: memoria assente.")
-                print()
+            if (
+                stripped == "/memory review"
+                or stripped.startswith("/memory review ")
+            ):
 
-            else:
-
-                project_cli.handle(stripped)
-                print()
-
-            continue
-
-        if (
-            stripped == "/memory"
-            or stripped.startswith("/memory ")
-        ):
-
-            if memory_cli is None:
-
-                print()
-                print("Memoria disattivata.")
-                print()
+                if memory_cli is None:
+                    print("Memoria disattivata.")
+                else:
+                    memory_cli.handle(stripped)
 
             else:
 
-                memory_cli.handle(stripped)
-                print()
+                result = command_service.handle(stripped)
 
-            continue
-
-        if console_commands.handle(stripped):
+                if result.lines:
+                    for line in result.lines:
+                        print(line)
+                elif result.error:
+                    print(result.error)
 
             print()
             continue
