@@ -135,7 +135,9 @@ descrizione.
 - manutenzione delle traduzioni: si rigenerano solo a release, non a
   ogni commit;
 - concorrenza e scritture atomiche del Vault: da valutare prima di
-  subagenti con memoria condivisa.
+  subagenti con memoria condivisa;
+- document tool: contratto e protocollo definiti in `DOCUMENT_TOOL.md`;
+  MVP CSV ancora da implementare.
 
 ## 0.9 Documentazione
 

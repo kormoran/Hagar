@@ -75,6 +75,9 @@ riferimento al commit quando utile.
   e `llm/plugins.py`, esterni via entry point `hagar.tools`/`hagar.llm`.
 - Errori dei plugin isolati e registrati in audit; policy e sandbox
   restano nell'host.
+- Documentata la progettazione del document tool in `DOCUMENT_TOOL.md`:
+  grafo struttura/semantica, CSV MVP, contratto `FormatPlugin`, ABI C e
+  protocollo JSON dell'host nativo.
 - Audit disattivato: tab disabilitata con etichetta `audit off`.
 - Thinking mostra il reasoning esposto dal provider, altrimenti la
   timeline degli eventi.

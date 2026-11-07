@@ -235,4 +235,6 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [ROADMAP.md](ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
   e questioni ancora aperte.
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
+- [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
+  grafo semantico, plugin di formato e host nativo.
 - [CHANGELOG.md](CHANGELOG.md) — cronologia delle modifiche.

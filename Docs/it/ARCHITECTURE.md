@@ -1055,5 +1055,8 @@ rilevati né bloccati da questa versione.
 - `MANUAL.md` — manuale utente: comandi, configurazione, policy, default.
 - `ARCHITECTURE.md` — questo documento: com'è il sistema oggi.
 - `ROADMAP.md` — cosa fare, decisioni prese e punti aperti.
+- `PLUGINS.md` — contratti per tool e provider LLM plugin.
+- `DOCUMENT_TOOL.md` — specifica del document tool, schema del grafo e
+  protocollo dell'host nativo.
 - `CHANGELOG.md` — storia delle versioni.
 - `README.md` — avvio, configurazione, test.
