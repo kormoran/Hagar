@@ -111,6 +111,16 @@ def test_capabilities_from_permissions():
     assert mask & Capability.MCP_CALL
     assert mask & Capability.COMPUTE
     assert not mask & Capability.NETWORK
+    assert not mask & Capability.AGENT_SPAWN
+
+    mask = capabilities_from_permissions(
+        read=True,
+        write=False,
+        shell=False,
+        agents=True,
+    )
+
+    assert mask & Capability.AGENT_SPAWN
 
     mask = capabilities_from_permissions(
         read=True,

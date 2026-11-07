@@ -34,12 +34,19 @@ class SubagentToolProvider:
                     "of the listed input files. Returns immediately."
                 ),
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="task",
                         param_type="string",
                         description="Focused task.",
+                    ),
+                    ToolParameter(
+                        name="reason",
+                        param_type="string",
+                        description=(
+                            "Why this work must run in a subagent."
+                        ),
                     ),
                     ToolParameter(
                         name="context",
@@ -70,7 +77,7 @@ class SubagentToolProvider:
                     "Return the status and usage of a subagent."
                 ),
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="agent_id",
@@ -89,7 +96,7 @@ class SubagentToolProvider:
                     "Wait for a subagent, up to timeout seconds."
                 ),
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="agent_id",
@@ -115,7 +122,7 @@ class SubagentToolProvider:
                     "Return the result of a completed subagent."
                 ),
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="agent_id",
@@ -132,7 +139,7 @@ class SubagentToolProvider:
                 name="agent.cancel",
                 description="Request cancellation of a subagent.",
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="agent_id",
@@ -151,12 +158,19 @@ class SubagentToolProvider:
                     "Synchronous compatibility helper: spawn and wait."
                 ),
                 category="agent",
-                capabilities=Capability.COMPUTE,
+                capabilities=Capability.AGENT_SPAWN,
                 parameters=[
                     ToolParameter(
                         name="task",
                         param_type="string",
                         description="Focused task.",
+                    ),
+                    ToolParameter(
+                        name="reason",
+                        param_type="string",
+                        description=(
+                            "Why this work must run in a subagent."
+                        ),
                     ),
                     ToolParameter(
                         name="context",
@@ -182,6 +196,7 @@ class SubagentToolProvider:
     def spawn(
         self,
         task: str,
+        reason: str,
         context: str = "",
         inputs=None,
     ) -> str:
@@ -200,6 +215,7 @@ class SubagentToolProvider:
             agent_id = self.manager.spawn(
                 AgentSpec(
                     task=task,
+                    reason=reason,
                     context=context,
                     inputs=tuple(str(value) for value in inputs),
                 )
@@ -273,6 +289,7 @@ class SubagentToolProvider:
     def run(
         self,
         task: str,
+        reason: str,
         context: str = "",
     ) -> str:
 
@@ -280,6 +297,7 @@ class SubagentToolProvider:
             result = self.manager.run(
                 AgentSpec(
                     task=task,
+                    reason=reason,
                     context=context,
                 )
             )

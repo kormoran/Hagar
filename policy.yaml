@@ -52,6 +52,13 @@ subjects:
           - "text.*"
           - "url.*"
 
+      # Subagenti: il tetto di sistema e la policy devono concedere
+      # esplicitamente AGENT_SPAWN. Il figlio non riceve questa
+      # capability e non può crearne altri.
+      - capabilities: [AGENT_SPAWN]
+        effect: allow
+        tools: ["agent.*"]
+
       # Rete: chiedi sempre (feed e future API).
       - capabilities: [NETWORK]
         effect: ask

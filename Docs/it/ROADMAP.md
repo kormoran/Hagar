@@ -99,6 +99,7 @@ descrizione.
   subagenti concorrenti;
 - [x] registry e workspace privato per figlio, input copiati e cleanup;
 - [x] audit serializzato con lock;
+- [x] `reason` obbligatorio e capability `AGENT_SPAWN` separata;
 - [ ] export degli artifact dal workspace del figlio;
 - [ ] timeout a parete e budget token/tempo;
 - [ ] policy per agente: il figlio non può superare il tetto del padre;

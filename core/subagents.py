@@ -60,6 +60,7 @@ class SubagentLimit(SubagentBusy):
 @dataclass(frozen=True)
 class AgentSpec:
     task: str
+    reason: str
     context: str = ""
     inputs: tuple[str, ...] = ()
     max_tool_calls: int = 8
@@ -312,6 +313,10 @@ class SubagentManager:
 
             raise ValueError("subagent task is required")
 
+        if not spec.reason.strip():
+
+            raise ValueError("subagent reason is required")
+
         agent_id = "a-" + uuid.uuid4().hex[:8]
 
         with self._lock:
@@ -335,6 +340,7 @@ class SubagentManager:
                 agent=agent_id,
                 parent=self.parent_id,
                 task=spec.task,
+                reason=spec.reason,
                 inputs=list(spec.inputs),
                 max_tool_calls=min(
                     int(spec.max_tool_calls),

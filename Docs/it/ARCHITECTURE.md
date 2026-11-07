@@ -900,6 +900,8 @@ nel registry e vivono fuori dal core, in un package separato.
   credenziali viene rifiutato.
 - `permissions.network: true` è necessario perché il tetto di sistema
   conceda `NETWORK`; `COMPUTE` è sempre nel tetto ma la policy può negarlo.
+- `permissions.agents: true` è necessario per `AGENT_SPAWN`; la policy
+  deve inoltre consentire `agent.*`.
 - `local_tools` è dichiarato in `pyproject.toml` e installato con il
   progetto.
 
@@ -930,6 +932,9 @@ fidate il confine resta MCP o un processo separato. Il contratto completo
 `core/subagents.py` implementa:
 
 - `agent.spawn/status/wait/result/cancel` e `agent.run` sincrono;
+- `reason` obbligatorio nello spawn, registrato in audit;
+- capability `AGENT_SPAWN` separata: il figlio non la riceve e non può
+  creare altri agenti;
 - fino a due subagenti concorrenti;
 - stesso modello locale ma client LLM separato;
 - workspace temporaneo privato per ogni figlio;
@@ -965,7 +970,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 787 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 788 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

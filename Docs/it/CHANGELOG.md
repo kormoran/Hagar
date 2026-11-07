@@ -82,6 +82,9 @@ riferimento al commit quando utile.
   due figli concorrenti, client LLM separato, workspace privato con input
   copiati, registry read-only, memoria senza scritture, conferme negate,
   usage e audit dedicati; cleanup a fine turno.
+- `reason` obbligatorio nello spawn e capability `AGENT_SPAWN` separata:
+  il figlio non può crearne altri; `permissions.agents` controlla il
+  tetto di sistema.
 - Audit disattivato: tab disabilitata con etichetta `audit off`.
 - Thinking mostra il reasoning esposto dal provider, altrimenti la
   timeline degli eventi.
@@ -217,7 +220,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 787 test superati, 2 skip su Windows; 789 superati, 0 skip su Debian
+- 788 test superati, 2 skip su Windows; 790 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

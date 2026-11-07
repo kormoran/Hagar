@@ -10,7 +10,7 @@
 Il modello può avviare fino a due subagenti concorrenti:
 
 ```text
-agent.spawn(task, context?, inputs?) -> agent_id
+agent.spawn(task, reason, context?, inputs?) -> agent_id
 agent.status(agent_id) -> stato
 agent.wait(agent_id, timeout?) -> risultato
 agent.result(agent_id) -> risultato
@@ -20,6 +20,11 @@ agent.cancel(agent_id) -> ok
 `spawn` ritorna subito. Il padre può continuare a lavorare e raccogliere
 i risultati quando servono. `agent.run` resta come scorciatoia
 `spawn + wait` per compatibilità.
+
+`reason` è obbligatorio: viene registrato in audit ed è la motivazione
+per cui il padre delega il lavoro. Il tool richiede la capability
+`AGENT_SPAWN`; il figlio non la riceve, quindi non può crearne altri.
+`permissions.agents: true` è il tetto di sistema necessario.
 
 Ogni figlio:
 
@@ -52,6 +57,7 @@ input indicati dal padre:
 ```text
 agent.spawn(
     task="analizza il CSV",
+    reason="i file sono indipendenti e vanno analizzati in parallelo",
     inputs=["/home/ai/workspace/report.csv"]
 )
 ```
@@ -107,6 +113,9 @@ Il figlio non ha il contesto automatico del padre: il padre deve passare
 `context`.
 
 ## 5. Tool ammessi
+
+Il padre deve avere le capability `AGENT_SPAWN` e `COMPUTE`; il figlio
+non riceve `AGENT_SPAWN` e non può quindi creare altri agenti.
 
 Il registry del figlio include i tool le cui capability sono un
 sottoinsieme di:

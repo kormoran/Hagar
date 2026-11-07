@@ -425,6 +425,7 @@ permissions:
   write: false
   shell: false
   network: false
+  agents: false
 ```
 
 Sono il **tetto di sistema**. Default: `read=true`, gli altri `false`.
@@ -435,9 +436,12 @@ Sono il **tetto di sistema**. Default: `read=true`, gli altri `false`.
 | `write` | filesystem write/create/delete, memory write |
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
+| `agents` | `AGENT_SPAWN`, per `agent.*` |
 
 `COMPUTE` e `MCP_CALL` sono sempre nel tetto, ma la policy può negarli.
 Se il tetto non concede una capability, la policy non può concederla.
+`agents: true` non basta da solo: la policy deve avere una regola
+`AGENT_SPAWN` per `agent.*`.
 
 ## 4.8 `rag`
 

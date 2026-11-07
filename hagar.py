@@ -280,6 +280,11 @@ def build_harness(
             write=config.permissions.write,
             shell=config.permissions.shell,
             network=config.permissions.network,
+            agents=getattr(
+                config.permissions,
+                "agents",
+                False,
+            ),
         )
     )
 

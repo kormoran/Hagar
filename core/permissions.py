@@ -38,6 +38,7 @@ class Capability(IntFlag):
     NETWORK = auto()
     MCP_CALL = auto()
     COMPUTE = auto()
+    AGENT_SPAWN = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -88,6 +89,7 @@ def capabilities_from_permissions(
     write: bool,
     shell: bool,
     network: bool = False,
+    agents: bool = False,
 ) -> Capability:
     """
     Tetto di sistema derivato dalla configurazione attuale.
@@ -134,6 +136,9 @@ def capabilities_from_permissions(
     #
 
     capabilities |= Capability.MCP_CALL
+
+    if agents:
+        capabilities |= Capability.AGENT_SPAWN
 
     return capabilities
 

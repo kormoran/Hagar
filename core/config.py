@@ -486,6 +486,7 @@ class ConfigLoader:
             "write": False,
             "shell": False,
             "network": False,
+            "agents": False,
         }
 
         values: dict[str, bool] = {}

@@ -71,6 +71,7 @@ class PermissionConfig:
     write: bool
     shell: bool
     network: bool = False
+    agents: bool = False
 
 
 @dataclass(slots=True)

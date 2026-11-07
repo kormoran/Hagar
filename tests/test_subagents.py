@@ -114,6 +114,7 @@ def test_subagent_runs_with_read_only_tools():
     result = manager.run(
         AgentSpec(
             task="analizza",
+            reason="test",
             context="contesto",
         )
     )
@@ -126,6 +127,7 @@ def test_subagent_runs_with_read_only_tools():
     assert "agent.run" not in llm.registry.tool_names()
     assert "Contesto fornito dal padre" in str(llm.prompts[0]["content"])
     assert audit.events[0][0] == "agent.spawned"
+    assert audit.events[0][1]["reason"] == "test"
     assert audit.events[-1][0] == "agent.finished"
 
 
@@ -139,10 +141,10 @@ def test_second_subagent_is_rejected_while_busy():
         max_concurrent=1,
     )
 
-    first = manager.spawn(AgentSpec(task="primo"))
+    first = manager.spawn(AgentSpec(task="primo", reason="test"))
 
     with pytest.raises(SubagentLimit):
-        manager.spawn(AgentSpec(task="secondo"))
+        manager.spawn(AgentSpec(task="secondo", reason="test"))
 
     release.set()
     assert manager.wait(first, timeout=3) is not None
@@ -161,11 +163,25 @@ def test_subagent_failure_is_returned_as_result():
         llm_factory=broken_factory,
     )
 
-    result = manager.run(AgentSpec(task="fallisci"))
+    result = manager.run(
+        AgentSpec(task="fallisci", reason="test")
+    )
 
     assert result.status == "failed"
     assert "provider unavailable" in result.error
     assert audit.events[-1][0] == "agent.failed"
+
+
+def test_reason_is_required():
+    manager = SubagentManager(
+        make_config(),
+        make_parent_registry(),
+        Audit(),
+        llm_factory=lambda model, audit: FakeLLM(),
+    )
+
+    with pytest.raises(ValueError, match="reason"):
+        manager.spawn(AgentSpec(task="senza motivo", reason=""))
 
 
 def test_input_is_copied_into_private_workspace(tmp_path):
@@ -201,6 +217,7 @@ def test_input_is_copied_into_private_workspace(tmp_path):
     result = manager.run(
         AgentSpec(
             task="leggi",
+            reason="test",
             inputs=("/home/ai/workspace/input.txt",),
         )
     )
@@ -220,8 +237,8 @@ def test_two_subagents_can_run_concurrently():
         max_concurrent=2,
     )
 
-    first = manager.spawn(AgentSpec(task="primo"))
-    second = manager.spawn(AgentSpec(task="secondo"))
+    first = manager.spawn(AgentSpec(task="primo", reason="test"))
+    second = manager.spawn(AgentSpec(task="secondo", reason="test"))
 
     assert manager.status(first)["status"] in {
         "queued",
