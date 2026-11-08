@@ -125,6 +125,8 @@ descrizione.
 
 ## 0.6 0.6.0 — Broker LLM
 
+- schede tecniche JSON e benchmark dei modelli (`/models test`);
+- rilevamento hardware CPU/RAM/GPU (`/models hardware`);
 - `ModelRegistry` con context window, tool calling, prezzi, latenza e
   località;
 - `TaskProfile` con tool richiesti, sensibilità dati, budget e contesto;

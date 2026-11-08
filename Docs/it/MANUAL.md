@@ -63,6 +63,8 @@ modello**: Hagar risponde `Comando sconosciuto` e suggerisce `/help`.
 | `/tools [categoria]` | elenca i tool e le capability; il filtro è opzionale |
 | `/status` | mostra modello, progetto, memoria, audit e sandbox |
 | `/usage` | mostra i token consumati nella sessione |
+| `/models ...` | schede, benchmark e hardware per il broker |
+| `/models hardware` | rileva CPU, RAM e GPU della macchina |
 | `/mcp` | elenca server MCP, endpoint e tool importati |
 | `/audit [n]` | mostra gli ultimi `n` eventi; default 10, massimo 50 |
 | `exit` | esce |
@@ -131,7 +133,7 @@ compatibilità. Il Vault non è più aggiornato dal backend SQLite.
 
 I tool (`filesystem.*`, `memory.*`, `mcp.*`, `clock.now`, ...) sono
 chiamati dal modello tramite il registry. Non si digitano come `/tool`.
-L’unica eccezione sono i comandi informativi `/tools`, `/status`, `/mcp`,
+L’unica eccezione sono i comandi informativi `/tools`, `/status`, `/models`, `/mcp`,
 `/audit`, che sono console e non tool.
 
 ---

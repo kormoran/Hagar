@@ -108,6 +108,9 @@ riferimento al commit quando utile.
 - Nuova classe di tool `decision.*` con `decision.choose`: provider LLM
   locale/remoto e classificatore lineare locale, probabilità validate,
   audit `decision.result` e capability `DECISION`.
+- Schede tecniche dei modelli e benchmark: `/models list|show|test|hardware`,
+  latenza, JSON, tool calling, data dell'ultima prova e rilevamento
+  CPU/RAM/GPU senza dipendenze obbligatorie.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -253,7 +256,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 828 test superati, 2 skip su Windows; 830 superati, 0 skip su Debian
+- 832 test superati, 2 skip su Windows; 834 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

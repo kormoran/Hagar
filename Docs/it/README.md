@@ -230,6 +230,12 @@ permettono di ispezionare chat, skill e statistiche.
 probabilità e provider. Supporta un LLM decisore (locale o remoto) e un
 classificatore lineare locale. Dettagli in [DECISIONS.md](DECISIONS.md).
 
+## 3.7 Schede e benchmark dei modelli
+
+`/models test` misura latenza, JSON strutturato e tool calling e salva
+una scheda JSON con hardware e data dell'ultima prova. Dettagli in
+[MODEL_CARDS.md](MODEL_CARDS.md).
+
 ---
 
 # 4. Documentazione

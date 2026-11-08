@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.audit import read_entries
+from core.hardware import detect_hardware
+from core.model_bench import benchmark_model
+from core.model_cards import ModelCardError
+from core.model_cards import ModelCardStore
 from core.permissions import capability_names
 from core.service import HarnessService
 from memory.export import MarkdownExporter
@@ -32,10 +36,12 @@ class CommandService:
         self,
         harness: Any,
         service: HarnessService,
+        model_cards: ModelCardStore | None = None,
     ) -> None:
 
         self.harness = harness
         self.service = service
+        self.model_cards = model_cards or ModelCardStore()
 
     def handle(
         self,
@@ -87,6 +93,10 @@ class CommandService:
 
             return self._memory(arguments)
 
+        if command == "/models":
+
+            return self._models(arguments)
+
         return CommandResult(
             command=command,
             ok=False,
@@ -112,6 +122,7 @@ class CommandService:
             "  /audit [n]            ultimi n eventi",
             "  /project ...          gestione progetti",
             "  /memory ...           memoria, skill e archivio",
+            "  /models ...           schede e benchmark dei modelli",
             "  exit | quit            esci",
             "",
             "I tool sono chiamati dal modello, non digitati come comandi.",
@@ -121,6 +132,172 @@ class CommandService:
             command="/help",
             lines=lines,
             data={"commands": lines},
+        )
+
+    # ==================================================
+    # Model cards / benchmarks
+    # ==================================================
+
+    def _models(self, arguments: list[str]) -> CommandResult:
+
+        action = arguments[0].lower() if arguments else "list"
+
+        if action in {"list", "ls"}:
+
+            cards = self.model_cards.list()
+            lines = [f"Modelli provati: {len(cards)}"]
+
+            for card in cards:
+                lines.append(
+                    f"  {card.get('provider')}/{card.get('model')} "
+                    f"— ultima prova: "
+                    f"{card.get('last_tested_at', 'mai')}"
+                )
+
+            return CommandResult(
+                command="/models list",
+                lines=lines,
+                data={"cards": cards},
+            )
+
+        if action == "hardware":
+
+            info = detect_hardware()
+            cpu = info["cpu"]
+            memory = info["memory"]
+            lines = [
+                f"Sistema: {info['platform']} {info['release']} "
+                f"({info['machine']})",
+                f"CPU: {cpu.get('model') or 'sconosciuta'}",
+                f"Core: {cpu.get('physical_cores') or '?'} fisici / "
+                f"{cpu.get('logical_cores') or '?'} logici",
+                f"Clock: {cpu.get('ghz_current') or '?'} GHz "
+                f"(max {cpu.get('ghz_max') or '?'} GHz)",
+                f"RAM: {memory.get('total_gib') or '?'} GiB "
+                f"(disponibile {memory.get('available_gib') or '?'} GiB)",
+            ]
+
+            if not info["gpus"]:
+                lines.append("GPU: non rilevata")
+            else:
+                for gpu in info["gpus"]:
+                    vram = gpu.get("vram_bytes")
+                    lines.append(
+                        f"GPU: {gpu.get('name') or '?'} "
+                        f"({gpu.get('vendor') or '?'}, "
+                        f"{round(vram / (1024 ** 3), 2) if vram else '?'} GiB, "
+                        f"{gpu.get('api') or '?'})"
+                    )
+
+            return CommandResult(
+                command="/models hardware",
+                lines=lines,
+                data=info,
+            )
+
+        if action == "show":
+
+            target = arguments[1:]
+
+            if len(target) == 1 and "/" in target[0]:
+                provider, model = target[0].split("/", 1)
+            elif len(target) >= 2:
+                provider, model = target[0], " ".join(target[1:])
+            else:
+                return CommandResult(
+                    command="/models show",
+                    ok=False,
+                    error="missing model",
+                    lines=["Uso: /models show <provider> <model>"],
+                )
+
+            card = self.model_cards.load(provider, model)
+
+            if card is None:
+                return CommandResult(
+                    command="/models show",
+                    ok=False,
+                    error="model card not found",
+                    lines=[f"Scheda non trovata: {provider}/{model}"],
+                )
+
+            return CommandResult(
+                command="/models show",
+                lines=[
+                    f"{card.get('provider')}/{card.get('model')}",
+                    f"Ultima prova: {card.get('last_tested_at')}",
+                    f"Capabilities: {card.get('capabilities')}",
+                    f"Benchmarks: {card.get('benchmarks')}",
+                ],
+                data=card,
+            )
+
+        if action in {"test", "benchmark"}:
+
+            llm = getattr(self.harness, "llm", None)
+
+            if llm is None:
+                return CommandResult(
+                    command="/models test",
+                    ok=False,
+                    error="LLM unavailable",
+                    lines=["Nessun modello LLM disponibile."],
+                )
+
+            try:
+                report = benchmark_model(llm)
+                report["last_tested_at"] = report["tested_at"]
+                path = self.model_cards.save(report)
+
+            except Exception as exc:
+
+                return CommandResult(
+                    command="/models test",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Errore benchmark: {exc}"],
+                )
+
+            chat = report["benchmarks"]["chat"]
+            structured = report["benchmarks"]["structured"]
+            tools = report["benchmarks"]["tool_call"]
+            lines = [
+                f"Modello: {report['provider']}/{report['model']}",
+                f"Scheda: {path}",
+                f"Chat: {chat['successes']}/{chat['attempts']} "
+                f"(p50 {chat['duration_ms']['p50']} ms)",
+                f"JSON: {structured['valid_json']}/"
+                f"{structured['attempts']} "
+                f"(choice {structured['valid_choice']})",
+                f"Tool: {tools['successes']}/{tools['attempts']}",
+                f"Ultima prova: {report['last_tested_at']}",
+            ]
+
+            audit = getattr(self.harness, "audit", None)
+            if audit is not None:
+                audit.record(
+                    "model.tested",
+                    provider=report["provider"],
+                    model=report["model"],
+                    card=str(path),
+                    chat_p50_ms=chat["duration_ms"]["p50"],
+                    structured_valid=structured["valid_json"],
+                    tool_successes=tools["successes"],
+                )
+
+            return CommandResult(
+                command="/models test",
+                lines=lines,
+                data=report,
+            )
+
+        return CommandResult(
+            command="/models",
+            ok=False,
+            error="unknown models action",
+            lines=[
+                "Uso: /models [list|show|test|hardware]",
+            ],
         )
 
     # ==================================================
