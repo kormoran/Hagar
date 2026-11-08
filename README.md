@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../HAGAR.jpg">
+  <img src="Docs/HAGAR.jpg">
 </p>
 
 [Italiano](../it/README.md) · [English](../en/README.md) · [Español](../es/README.md) · [中文](../zh/README.md) · [Русский](../ru/README.md) · [Português](../pt/README.md) · [العربية](../ar/README.md)
