@@ -14,6 +14,8 @@ from core.audit import AuditLog
 from core.config import ConfigError, ConfigLoader
 from core.command_service import CommandService
 from core.confirmations import QueueConfirmationProvider
+from core.decisions import DecisionError
+from core.decisions import build_decision_registry
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -50,6 +52,7 @@ from memory.project_tools import ProjectToolProvider
 from memory.store import MemoryError, MemoryStore
 from memory.tools import MemoryToolProvider
 from memory.vault import Vault
+from local_tools.decision_tool import DecisionToolProvider
 from local_tools.plugins import BUILTIN_TOOL_PLUGINS
 from local_tools.vision_tool import VisionToolProvider
 
@@ -655,6 +658,34 @@ def build_harness(
         )
 
         raise
+
+    # ==========================================
+    # Decision tools
+    # ==========================================
+
+    try:
+
+        decisions = build_decision_registry(config, llm)
+
+        if decisions is not None:
+
+            DecisionToolProvider(
+                decisions,
+                audit=audit,
+            ).register_tools(registry)
+
+            audit.record(
+                "decision.enabled",
+                providers=decisions.names(),
+                default=decisions.default,
+            )
+
+    except DecisionError as exc:
+
+        audit.record(
+            "decision.disabled",
+            error=str(exc),
+        )
 
     # ==========================================
     # Agent

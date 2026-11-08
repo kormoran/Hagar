@@ -114,6 +114,8 @@ descrizione.
 - [x] policy del figlio strettamente più restrittiva del padre;
 - [x] `agent_id` negli eventi di padre, figli e registry;
 - [x] ASK dei figli inoltrate all'utente con timeout 180 secondi e DENY;
+- [x] tool `decision.choose` con provider LLM e classificatore lineare;
+- [ ] adapter Jev/Kev e training automatico di classificatori;
 - [ ] budget token/costo;
 - [ ] `parent_id` su ogni evento interno del figlio;
 - [ ] `audio.open`/`AudioInput`: il canale allegati è condiviso con le

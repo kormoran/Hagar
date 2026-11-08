@@ -34,6 +34,7 @@ EXPECTED_TOOLS = {
     "filesystem.list_dir",
     "filesystem.read_chunk",
     "vision.open",
+    "decision.choose",
     "filesystem.rename",
     "filesystem.copy_file",
     "filesystem.delete_file",
@@ -87,6 +88,7 @@ DEFAULT_POLICY = {
                         "MCP_CALL",
                         "COMPUTE",
                         "NETWORK",
+                        "DECISION",
                     ],
                     "effect": "allow",
                 }
@@ -780,8 +782,9 @@ def test_harness_writes_audit_log(tmp_path):
 
     assert entries[1]["event"] == "memory.enabled"
     assert entries[2]["event"] == "project.enabled"
+    assert entries[3]["event"] == "decision.enabled"
 
-    start = entries[3]
+    start = entries[4]
 
     assert start["event"] == "harness.start"
     assert start["provider"] == "ollama"
@@ -834,6 +837,7 @@ def test_agent_turn_is_audited(tmp_path):
         "policy.loaded",
         "memory.enabled",
         "project.enabled",
+        "decision.enabled",
         "harness.start",
         "turn.start",
         "turn.answer",

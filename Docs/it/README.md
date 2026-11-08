@@ -223,6 +223,13 @@ Il database predefinito è `%LOCALAPPDATA%/Hagar/memory.db` (oppure
 `HAGAR_MEMORY_DB`). Il backend `markdown` resta solo per compatibilità.
 Le scritture passano dal motore delle policy. I comandi `/memory` di CLI
 permettono di ispezionare chat, skill e statistiche.
+
+## 3.6 Decision tool
+
+`decision.choose` pone una domanda a scelta fissa e restituisce label,
+probabilità e provider. Supporta un LLM decisore (locale o remoto) e un
+classificatore lineare locale. Dettagli in [DECISIONS.md](DECISIONS.md).
+
 ---
 
 # 4. Documentazione

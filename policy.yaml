@@ -54,6 +54,12 @@ subjects:
           - "text.*"
           - "url.*"
 
+      # Decisioni: modello locale o remoto, senza accesso diretto a
+      # filesystem, rete o azioni.
+      - capabilities: [DECISION]
+        effect: allow
+        tools: ["decision.*"]
+
       # Subagenti: il tetto di sistema e la policy devono concedere
       # esplicitamente AGENT_SPAWN. Il figlio non riceve questa
       # capability e non può crearne altri.

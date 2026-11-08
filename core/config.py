@@ -21,6 +21,8 @@ from .models import (
     MCPServerConfig,
     MCPAuthConfig,
     MCPOAuthConfig,
+    DecisionProviderConfig,
+    DecisionsConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -750,6 +752,112 @@ class ConfigLoader:
         )
 
         # -------------------------
+        # Decision providers (optional)
+        # -------------------------
+
+        decisions_data = _mapping(
+            data.get("decisions", {}) or {},
+            "decisions",
+        )
+        decisions_enabled = decisions_data.get(
+            "enabled",
+            True,
+        )
+
+        if not isinstance(decisions_enabled, bool):
+
+            raise ConfigError(
+                "decisions.enabled must be a boolean"
+            )
+
+        decisions_default = str(
+            decisions_data.get("default", "llm")
+        ).strip()
+
+        if not decisions_default:
+
+            raise ConfigError(
+                "decisions.default must be non-empty"
+            )
+
+        raw_decisions = decisions_data.get(
+            "providers",
+            [],
+        )
+
+        if raw_decisions is None:
+            raw_decisions = []
+
+        if not isinstance(raw_decisions, list):
+
+            raise ConfigError(
+                "decisions.providers must be a list"
+            )
+
+        decision_providers: list[DecisionProviderConfig] = []
+
+        for index, entry in enumerate(raw_decisions):
+
+            if not isinstance(entry, dict):
+
+                raise ConfigError(
+                    f"decisions.providers[{index}] "
+                    "must be a mapping"
+                )
+
+            name = _text(
+                entry,
+                "name",
+                f"decisions.providers[{index}].name",
+            ).strip()
+            provider_type = str(
+                entry.get("type", "llm")
+            ).strip().lower()
+
+            if provider_type not in {"llm", "linear"}:
+
+                raise ConfigError(
+                    f"decisions.providers[{index}].type "
+                    "must be 'llm' or 'linear'"
+                )
+
+            model_path = _optional_text(
+                entry,
+                "path",
+                f"decisions.providers[{index}].path",
+            )
+
+            if provider_type == "linear" and not model_path:
+
+                raise ConfigError(
+                    f"decisions.providers[{index}].path "
+                    "is required for linear"
+                )
+
+            decision_providers.append(
+                DecisionProviderConfig(
+                    name=name,
+                    type=provider_type,
+                    path=(
+                        str(Path(model_path).expanduser())
+                        if model_path
+                        else None
+                    ),
+                    model=_optional_text(
+                        entry,
+                        "model",
+                        f"decisions.providers[{index}].model",
+                    ),
+                )
+            )
+
+        decisions = DecisionsConfig(
+            enabled=decisions_enabled,
+            default=decisions_default,
+            providers=decision_providers,
+        )
+
+        # -------------------------
         # MCP servers (optional)
         # -------------------------
 
@@ -1016,4 +1124,5 @@ class ConfigLoader:
             audit=audit,
             policy=policy,
             memory=memory,
+            decisions=decisions,
         )

@@ -40,6 +40,7 @@ class Capability(IntFlag):
     COMPUTE = auto()
     AGENT_SPAWN = auto()
     AGENT_DATA = auto()
+    DECISION = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -137,6 +138,7 @@ def capabilities_from_permissions(
     #
 
     capabilities |= Capability.MCP_CALL
+    capabilities |= Capability.DECISION
 
     if agents:
         capabilities |= (

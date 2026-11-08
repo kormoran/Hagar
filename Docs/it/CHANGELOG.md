@@ -105,6 +105,9 @@ riferimento al commit quando utile.
 - CLI con `ConsoleInputBroker`: un solo lettore di console, titolo di
   attenzione e conferme ASK con `F5` allow / `F8` deny; fallback `y/N`.
   Il broker salva e ripristina il terminale, anche su Ctrl-C.
+- Nuova classe di tool `decision.*` con `decision.choose`: provider LLM
+  locale/remoto e classificatore lineare locale, probabilità validate,
+  audit `decision.result` e capability `DECISION`.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability
@@ -250,7 +253,7 @@ riferimento al commit quando utile.
   drive Windows (`I:/...`) su POSIX; il rifiuto dei symlink non viene più
   inghiottito da `except OSError`, quindi il percorso non viene risolto
   fuori dalla sandbox.
-- 824 test superati, 2 skip su Windows; 826 superati, 0 skip su Debian
+- 828 test superati, 2 skip su Windows; 830 superati, 0 skip su Debian
   Linux (2026-11-06), inclusi i test symlink.
 
 ## Rilascio e multipiattaforma

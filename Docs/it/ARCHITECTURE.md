@@ -860,8 +860,23 @@ verità; una stima locale resta solo un fallback.
 - database nei dati locali dell'app, non nel Vault sincronizzato.
 
 Il tool `memory.search` usa l'indice; `/memory reindex` e `/memory stats`
-espongono manutenzione e stato. Il Markdown resta la fonte di verità:
-cancellare il DB non perde memorie.
+espongono manutenzione e stato. Con il backend predefinito SQLite la
+fonte di verità è `memory.db`; il vecchio `MemoryIndex` resta solo per il
+backend Markdown legacy.
+
+## 3.11.7 Decision tools (`core/decisions.py`)
+
+`DecisionRegistry` seleziona un `DecisionProvider` e `decision.choose`
+espone la scelta al modello. I provider built-in sono:
+
+- `llm`: chiede al client LLM un JSON con `choice` e `probabilities`,
+  valida le label e normalizza le probabilità;
+- `linear`: carica un modello JSON locale con label, pesi e bias e usa
+  softmax per produrre le probabilità.
+
+La capability `DECISION` è separata da `COMPUTE`, `NETWORK` e
+`FILESYSTEM_*`; i dettagli e il formato del modello sono in
+`DECISIONS.md`. Jev/Kev non sono ancora adapter nativi.
 
 ## 3.12 Avvio e packaging
 
@@ -1028,7 +1043,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 824 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 828 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

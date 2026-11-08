@@ -133,6 +133,25 @@ class MemoryConfig:
 
 
 @dataclass(slots=True)
+class DecisionProviderConfig:
+    """Provider di decisione: LLM oppure classificatore lineare locale."""
+
+    name: str
+    type: str = "llm"
+    path: str | None = None
+    model: str | None = None
+
+
+@dataclass(slots=True)
+class DecisionsConfig:
+    enabled: bool = True
+    default: str = "llm"
+    providers: list[DecisionProviderConfig] = field(
+        default_factory=list
+    )
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -195,4 +214,8 @@ class AppConfig:
 
     memory: MemoryConfig = field(
         default_factory=MemoryConfig
+    )
+
+    decisions: DecisionsConfig = field(
+        default_factory=DecisionsConfig
     )
