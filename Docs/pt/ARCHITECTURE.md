@@ -1,6 +1,6 @@
 # HAGAR — Arquitetura
 
-Versão: 0.2.0 (em desenvolvimento)
+Versão: 0.5.2
 Última atualização: 2026-11-03
 
 ---
@@ -12,8 +12,8 @@ resiliente de modelos de linguagem.
 
 O objetivo não é uma conversa com um modelo, mas um ambiente operativo
 **seguro** no qual um LLM possa usar ferramentas, consultar uma memória
-persistente e interagir com sistemas externos sem aceder diretamente aos
-recursos reais da máquina anfitriã.
+persistente e interagir com sistemas externos sem aceder diretamente
+aos recursos reais da máquina anfitriã.
 
 Para este efeito, o projeto aplica princípios de HMI/HCI e de Ergonomia
 Cognitiva à conceção do ambiente em que o modelo opera.
@@ -72,7 +72,9 @@ Agent ──────────────── AuditLog (JSON Lines)
   │
   ├── LLMClient (llm/base.py)
   │     ├── OllamaClient
+  │     ├── LMStudioClient
   │     ├── DeepSeekClient
+  │     ├── OpenAIClient
   │     ├── ClaudeClient
   │     └── GeminiClient
   │
@@ -120,31 +122,31 @@ Secções:
 
 | secção | obrigatória | conteúdo |
 |---|---|---|
-| `model` | sim | provider, nome, host, max_tokens, api_key_env, native_tools |
-| `vault` | sim | caminho do Vault Obsidian |
-| `filesystem` | sim | `sandbox`: lista de `{alias, path, permissions}`; `limits`: orçamento de escrita |
+| `model` | sim | provider, nome, host, timeout, max_tokens, api_key_env, native_tools |
+| `vault` | sim | caminho do vault Obsidian |
+| `filesystem` | sim | `sandbox`: lista de `{alias, path, permissions}`; `limits`: budget de escrita |
 | `permissions` | não | read, write, shell, network (predefinição `true/false/false/false`) |
 | `rag` | não | `top_k` (predefinição 8) |
 | `mcp_servers` | não | endpoint, namespace, auth (bearer/header/oauth) |
 | `audit` | não | enabled, path, max_field_chars, max_bytes, max_files, include_outputs |
-| `policy` | não | caminho do ficheiro de política, subject |
+| `policy` | não | caminho do ficheiro policy, subject |
 | `memory` | não | enabled, vault_subdir, context_turns, context_skills, max_skill_chars |
 
-Os erros de validação produzem sempre `ConfigError`, com uma mensagem que
-indica o campo. O caminho da auditoria, se for relativo, é resolvido em
-relação ao ficheiro de configuração.
+Erros de validação produzem sempre `ConfigError`, com uma mensagem que
+indica o campo. O caminho da auditoria, se relativo, é resolvido
+relativamente ao ficheiro de configuração.
 
 ## 3.2 Interface LLM e backend (`llm/`)
 
 `LLMClient` tem dois percursos:
 
-- **chamada nativa** (predefinida): `native_step()` envia os esquemas das
+- **chamada nativa** (predefinição): `native_step()` envia os esquemas das
   ferramentas no formato do provider e lê as chamadas da resposta;
 - **protocolo JSON textual** (fallback): `request_tool_call()` pede um
   JSON com `tool`/`arguments`, com parsing robusto e uma tentativa de
   reparação.
 
-O esquema dos parâmetros é construído a partir de `ToolDefinition`:
+O esquema dos parâmetros é construído por `ToolDefinition`:
 OpenAI/Ollama usam `tools[].function`, Claude `tools[].input_schema`,
 Gemini `functionDeclarations`. A conversa canónica usa os papéis
 `user`/`assistant`/`tool`; cada cliente tradu-la (OpenAI `tool_calls`,
@@ -153,28 +155,36 @@ Claude blocos `tool_use`/`tool_result`, Gemini `functionCall`/
 `NativeToolsUnavailable`: o Agent passa ao protocolo textual apenas se
 ainda não executou ferramentas.
 
-Os nomes das ferramentas são normalizados para as APIs que não admitem o
+Os nomes das ferramentas são normalizados para as API que não admitem o
 ponto (`filesystem.read_file` → `filesystem__read_file`) e repostos no
-nome interno na resposta: a política, a auditoria e os testes veem sempre
-o nome original.
+nome interno na resposta: política, auditoria e testes veem sempre o nome
+original.
 
 O texto continua a ser o fallback para modelos que não suportam as
 ferramentas nativas; `model.native_tools: false` força-o (ou
-`--no-native-tools` a partir da CLI).
+`--no-native-tools` da CLI).
 
 | provider | API | chave | notas |
 |---|---|---|---|
 | `ollama` | `/api/chat`, `/api/generate` | — | host predefinido `localhost:11434` |
+| `lmstudio` | `/v1/chat/completions` (OpenAI) | opcional `LMSTUDIO_API_KEY` | host predefinido `localhost:1234/v1` |
 | `deepseek` | `/chat/completions` (OpenAI) | `DEEPSEEK_API_KEY` | system inline |
+| `openai` / `chatgpt` | `/v1/chat/completions` | `OPENAI_API_KEY` | ChatGPT via API, não subscrição |
 | `claude` | `/v1/messages` | `ANTHROPIC_API_KEY` | system separado, turnos alternados |
 | `gemini` | `models/{model}:generateContent` | `GEMINI_API_KEY` | `systemInstruction`, papel `model` |
 
-A chave lê-se apenas do ambiente; `model.api_key_env` substitui o nome
-predefinido. `model.host` é a base URL de todos os providers (com um
-valor predefinido por provider), `model.max_tokens` é usado apenas pelo
-Claude. `llm/factory.py` constrói o cliente e recusa providers
-desconhecidos ou chaves em falta. DeepSeek: os modelos atuais são
-`deepseek-flash` e `deepseek-v4-pro`; `deepseek-chat` já não é aceite.
+A chave lê-se apenas do ambiente; `model.api_key_env` substitui o
+nome predefinido. `model.host` é o base URL de todos os providers (com um
+default por provider), `model.timeout` é o timeout HTTP (predefinição 120),
+`model.max_tokens` é usado apenas pelo Claude.
+`llm/factory.py` constrói o cliente e recusa providers desconhecidos ou
+chaves em falta. Os providers built-in são spec em `llm/plugins.py`; um
+provider externo registra-se com o entry point `hagar.llm` e uma factory
+`(config, audit) -> LLMClient` (ver `PLUGINS.md`). O LM Studio não
+exige chave salvo configuração do servidor; a OpenAI exige uma
+chave API, não uma subscrição ChatGPT.
+DeepSeek: os modelos correntes são `deepseek-flash` e
+`deepseek-v4-pro`; `deepseek-chat` já não é aceite.
 
 Estado atual: **chamada nativa v1** com fallback textual automático
 (ver ROADMAP).
@@ -207,20 +217,19 @@ Em ambos:
 
 1. o modelo decide se é necessária uma ferramenta;
 2. se não for necessária, a resposta final fecha o turno;
-3. se for necessária, a ferramenta é executada e o resultado volta ao
-   modelo;
-4. o limite `max_tool_calls` aplica-se ao turno inteiro. Se o modelo
+3. se for necessária, a ferramenta é executada e o resultado volta ao modelo;
+4. o limite `max_tool_calls` vale para todo o turno. Se o modelo
    insistir, o turno fecha com `Agent stopped after N tool calls`
-   (proteção contra ciclos).
+   (proteção contra loops).
 
 Se o primeiro passo nativo falhar com `NativeToolsUnavailable`, o Agent
-passa ao protocolo textual (`llm.native_fallback`); um erro depois de uma
-ferramenta ter sido executada fecha o turno com `turn.error`, sem
+passa ao protocolo textual (`llm.native_fallback`); um erro depois de
+uma ferramenta ter sido executada fecha o turno com `turn.error`, sem
 fallback.
 
-Cada passo é registado na auditoria: pergunta, escolha da ferramenta,
-argumentos, resultado, duração e resposta final. Uma auditoria quebrada
-não para o agente: a falha é assinalada em stderr.
+Cada passo é registado na auditoria: pergunta, escolha da ferramenta, argumentos,
+resultado, duração e resposta final. Uma auditoria quebrada não para o agente: a
+falha é assinalada em stderr.
 
 O `Agent` recebe o `Vault` mas ainda não o usa.
 
@@ -228,41 +237,41 @@ O `Agent` recebe o `Vault` mas ainda não o usa.
 
 Filesystem virtual do agente. Cada pedido é:
 
-1. resolvido contra o diretório corrente (`resolve_path`);
+1. resolvido contra a diretoria atual (`resolve_path`);
 2. verificado contra as raízes concedidas (`effective_permissions`);
 3. filtrado pelas permissões efetivas, com as raízes mais específicas a
-   sobrepor-se às mais exteriores;
+   substituir as mais externas;
 4. controlado contra os symlinks e o espaço em disco disponível
-   (`FS_Guardian`, nome legado).
+   (`FS_Guardian`, nome legacy).
 
 `DirectoryPermissions` modela `read`, `write`, `create`, `rename`,
-`delete`, `execute`; `None` significa "herda da raiz exterior".
-Um caminho fora das raízes é sempre `PermissionError`.
+`delete`, `execute`; `None` significa "herda da raiz externa".
+Um percurso fora das raízes é sempre `PermissionError`.
 
-`FileInfo` / `stat()` devolvem tipo, tamanho em bytes, datas de
+`FileInfo` / `stat()` devolvem tipo, dimensão em bytes, datas de
 criação/modificação/acesso (ISO 8601 com offset local) e as permissões
 **efetivas da sandbox**, não as ACL do sistema operativo.
 
 **Os symlinks não existem para a sandbox.** O Hagar não os mostra, não os
 lê, não os segue e não os apaga: `stat`, `list_dir` e `search` ignoram-nos;
-`read_file`, `read_chunk` e `delete_file` respondem "not found"; `chdir`
-sobre um symlink responde "Directory not found". Um link quebrado ou
-dirigido ao exterior é indistinguível de um caminho inexistente.
+`read_file`, `read_chunk` e `delete_file` respondem "not
+found"; `chdir` sobre um symlink responde "Directory not found". Um link
+quebrado ou para o exterior é indistinguível de um percurso inexistente.
 
-A raiz virtual da sandbox é `/home/ai`; cada diretório configurado é
-exposto como `/home/ai/<alias>`. `stat`, `list_dir`, `search`,
+A raiz virtual da sandbox é `/home/ai`; cada diretoria configurada
+é exposta como `/home/ai/<alias>`. `stat`, `list_dir`, `search`,
 `read_chunk`, as mensagens de `write`/`create`/`mkdir`/`delete` e `chdir`
-mostram apenas caminhos virtuais: o caminho físico nunca aparece na saída
-do modelo. Uma entrada `/home/ai/<alias>/...` é resolvida contra o
-diretório físico do alias; os caminhos relativos permanecem relativos ao
-diretório corrente.
+mostram apenas percursos virtuais: o percurso físico nunca aparece
+no output do modelo. Um input `/home/ai/<alias>/...` é resolvido
+contra a diretoria física do alias; os percursos relativos permanecem
+relativos à diretoria atual.
 
-`/home/ai` é um diretório sintético: pode ser listado e consultado com
-`stat`, mas não é um mount e não é possível fazer `chdir` para lá. As entradas de
-`filesystem.sandbox` continuam a ser caminhos do sistema anfitrião,
-absolutos ou com `~` se o utilizador o escolher: pode ser qualquer
-diretório existente e alcançável. O Hagar não cria diretórios e não
-pressupõe uma home dedicada.
+`/home/ai` é uma diretoria sintética: pode ser listada e consultada com stat, mas não
+é um mount e não é possível fazer `chdir` para lá. As entradas de
+`filesystem.sandbox` continuam a ser caminhos do sistema anfitrião, absolutos ou com
+`~` se o utilizador o escolher: pode ser qualquer diretoria existente e
+alcançável. O Hagar não cria diretorias e não assume uma home
+dedicada.
 
 ```yaml
 filesystem:
@@ -276,17 +285,17 @@ filesystem:
 ```
 
 Não existe um flag `enabled`: cada entrada válida de `filesystem.sandbox`
-é montada. Alias ou permissões inválidas, caminho em falta ou caminho
-duplicado param a configuração. Os caminhos físicos e os nomes internos
-podem conter espaços; o alias não, porque tem de continuar a ser um único
-segmento virtual.
+é montada. Alias ou permissões inválidas, caminho em falta ou caminho duplicado
+param a configuração. Os caminhos físicos e os nomes internos podem
+conter espaços; o alias não, porque tem de permanecer um único segmento
+virtual.
 
 `R` cobre leitura, listagem, pesquisa e `stat`; `W` cobre escrita,
-criação, renomeação, cópia e eliminação; `X` cobre `chdir`. As permissões
-globais `permissions.read`/`write` continuam a ser um teto: um alias
-`RWX` não as pode exceder.
+criação, renomeação, cópia e eliminação; `X` cobre `chdir`. As
+permissões globais `permissions.read`/`write` continuam a ser um teto: um alias
+`RWX` não as pode ultrapassar.
 
-## 3.6 Ferramentas do filesystem (`core/filesystem_tools.py`)
+## 3.6 Ferramentas filesystem (`core/filesystem_tools.py`)
 
 ```text
 filesystem.read_file
@@ -304,30 +313,30 @@ filesystem.free_space
 filesystem.stat
 ```
 
-`list_dir` devolve metadados `FileInfo`; `read_chunk` lê por bytes com
-`has_more`, `next_offset` e limites UTF-8 completos; `search` usa um glob
-recursivo com limite de resultados; `copy_file` exige `create`;
+`list_dir` devolve metadados `FileInfo`; `read_chunk` lê por bytes
+com `has_more`, `next_offset` e limites UTF-8 completos; `search` usa um
+glob recursivo com limite de resultados; `copy_file` exige `create`;
 `rename` exige `rename` na origem e `create` no destino.
-Os caminhos devolvidos são sempre virtuais (`/home/ai/<alias>/...`).
-`chdir` exige `X` sobre o alias.
+Os percursos devolvidos são sempre virtuais (`/home/ai/<alias>/...`).
+`chdir` exige `X` no alias.
 
 `list_dir` devolve no máximo 100 entradas por página (`limit` máximo
-500) com `offset`, `next_offset` e `has_more`; se houver mais entradas, o
+500) com `offset`, `next_offset` e `has_more`; se houver outras entradas o
 `message` diz `voci: riportate X di Y; per continuare usa offset=Z`.
 `search` usa a mesma paginação: `max_results` é o limite de página
-(predefinição 100, máximo 500), `offset` percorre os resultados. Para
-árvores grandes convém restringir `pattern`/`path` em vez de iterar
-muitas páginas. `read_file` aceita apenas ficheiros até `CHUNK_SIZE`
-(4096 bytes); acima disso, o erro remete para `read_chunk()` porque ler
-todo o ficheiro excederia a context window. `read_chunk` devolve
-`next_offset` e limites UTF-8 completos.
+(predefinição 100, máximo 500), `offset` percorre os resultados. Para árvores
+grandes convém restringir `pattern`/`path` em vez de iterar muitas
+páginas. `read_file` aceita apenas ficheiros até `CHUNK_SIZE` (4096 bytes);
+acima disso, o erro remete para `read_chunk()` porque ler todo o ficheiro
+ultrapassaria a context window. `read_chunk` devolve `next_offset` e
+limites UTF-8 completos.
 
 `list_dir` e `search` não mostram os symlinks; `read_file` e `read_chunk`
 tratam-nos como ficheiros inexistentes.
 
-`write_file` substitui apenas ficheiros existentes; a criação passa por
-`create_file`, que exige a permissão `create`. Não é possível contornar a
-proibição de criação escrevendo um caminho novo.
+`write_file` sobrescreve apenas ficheiros existentes; a criação passa por
+`create_file`, que exige a permissão `create`. Não é possível
+contornar a proibição de criação escrevendo um percurso novo.
 
 ### Limites de escrita
 
@@ -342,21 +351,21 @@ filesystem:
 
 - `max_write_bytes` é o máximo por operação individual de
   `write_file`, `create_file` ou `copy_file`;
-- `min_free_bytes` é a reserva de espaço que tem de restar depois da
-  operação;
-- `session_write_bytes` é o orçamento cumulativo da sessão;
-- `ask_over_bytes` eleva a `ASK` as operações acima do limiar. O
-  preflight está integrado no `ToolRegistry`: se também a política disser
-  `ASK`, a confirmação é apenas uma.
+- `min_free_bytes` é a reserva de espaço que tem de permanecer depois
+  da operação;
+- `session_write_bytes` é o budget cumulativo da sessão;
+- `ask_over_bytes` eleva a `ASK` as operações acima do limiar. O preflight
+  está integrado em `ToolRegistry`: se também a política disser `ASK`, a
+  confirmação é uma só.
 
-`0` desativa o limite individual. Exceder `max_write_bytes`,
+`0` desativa o limite individual. Ultrapassar `max_write_bytes`,
 `session_write_bytes` ou a reserva produz um erro, não uma confirmação:
 são invariantes, não perguntas. `ask_over_bytes` é o único nível que
 pergunta ao utilizador.
 
 `filesystem.stat` devolve JSON com `path`, `exists`, `kind`
 (`file`/`directory`/`other`), `size_bytes`, `created_at`, `modified_at`,
-`accessed_at`, `permissions`. Um caminho inexistente não é um erro:
+`accessed_at`, `permissions`. Um percurso inexistente não é um erro:
 `exists: false` com as permissões aplicáveis.
 
 ## 3.7 MCP (`llm/mcp_client.py`)
@@ -365,12 +374,12 @@ Cliente MCP via HTTP/JSON-RPC: `initialize`, `tools/list`, `tools/call`,
 conversão automática das ferramentas em `ToolDefinition` e registo com
 namespace `mcp.<namespace>`.
 
-Suporta também respostas `text/event-stream` (streamable HTTP) e envia a
-notificação `notifications/initialized` após o handshake. Usa
-`MCP-Protocol-Version` (predefinição `2025-06-18`, com fallback) e reusa
-`Mcp-Session-Id` quando o servidor o devolve. Os erros HTTP incluem o
-corpo da resposta para tornar diagnosticáveis os 400.
-Os resultados das ferramentas são normalizados em texto: blocos `text`,
+Suporta também respostas `text/event-stream` (streamable HTTP) e envia
+a notificação `notifications/initialized` após o handshake. Usa
+`MCP-Protocol-Version` (predefinição `2025-06-18`, com fallback) e reutiliza
+`Mcp-Session-Id` quando o servidor o devolve. Os erros HTTP
+incluem o corpo da resposta para tornar diagnosticáveis os 400.
+Os resultados das ferramentas são normalizados para texto: blocos `text`,
 caso contrário `structuredContent` ou JSON; um resultado com `isError`
 torna-se um erro da ferramenta.
 
@@ -386,8 +395,8 @@ mcp_servers:
       # header: X-API-Key  # apenas com type: header
 ```
 
-O token lê-se apenas do ambiente e não aparece na auditoria. Se faltar, o
-servidor é ignorado com `mcp.failed` e o harness continua; os outros
+O token lê-se apenas do ambiente e não aparece na auditoria. Se faltar,
+o servidor é ignorado com `mcp.failed` e o harness continua; os outros
 servidores permanecem disponíveis.
 
 ### OAuth interativo
@@ -397,7 +406,7 @@ auth:
   type: oauth
   oauth:
     authorization_server: https://auth.example.com
-    # client_id: ...          # sem este, registo dinâmico
+    # client_id: ...          # sem, dynamic registration
     # client_secret_env: MCP_CLIENT_SECRET
     scopes: [mcp.read]
     audience: api.atlassian.com  # opcional, para provider 3LO
@@ -409,27 +418,27 @@ auth:
 Fluxo authorization code + PKCE, com callback em
 `http://localhost:<port>/oauth/callback` e abertura do browser. Se o
 scope contiver `offline_access`, é adicionado `prompt=consent`.
-Os metadados são descobertos a partir de `.well-known` (RFC 9728 para o
-recurso, RFC 8414 para o authorization server); se `client_id` faltar,
+Os metadados são descobertos a partir de `.well-known` (RFC 9728 para a
+recurso, RFC 8414 para o authorization server); se faltar `client_id`
 usa-se o registo dinâmico. Os tokens ficam num ficheiro local com
 permissões restritas (`0600` onde o sistema as suporta), com refresh
-automático e retry uma vez em caso de `401`.
+automático e retry uma vez em `401`.
 
-Ctrl-C durante a espera do callback fecha o servidor local e sai com
-código 130, sem traceback.
+Ctrl-C durante a espera do callback fecha o servidor local e sai
+com código 130, sem traceback.
 
-Limites: nada de device flow, DPoP, mTLS ou client assertion; o browser
-tem de conseguir alcançar o callback local. Se o callback não chegar, o
+Limites: sem device flow, DPoP, mTLS ou client assertion; o browser tem de
+poder alcançar o callback local. Se o callback não chegar, o
 terminal pede para colar o URL de redirecionamento.
 
 ## 3.8 Vault (`memory/vault.py`)
 
-Acesso ao Vault Obsidian com caminhos relativos à raiz e proteção contra a
-saída do Vault. Oferece leitura, escrita, append, listagem dos ficheiros
-e `load_all` para a leitura recursiva. A semântica da memória vive em
-`memory/store.py` (§3.11).
+Acesso ao vault Obsidian com percursos relativos à raiz e
+proteção contra a saída do vault. Oferece leitura, escrita, append,
+listagem dos ficheiros e `load_all` para a leitura recursiva. A semântica
+da memória vive em `memory/store.py` (§3.11).
 
-## 3.9 Registo de auditoria (`core/audit.py`)
+## 3.9 Audit log (`core/audit.py`)
 
 Ficheiro JSON Lines append-only. Cada linha tem timestamp UTC, `session` e
 `event`; os eventos de uma mesma pergunta partilham um id `turn`.
@@ -460,19 +469,19 @@ memory.failed      fase e erro
 
 Propriedades:
 
-- escrita best effort: um erro de I/O não para o harness e é assinalado
-  uma única vez em stderr;
+- escrita best effort: um erro de I/O não para o harness e é
+  assinalado uma única vez em stderr;
 - truncamento configurável (`audit.max_field_chars`, predefinição 2000);
 - cadeia de hash (`prev`/`hash`) verificável com `verify_chain`;
 - rotação em `<file>.<timestamp>` acima de `audit.max_bytes` (0 desativa);
-- retenção: `audit.max_files` (predefinição 100) mantém no máximo N
-  ficheiros, incluindo o ativo; as cópias mais antigas são eliminadas;
-- com `audit.include_outputs: false` a saída das ferramentas é registada
-  apenas como tamanho;
+- retention: `audit.max_files` (predefinição 100) mantém no máximo N ficheiros,
+  incluindo o ativo; os backups mais antigos são eliminados;
+- com `audit.include_outputs: false` o output das ferramentas é registado
+  apenas como dimensão;
 - valores não JSON tornados serializáveis;
-- nenhuma chave API no registo;
-- o registo contém também a saída das ferramentas (portanto conteúdos de
-  ficheiros): tem de ser protegido como o workspace.
+- nenhuma chave API no log;
+- o log contém também o output das ferramentas (portanto conteúdos de ficheiros):
+  tem de ser protegido como o workspace.
 
 ## 3.10 Permissões (`core/permissions.py`)
 
@@ -488,26 +497,31 @@ O modelo é uma matriz sujeito × objeto:
 - **Rule**: capability + efeito + filtros opcionais `tools` (glob),
   `paths` e `namespaces` (prefixos) + `reason`.
 - **Subject**: quem pede (agente, utilizador, sistema), com regras e
-  `default` (`DENY` se não especificado).
-- **Resource**: o objeto da decisão (por agora uma ferramenta com as suas
-  capabilities; no futuro também notas e caminhos).
+  default (`DENY` se não especificado).
+- **Resource**: o objeto da decisão (para já uma ferramenta com as suas
+  capability; no futuro também notas e percursos).
 - **Decision**: efeito, motivo e regra aplicada.
 
 `PermissionEvaluator.evaluate(subject, resource, scope)`:
 
-1. o recurso tem de oferecer as capabilities pedidas;
-2. o **teto do sistema** (derivado de `permissions.read/write/shell`)
+1. o recurso tem de oferecer as capability pedidas;
+2. o **teto de sistema** (derivado de `permissions.read/write/shell`)
    tem de as conceder;
-3. para cada capability aplicam-se as regras do sujeito: vence a mais
-   específica (número de filtros, depois comprimento do prefixo), em caso
-   de igualdade o efeito mais restritivo; sem regras vale o default;
-4. com várias capabilities pedidas vale o AND: vence o efeito pior.
+3. para cada capability aplicam-se as regras do sujeito: vence a
+   mais específica (número de filtros, depois longitude do prefixo), em
+   caso de empate o efeito mais restritivo; sem regras vale o default;
+4. com várias capability pedidas vale o AND: vence o efeito pior.
 
 `ASK` não é uma decisão: é uma pergunta a um humano. O
 `ConfirmationProvider` coloca-a — `ConsoleConfirmation` pergunta
-`lo faccio? (y/N)` com predefinição N — e sem canal de confirmação vale
-`DENY`. Uma GUI poderá implementar o mesmo protocolo com uma caixa de
-diálogo modal.
+`lo faccio? (y/N)` com default N — e sem canal de confirmação vale
+`DENY`. Uma GUI pode implementar o mesmo protocolo com um diálogo
+modal.
+
+Na CLI `core/input_broker.py` é o único proprietário da consola:
+distribui prompts, confirmações e as teclas `F5`/`F8`, define o título do
+terminal como sinal de atenção e restaura o modo normal no
+fim. Em stdin não interativo recai sobre `input()`.
 
 ```yaml
 version: 1
@@ -537,43 +551,52 @@ subjects:
         tools: ["feed.*"]
 ```
 
-`policy.yaml` é lido **antes** de construir o LLM. Se não for legível ou
-não for válido, o harness aplica `DENY` a todas as políticas, registra-o
-na auditoria (`policy.failed`) e assinala-o no chat; o resto do harness
-continua a funcionar. Também um sujeito ausente degrada para `DENY`.
+`policy.yaml` é lido **antes** de construir o LLM. Se não for
+legível ou não for válido, o harness aplica `DENY` a todas as políticas,
+registra-o na auditoria (`policy.failed`) e assinala-o no chat; o resto
+do harness continua a funcionar. Também um sujeito ausente degrada para
+`DENY`.
 
-O controlo ocorre em `ToolRegistry.execute`, único ponto de execução, e
-produz os eventos `permission.decision` e `permission.confirmation`.
+O controlo ocorre em `ToolRegistry.execute`, único ponto de
+execução, e produz os eventos `permission.decision` e
+`permission.confirmation`.
 
-O scope `paths` compara o caminho **escrito pelo modelo** (normalizado),
-não o resolvido pela sandbox: um caminho absoluto ou um `chdir` podem não
-corresponder a um prefixo relativo, e o resultado permanece `DENY` (fail
-closed).
+O scope `paths` compara o percurso **escrito pelo modelo**
+(normalizado), não o resolvido pela sandbox: um percurso absoluto ou
+um `chdir` podem não corresponder a um prefixo relativo, e o
+resultado permanece `DENY` (fail closed).
 
 ## 3.11 Memória (`memory/store.py`, `memory/tools.py`)
 
-**Episódica.** O harness acrescenta cada turno concluído a uma nota por
+**Backend predefinido: SQLite.** `memory/sqlite_store.py` e
+`memory/database.py` usam uma base de dados local (`%LOCALAPPDATA%/Hagar/memory.db`
+ou `HAGAR_MEMORY_DB`) como fonte de verdade para sessões, turnos, skills e
+summaries. O SQLite usa WAL, transações e `busy_timeout`; o backup é
+`VACUUM INTO`. O backend `markdown` descrito abaixo permanece disponível
+apenas por compatibilidade e já não é o default.
+
+**Episódica.** O harness enfileira cada turno concluído numa nota por
 sessão:
 
 ```text
 <vault>/Hagar/chat/YYYY-MM-DD-<session>.md
 ```
 
-Frontmatter com `session`, `type: chat`, `created`; corpo com uma secção
-por turno (`## <timestamp> · <turn>`), pergunta e resposta. Não são
-guardadas as saídas das ferramentas: essas ficam na auditoria.
+Frontmatter com `session`, `type: chat`, `created`; corpo com uma
+secção por turno (`## <timestamp> · <turn>`), pergunta e resposta. Não
+são guardados os outputs das ferramentas: esses ficam na auditoria.
 
 No início de cada turno o Agent injeta no prompt os últimos
-`memory.context_turns` turnos (0 desativa a injeção), truncando pergunta
-e resposta. Com `memory.context_skills > 0` acrescenta até N **skills
-confirmadas** pertinentes à pergunta, por correspondência lexical no
+`memory.context_turns` turnos (0 desativa a injeção), truncando
+pergunta e resposta. Com `memory.context_skills > 0` acrescenta até N
+**skills confirmadas** pertinentes à pergunta, por match lexical em
 título, tags e conteúdo; as candidatas e as arquivadas nunca entram.
-O bloco é rotulado como dados, não como instruções. Um erro de memória
+O bloco está etiquetado como dados, não instruções. Um erro de memória
 não para o turno: é registado `memory.failed`.
 
 **Semântica.** O modelo pode propor uma memória com três ferramentas:
 
-| ferramenta | capability | namespace |
+| tool | capability | namespace |
 |---|---|---|
 | `memory.create_skill` | `MEMORY_WRITE` | `skills` |
 | `memory.list_skills` | `MEMORY_READ` | `skills` |
@@ -581,15 +604,15 @@ não para o turno: é registado `memory.failed`.
 
 `create_skill` escreve `<vault>/Hagar/skills/<slug>.md` com frontmatter
 `id`, `title`, `kind` (`fact`/`procedure`), `status: candidate`, `tags`,
-`source_session`, `source_turn`, `model`, `created_at`. O slug é seguro
-(apenas ASCII, sem caminho); um título já existente não é substituído e
-devolve `duplicate: true`.
+`source_session`, `source_turn`, `model`, `created_at`. O slug é
+seguro (apenas ASCII, nenhum percurso); um título já existente não é
+sobrescrito e devolve `duplicate: true`.
 
-`get_context` devolve os últimos turnos ou pesquisa por palavra-chave nas
-sessões passadas; `list_skills` filtra por `kind` e `status`.
+`get_context` devolve os últimos turnos ou procura por palavra-chave
+nas sessões passadas; `list_skills` filtra por `kind` e `status`.
 
 **Ciclo de vida.** Os estados são `candidate`, `confirmed`, `archived`.
-O LLM cria apenas candidatas; a transição é humana, a partir da CLI:
+O LLM cria apenas candidatas; a transição é humana, da CLI:
 
 ```text
 /memory list [candidate|confirmed|archived]
@@ -599,12 +622,12 @@ O LLM cria apenas candidatas; a transição é humana, a partir da CLI:
 /memory archive <slug>
 ```
 
-`/memory review` mostra uma candidata de cada vez com proveniência e
-conteúdo, e depois pergunta `y/N/a/s/q` (confirma, deixa, arquiva, salta,
+`/memory review` mostra uma candidata de cada vez com provenance e
+conteúdo, depois pede `y/N/a/s/q` (confirma, deixa, arquiva, salta,
 sai). A confirmação escreve `reviewed_at`; `archive` é reversível com
-`confirm`. Cada transição produz `memory.status` ou `memory.review` na
-auditoria. As notas continuam a ser ficheiros Obsidian: alterar `status`
-no frontmatter tem o mesmo efeito.
+`confirm`. Cada transição produz `memory.status` ou `memory.review`
+na auditoria. As notas permanecem ficheiros Obsidian: modificar `status` no
+frontmatter tem o mesmo efeito.
 
 **Configuração**:
 
@@ -623,7 +646,7 @@ memory:
 
 ### Memória de projeto
 
-A memória de projeto está separada das skills:
+A memória de projeto é separada das skills:
 
 ```text
 <vault>/Hagar/projects/<id>/index.md
@@ -632,13 +655,17 @@ A memória de projeto está separada das skills:
 <vault>/Hagar/archive/chat/<data>-<session>.md
 ```
 
-Cada projeto tem um `index.md` com estado, última atividade, resumo e
+Cada projeto tem um `index.md` com estado, última atividade, summary e
 contagem das decisões ativas. Cada decisão tem estado
 `candidate`/`active`/`superseded`/`archived`, alternativas, motivação,
-proveniência e `auto_saved`. As decisões não se reescrevem: uma nova
+provenance e `auto_saved`. As decisões não se reescrevem: uma nova
 decisão pode substituir uma antiga.
 
-No arranque o Hagar mostra os projetos ativos e a "atividade livre":
+Com `memory.backend: sqlite` projetos e decisões usam as tabelas
+`projects` e `decisions` da mesma base de dados; o backend Markdown
+legacy continua a usar o Vault.
+
+No arranque o Hagar mostra os projetos ativos e "atividade livre":
 
 ```text
 /project list
@@ -650,29 +677,29 @@ No arranque o Hagar mostra os projetos ativos e a "atividade livre":
 /project unarchive <nome>
 ```
 
-Os overrides não interativos são `--project <nome>` e `--free`.
+Os override não interativos são `--project <nome>` e `--free`.
 
 No fim da sessão:
 
 1. o transcript é movido para `archive/chat/`;
-2. é gerado um resumo com o modelo, com fallback mecânico;
-3. o resumo é guardado com link e hash do transcript;
+2. é gerado um summary com o modelo, com fallback mecânico;
+3. o summary é guardado com link e hash do transcript;
 4. se houver um projeto, o LLM propõe decisões `candidate`;
-5. o utilizador pode revê-las; se recusar, permanecem `candidate` com
+5. o utilizador pode revê-las; se recusar, ficam `candidate` com
    `auto_saved: true`.
 
-O contexto injetado usa o **índice** do projeto: resumo, títulos das
-decisões ativas e contagem, não todos os corpos. Os detalhes leem-se com
-`memory.project_context(query=..., limit=...)`. O bloco global é limitado
-por `max_context_chars`; se for cortado, a auditoria registra
-`memory.context_trimmed`. Não é uma estimativa de tokens: é um orçamento
-em caracteres, determinístico.
+O contexto injetado usa o **índice** do projeto: summary, títulos
+das decisões ativas e contagem, não todos os corpos. Os detalhes leem-se
+com `memory.project_context(query=..., limit=...)`. O bloco
+global é limitado por `max_context_chars`; se for cortado,
+a auditoria registra `memory.context_trimmed`. Não é uma estimativa de tokens: é
+um budget em caracteres, determinístico.
 
-Quando um projeto excede `project_max_active`, o Hagar pergunta se deve
-ser arquivado. O arquivamento é reversível e não apaga nada.
+Quando um projeto ultrapassa `project_max_active`, o Hagar pergunta se
+o deve arquivar. O arquivo é reversível e não apaga nada.
 
-**Consulta do arquivo.** Os transcripts arquivados têm o `project` no
-frontmatter. A pesquisa e a leitura são on demand:
+**Consulta do arquivo.** Os transcripts arquivados têm o `project`
+no frontmatter. A pesquisa e a leitura são on demand:
 
 ```text
 /memory archive search <texto>
@@ -680,21 +707,184 @@ frontmatter. A pesquisa e a leitura são on demand:
 ```
 
 As mesmas ferramentas são expostas como `memory.archive_search` e
-`memory.archive_read`; a pesquisa devolve sessão, turno, timestamp,
-projeto e excerto, a leitura pagina os turnos. Não há injeção automática
-do arquivo no prompt: o resumo continua a ser o índice, o transcript é a
-fonte a consultar quando necessário.
+`memory.archive_read`; a pesquisa devolve session, turn, timestamp,
+projeto e snippet, a leitura pagina os turnos. Não há injeção
+automática do arquivo no prompt: o summary continua a ser o índice, o
+transcript é a fonte a consultar quando necessário.
 
-Se `vault.path` não existir ou não for escrevível, a memória é desativada
-com um aviso no chat e `memory.disabled` na auditoria; os outros
-componentes continuam a funcionar. As escritas de memória estão sujeitas
-às políticas (`MEMORY_READ`/`MEMORY_WRITE`).
+Se `vault.path` não existir ou não for escrevível, a memória é
+desativada com um aviso no chat e `memory.disabled` na auditoria; os
+outros componentes continuam a funcionar. As escritas de memória estão
+sujeitas às políticas (`MEMORY_READ`/`MEMORY_WRITE`).
 
-## 3.12 Arranque e empacotamento
+## 3.11.1 Service layer (`core/service.py`)
+
+`HarnessService` é a API estável por cima do `Harness`: não lê de
+`input()`, não escreve em stdout e não conhece a CLI. Expõe:
+
+- `ask(question)` com eventos `turn.start`, `turn.answer`, `turn.error`;
+- eventos de ferramentas e permissões reencaminhados por `Agent` e `ToolRegistry`:
+  `tool.call`, `tool.result`, `permission.decision`,
+  `permission.confirmation`;
+- `status()` com modelo, projeto, memória, auditoria, política e ferramentas;
+- `list_projects()`, `current_project()`, `set_project()`,
+  `clear_project()`, `create_project()`;
+- `finish_session()`.
+
+Os eventos são `ServiceEvent(type, data, ts)` e podem ser consumidos
+por um sink (CLI, GUI, testes). A CLI atual usa o service para os turnos, a
+seleção de projeto e o fecho da sessão.
+
+## 3.11.2 Command service (`core/command_service.py`)
+
+`CommandService` transforma os comandos slash em `CommandResult`:
+
+```text
+command, ok, lines, data, error, requires_input
+```
+
+Gere `/help`, `/tools`, `/status`, `/mcp`, `/audit`, `/project` e
+`/memory` sem escrever em stdout. A CLI imprime `lines`; a GUI usará
+`data`. A revisão interativa de `/memory` continua confiada ao `MemoryCLI`
+porque exige input humano. A CLI usa o command service para todos os
+comandos slash, exceto `/memory review`.
+
+## 3.11.3 Web GUI (`core/web.py`)
+
+`hagar web` arranca um `ThreadingHTTPServer` local com:
+
+- `GET /` página de chat;
+- `GET /static/style.css` e `/static/app.js` (assets em `web/`);
+- `GET /api/events` stream SSE;
+- `POST /api/message`, `/api/confirm`, `/api/project`, `/api/stop`,
+  `/api/new-chat`, `/api/resume`;
+- `GET /api/status`, `/api/projects`, `/api/pending`;
+- `GET /api/history`, `/api/history/<session>`;
+- `GET /api/tools`, `/api/audit`, `/api/thinking`;
+- `GET /api/memories`, `/api/memory?path=...`.
+
+Os separadores da GUI são Chat, Chat history, Tool output, Audit, Thinking e
+Memories. A barra lateral mantém projeto, estado e tokens; o histórico está no
+separador dedicado. `SessionLog` conserva os eventos da sessão para Tool
+output e timeline; Audit lê o JSONL; Thinking privilegia o
+reasoning exposto pelo provider e, caso contrário, mostra a timeline. Memories
+lê o índice, excluindo chat, arquivo e summary.
+
+Um clique num chat passado chama `POST /api/resume`: o transcript
+é recarregado e a sessão de auditoria/memória volta a esse id, para que os
+novos turnos continuem o mesmo chat. `POST /api/new-chat` chama
+`MemoryStore.new_session()` e muda a sessão, sem tocar nos
+transcripts anteriores.
+
+Os assets estáticos vivem em `web/` (`index.html`, `style.css`,
+`app.js`). `render_index()` injeta apenas o token; o resto é servido
+verbatim com whitelist e `importlib.resources`.
+
+A GUI é um adapter: usa `HarnessService`, `CommandService` e
+`QueueConfirmationProvider`. As confirmações ASK bloqueiam a thread do turno
+num `threading.Event`; o servidor permanece livre e desbloqueia o pedido com
+`POST /api/confirm`. Um timeout vale como recusa.
+
+A barra lateral mostra os tokens acumulados da sessão: `UsageLedger` recebe
+o usage de cada chamada LLM através de `usage_sink` e publica
+`usage.updated` em SSE.
+
+**Stop:** `POST /api/stop` chama `Agent.cancel()`; o agente controla
+o evento entre um passo e outro e lança `AgentCancelled`. O turno
+interrompe-se de forma cooperativa, não aborta um pedido HTTP já
+em curso.
+
+**Vision:** `POST /api/message` aceita `images` como data URL
+PNG/JPEG/WebP (máx. 4, 10 MB cada); o body JSON pode chegar a
+64 MB. `core/images.py` valida e converte; `Agent.ask(question,
+images=...)` constrói content multimodal. Os adapter
+OpenAI-compatíveis/LM Studio usam `image_url`; Claude usa blocos
+`image`; Gemini usa `inlineData`. O LM Studio não aceita WebP
+diretamente: a GUI converte-o em PNG. A imagem não entra na
+memória Markdown nem na auditoria.
+
+Segurança: bind predefinido `127.0.0.1`, token aleatório injetado na
+página, cabeçalho `X-Hagar-Token` para as API e `?token=` para SSE. Não é
+multiutilizador e ainda não expõe a modificação do Vault.
+
+## 3.11.6 Vision input (`core/images.py`)
+
+`ImageInput` valida data URL, MIME e dimensão; `Agent.ask` usa partes
+canónicas (`text`, `image`) e cada backend tradu-las no seu próprio
+formato. O texto do stop e das imagens é separado do conteúdo
+persistente: a memória conserva apenas a pergunta e a resposta.
+
+`vision.open` lê uma imagem da sandbox, valida-a com magic number
+e devolve-a como `ToolResult.images`. O ciclo `Agent` anexa
+a imagem a uma mensagem de utilizador sintética antes da chamada
+seguinte, para que o modelo a veja sem receber base64 no texto da
+ferramenta. Limites: 4 imagens por turno, 10 MB por imagem, PNG/JPEG/WebP.
+O child pode usar `vision.open` no seu próprio workspace read-only.
+
+O áudio não está implementado. O canal de anexos seria reutilizável, mas
+são necessários um contrato provider audio-native diferente, formatos/decoder e uma
+escolha explícita entre ASR e compreensão de áudio; está no roadmap sem
+timeline.
+
+`memory/export.py` exporta a base de dados SQLite em Markdown:
+`Hagar/chat/`, `Hagar/skills/`, `Hagar/summaries/`,
+`Hagar/projects/<id>/index.md` e `decisions/`. A escrita é atómica
+(temp + `os.replace`) e o comando recusa um destino não vazio
+sem `--force`.
+
+`memory_fts` é uma tabela FTS5 na mesma base de dados, com colunas
+`entity`, `entity_id`, `kind`, `project`, `status`, `title`, `body`.
+`SqliteMemoryIndex.search` usa `MATCH`, `bm25()` e `snippet()`; se o FTS5
+não estiver disponível recai sobre `LIKE`. `memory/import_markdown.py` importa
+a mesma estrutura com upsert e reconstrói o índice FTS.
+
+## 3.11.4 Token usage (`core/usage.py`)
+
+`TokenUsage` normaliza input, output, cache e reasoning. As funções
+`usage_from_openai`, `usage_from_anthropic`, `usage_from_gemini` e
+`usage_from_ollama` leem os campos nativos das respostas.
+
+`LLMClient._set_usage()` atualiza `last_usage` e chama o `usage_sink`
+do cliente. `HarnessService` possui o `UsageLedger`, liga-o ao
+cliente e publica `usage.updated`; a GUI usa-o na barra lateral e `/usage`
+lê-o da CLI. O usage do provider é a
+verdade; uma estimativa local permanece apenas como fallback.
+
+## 3.11.5 Memory index (`memory/index.py`)
+
+`MemoryIndex` é um índice SQLite derivado do Vault Markdown:
+
+- tabelas `documents`, `meta` e `documents_fts` (FTS5);
+- sync incremental por hash/mtime/size;
+- `rebuild()` reconstrói de zero;
+- pesquisa com filtros `project`, `kind`, `status`;
+- fallback `LIKE` se o FTS5 não estiver disponível;
+- base de dados nos dados locais da aplicação, não no Vault sincronizado.
+
+A ferramenta `memory.search` usa o índice; `/memory reindex` e `/memory stats`
+expõem manutenção e estado. Com o backend predefinido SQLite a
+fonte de verdade é `memory.db`; o antigo `MemoryIndex` permanece apenas para o
+backend Markdown legacy.
+
+## 3.11.7 Decision tools (`core/decisions.py`)
+
+`DecisionRegistry` seleciona um `DecisionProvider` e `decision.choose`
+expõe a escolha ao modelo. Os providers built-in são:
+
+- `llm`: pede ao cliente LLM um JSON com `choice` e `probabilities`,
+  valida as label e normaliza as probabilidades;
+- `linear`: carrega um modelo JSON local com label, pesos e bias e usa
+  softmax para produzir as probabilidades.
+
+A capability `DECISION` é separada de `COMPUTE`, `NETWORK` e
+`FILESYSTEM_*`; os detalhes e o formato do modelo estão em
+`DECISIONS.md`. Jev/Kev ainda não são adapter nativos.
+
+## 3.12 Arranque e packaging
 
 O projeto instala-se com `pip install -e .` e declara os pacotes em
-`pyproject.toml`. O entry point é `hagar = "hagar:main"`. A versão atual é
-`0.3.0`.
+`pyproject.toml`. O entry point é `hagar = "hagar:main"`. A versão
+corrente é `0.5.2`.
 
 A configuração de exemplo é `hagar.example.yaml`; `hagar.yaml` é um
 ficheiro local ignorado pelo git. O Vault predefinido do exemplo é
@@ -710,19 +900,19 @@ hagar --no-native-tools   usa o protocolo JSON textual
 hagar --version
 ```
 
-A configuração é procurada nesta ordem: `--config`, variável
-`HAGAR_CONFIG`, `./hagar.yaml`. `python -m hagar` funciona a partir do
-diretório do projeto.
+A configuração procura-se nesta ordem: `--config`, variável
+`HAGAR_CONFIG`, `./hagar.yaml`. `python -m hagar` funciona a partir da
+diretoria do projeto.
 
 A CI GitHub Actions executa a suite em Linux, macOS e Windows com
 Python 3.11/3.12/3.13, constrói sdist e wheel, executa `twine check` e
-testa a instalação do wheel. O workflow `Release` parte de uma tag `v*`,
-verifica que a tag corresponde à versão do pacote e cria a release GitHub
-com os artefactos.
+testa a instalação da wheel. O workflow `Release` parte de uma tag
+`v*`, verifica que a tag corresponde à versão do pacote e
+cria a release GitHub com os artefactos.
 
-Os testes live estão excluídos da suite normal e ativam-se com `--live`:
-verificam o Ollama e os providers remotos (estes últimos apenas se a
-chave API estiver presente).
+Os testes live estão excluídos da suite normal e ativam-se com
+`--live`: verificam o Ollama e os providers remotos (estes últimos apenas se
+a chave API estiver presente).
 
 ## 3.13 Ferramentas locais (`local_tools/`)
 
@@ -743,48 +933,111 @@ no registry e vivem fora do core, num pacote separado.
 
 - `clock.now` devolve hora local, data, fuso, offset UTC e epoch.
 - `calendar.date` converte a data local, ou uma data ISO opcional, no
-  calendário juliano proléptico ou no calendário islâmico tabular
-  (Kuwaiti algorithm). O calendário islâmico tabular pode diferir num dia
-  dos que se baseiam na observação ou em Umm al-Qura.
-- `think.echo` devolve exatamente a cadeia recebida; serve para
-  externalizar um passo intermédio nas cadeias de raciocínio.
+  calendário juliano prolético ou no calendário islâmico tabular
+  (Kuwaiti algorithm). O calendário islâmico tabular pode diferir em
+  um dia dos baseados na observação ou em Umm al-Qura.
+- `think.echo` devolve exatamente a string recebida; serve para
+  externalizar uma passagem intermédia nas cadeias de raciocínio.
 - `text.diff` devolve um diff unificado entre dois textos, com input
-  máximo de 20000 caracteres, output máximo de 20000 e `context` 0..10.
-  Não aplica o diff.
+  máximo de 20000 caracteres, output máximo de 20000 e `context` 0..10. Não
+  aplica o diff.
 - `url.parse` decompõe scheme, host, porta, path, query e fragment sem
-  DNS ou rede; limita o URL a 4096 caracteres e os parâmetros a 100. Se o
-  URL contiver credenciais, mascara-as na saída.
+  DNS ou rede; limita o URL a 4096 caracteres e os parâmetros a 100. Se
+  o URL contiver credenciais, redige-as no output.
 - `clock`, `calendar`, `think`, `text` e `url` não acedem ao filesystem
   nem à rede, e recaem na regra `COMPUTE` allow.
-- O calculador usa uma whitelist de AST, não `eval()`, com limites na
-  expressão, no número de nós e no expoente.
-- `feed.read` descarrega com `requests` (timeout 15 s, máximo 5 MB),
-  aceita apenas URLs http/https e usa `feedparser`; a política `NETWORK`
-  é `ask`.
+- A calculadora usa uma whitelist AST, não `eval()`, com limites sobre
+  expressão, número de nós e expoente.
+- `feed.read` descarrega com `requests` (timeout 15 s, máximo 5 MB), aceita
+  apenas URL http/https e usa `feedparser`; a política `NETWORK` é `ask`.
 - SSRF: cada host é resolvido com `getaddrinfo` e cada endereço tem de
   ser global; loopback, redes privadas, link-local, multicast e
-  reservados são recusados. Os redirecionamentos não são automáticos:
-  cada `Location` é revalidado e para-se após 3 saltos. Um URL com
+  reservados são recusados. Os redirects não são automáticos: cada
+  `Location` é revalidado e param após 3 saltos. Um URL com
   credenciais é recusado.
-- `permissions.network: true` é necessário para que o teto do sistema
-  conceda `NETWORK`; `COMPUTE` está sempre no teto, mas a política pode
-  negá-la.
-- `local_tools` é declarado em `pyproject.toml` e instalado com o
+- `permissions.network: true` é necessário para que o teto de sistema
+  conceda `NETWORK`; `COMPUTE` está sempre no teto mas a política pode negá-lo.
+- `permissions.agents: true` é necessário para `AGENT_SPAWN`; a política
+  tem ainda de permitir `agent.*`.
+- `local_tools` está declarado em `pyproject.toml` e é instalado com o
   projeto.
+
+As ferramentas built-in são registadas por `local_tools/plugins.py` através
+do mesmo contrato `ToolPlugin` dos plugins externos. Os plugins externos
+descobrem-se com o entry point `hagar.tools` e recebem um `PluginContext`.
+Política e sandbox permanecem no registry: um plugin não pode conceder
+permissões. Um plugin avariado é ignorado e registado na auditoria, sem
+parar os outros.
+
+## 3.14 Plugin
+
+`core/plugins.py` define:
+
+- `ToolPlugin` + `PluginContext` para as ferramentas;
+- `LLMProvider` para os providers LLM;
+- descoberta via `importlib.metadata.entry_points`;
+- isolamento dos erros e auditoria `plugin.loaded`/`plugin.error`.
+
+Os providers built-in estão em `llm/plugins.py` e são registados antes
+dos externos. Um provider externo não pode substituir um nome built-in.
+Os plugins Python são trusted e correm in-process; para extensões não
+fidedignas a fronteira permanece o MCP ou um processo separado. O contrato completo
+está em `PLUGINS.md`.
+
+## 3.15 Subagentes assíncronos
+
+`core/subagents.py` implementa:
+
+- `agent.spawn/status/wait/result/cancel` e `agent.run` síncrono;
+- `reason` obrigatório no spawn, registado na auditoria;
+- capability `AGENT_SPAWN` separada: o child não a recebe e não pode
+  criar outros agentes;
+- política do child estritamente mais restritiva; políticas iguais ou mais
+  amplas são recusadas com `SubagentPolicyError`;
+- timeout de parede de 5 minutos, cooperativo, com estado `timed_out`;
+- `agent_id` em todos os eventos de auditoria do pai, do child e do
+  registry;
+- até dois subagentes concorrentes;
+- mesmo modelo local mas cliente LLM separado;
+- workspace temporário privado para cada child;
+- input copiados do workspace do pai;
+- outbox `artifact.put`/`artifact.put_file` e `mailbox.send` para o
+  child;
+- artifact store temporário (máx. 50 MB por artifact, 256 MB por turno)
+  e mailbox em memória (máx. 64 KB por mensagem);
+- leitura bounded do pai com `artifact.read`, `artifact.list`,
+  `mailbox.inbox/read/ack`;
+- `artifact.save_to` copia o artifact inteiro para um caminho escrevível da
+  sandbox do pai, sem passar pelo contexto;
+- capability `AGENT_DATA`;
+- registry filtrado a `FILESYSTEM_READ`, `MEMORY_READ`, `COMPUTE` e
+  `AGENT_DATA`;
+- exclusão de `filesystem.chdir` e `agent.*`;
+- nenhuma escrita de memória;
+- ASK do child encaminhadas ao utilizador pelo `ParentBridgeConfirmation`,
+  timeout de 180 segundos e DENY na expiração; o pai LLM não aprova;
+- usage separado;
+- auditoria `agent.spawned/started/finished/cancelled/failed`;
+- no fim do turno, `artifact.discarded` para artifact não exportado, com
+  motivo `unread` ou `read_but_not_saved` e metadados sem conteúdo;
+- cleanup de workspace e job no fim do turno.
+
+`AuditLog.record` é serializado com lock para as escritas concorrentes.
+Ainda não há export de artifact, budget de tokens/tempo, aninhamento ou
+GUI dedicada. Os detalhes estão em `SUBAGENTS.md`.
 
 ---
 
 # 4. Modelo de segurança
 
-- O agente não vê o filesystem real: apenas caminhos resolvidos dentro da
+- O agente não vê o filesystem real: apenas percursos resolvidos dentro da
   sandbox.
-- As operações passam apenas pelo `ToolRegistry`; nenhuma shell
-  anfitriã.
+- As operações passam apenas pelo `ToolRegistry`; nenhuma shell host.
 - As permissões são declaradas na configuração e nas políticas, e são
-  aplicadas pela sandbox e pelo `PermissionEvaluator`; as raízes
-  aninhadas podem restringir as permissões.
-- Os erros são dados: uma recusa é devolvida ao modelo como resultado da
-  ferramenta, não escondida.
+  aplicadas pela sandbox e pelo `PermissionEvaluator`; as raízes aninhadas
+  podem restringir as permissões.
+- Os erros são dados: uma recusa é devolvida ao modelo como
+  resultado da ferramenta, não escondida.
 - Cada ação deixa um rasto na auditoria, com sessão e turno.
 
 ---
@@ -792,119 +1045,120 @@ no registry e vivem fora do core, num pacote separado.
 # 5. Desenvolvimento
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) ou
-  `.\tools\run_tests.ps1` (Windows). Em Windows: 691 aprovados, 2
-  ignorados (symlinks não disponíveis sem Developer Mode). Em Debian
-  Linux (2026-11-06): todos os testes verdes, incluindo os symlinks (693
-  aprovados, 0 ignorados). Detalhes e justificação do shim em README
-  §3.1.
+  `.\tools\run_tests.ps1` (Windows). No Windows: 832 passed, 2 skipped
+  (symlink não disponíveis sem Developer Mode). Em Debian Linux
+  (2026-11-06): todos os testes verdes, incluindo os symlink (743 passed, 0
+  skipped). Detalhes e motivação do shim em README §3.1.
 - Testes live: `./tools/run_tests.sh --live` (Linux/macOS) ou
   `.\tools\run_tests.ps1 --live` (Windows) — mais 9 testes (Ollama;
   providers remotos se as chaves estiverem presentes).
 - Comparação de modelos: `python tools/bench_models.py` (README §3.5).
 - Comparação de protocolos: `python tools/bench_native.py --provider ollama`
   (README §3.5).
-- A suite normal não toca na rede: o Ollama e o MCP são simulados.
+- A suite normal não toca na rede: Ollama e MCP são simulados.
 
 ## 5.1 Multiplataforma
 
-- Os caminhos internos usam `pathlib.Path`; os mostrados ao agente usam
-  sempre `/` e a raiz virtual `/home/ai`.
-- `filesystem.sandbox` contém caminhos do sistema anfitrião, absolutos ou
-  com `~` se o utilizador o escolher: `Path.expanduser()` resolve a home
-  apenas quando o caminho a usa. Não se pressupõe que exista uma home
-  dedicada.
-- Cada mount tem um alias explícito e único (case-insensitive); o
-  caminho físico pode estar em qualquer volume.
+- Os percursos internos usam `pathlib.Path`; os mostrados ao agente
+  usam sempre `/` e a raiz virtual `/home/ai`.
+- `filesystem.sandbox` contém caminhos do sistema anfitrião, absolutos ou com
+  `~` se o utilizador o escolher: `Path.expanduser()` resolve a home apenas
+  quando o caminho a usa. Não se assume que exista uma home dedicada.
+- Cada mount tem um alias explícito e único (sem distinção de maiúsculas); o
+  percurso físico pode estar em qualquer volume.
 - `tools/run_tests.sh` é o runner POSIX; `tools/run_tests.ps1` e
-  `tools/pytest_shim` servem apenas a sandbox Windows com token
+  `tools/pytest_shim` servem apenas à sandbox Windows com token
   restrito.
 - O único ramo explicitamente Windows que resta é a data de criação em
   `stat`: `st_birthtime` onde disponível, caso contrário `st_ctime` em
   Windows; em Linux `created_at` pode ser `None`.
-- As APIs externas (OAuth, MCP, LLM) usam HTTP e `webbrowser`, não
+- As API externas (OAuth, MCP, LLM) usam HTTP e `webbrowser`, não
   comandos de sistema.
-- A CI GitHub Actions cobre Linux, macOS e Windows em Python
-  3.11/3.12/3.13; symlinks, permissões dos tokens OAuth e callback
-  loopback continuam por verificar com testes live, não na suite offline.
+- A CI GitHub Actions cobre Linux, macOS e Windows com Python
+  3.11/3.12/3.13; symlink, permissões dos tokens OAuth e callback loopback
+  permanecem por verificar com testes live, não na suite offline.
 
 ---
 
 # 6. Limites conhecidos e dívida técnica
 
-- O `PermissionEvaluator` cobre a v1: faltam os sujeitos dinâmicos, as
-  confirmações GUI e as capabilities MCP atribuídas pela configuração.
+- `PermissionEvaluator` cobre a v1: faltam os sujeitos dinâmicos, as
+  confirmações GUI e as capability MCP atribuídas pela configuração.
 - A chamada nativa depende do modelo: alguns ignoram as ferramentas ou
-  devolvem várias chamadas; o fallback textual cobre os erros, não a
-  qualidade da escolha.
+  devolvem várias chamadas; o fallback textual cobre os erros, não
+  a qualidade da escolha.
 - O cliente MCP suporta bearer/header e OAuth authorization code; não
   gere device flow, DPoP, mTLS ou client assertion.
-- A revisão das skills é manual a partir da CLI; falta uma GUI.
-- A pesquisa na memória é por palavra-chave, sem índice nem embedding.
+- A revisão das skills é manual na CLI; falta uma GUI.
+- A pesquisa na memória é por palavra-chave, sem índice nem
+  embedding.
 - O contexto injetado usa turnos recentes globais e até 3 skills
-  confirmadas por correspondência lexical, sem seleção semântica.
-- A memória não apaga chats ou skills por antiguidade: `archive` é a
-  única remoção do contexto.
-- A auditoria tem rotação e retenção (`max_files`), mas não compactação
+  confirmadas por match lexical, sem seleção semântica.
+- A memória não apaga chats ou skills por antiguidade: `archive` é
+  a única remoção do contexto.
+- A auditoria tem rotação e retention (`max_files`), mas não compactação
   das sessões nem uma ancoragem externa da cadeia.
-- `feed.read` valida os endereços e os redirecionamentos, mas subsiste o
-  caso de DNS rebinding: `requests` resolve o nome uma segunda vez no
-  momento da ligação; é necessário um resolver fixado.
-- O calculador não é um CAS: trata apenas expressões numéricas
+- `feed.read` valida os endereços e os redirects, mas permanece o caso DNS
+  rebinding: `requests` resolve o nome uma segunda vez no momento
+  da ligação; é necessário um resolver fixado (pinned).
+- A calculadora não é um CAS: gere apenas expressões numéricas
   limitadas, não simbólicas.
 - `stat().created_at` é `None` em Linux quando falta `st_birthtime`; não
   é inventada uma data de criação.
 - Dois alias não podem apontar para o mesmo caminho físico: o alias
-  identifica um mount e a saída virtual tem de permanecer unívoca.
+  identifica um mount e o output virtual tem de permanecer unívoco.
 
 ## 6.1 Responsabilidade do utilizador: hard link, mount e TOCTOU
 
-**O Hagar não controla os hard links, os mounts/junctions e as corridas
-TOCTOU dentro dos diretórios allowed.** Não é um defeito do Hagar: a
-sandbox é path-based e não usa handles/file descriptors para a operação
-inteira.
+**O Hagar não controla os hard link, os mount/junction e as race TOCTOU
+dentro das diretorias allowed.** Não é um defeito do Hagar: a sandbox é
+path-based e não usa handle/file descriptor para toda a operação.
 
-Um hard link é um segundo nome do mesmo inode, não tem um alvo de
-caminho e a sandbox não pode saber se existe outro nome fora. Um mount ou
-uma junction podem expor outro filesystem permanecendo dentro do prefixo
-do caminho. Uma corrida TOCTOU pode alterar um componente entre o
+Um hard link é um segundo nome do mesmo inode, não tem um target de
+percurso e a sandbox não pode saber se existe outro nome fora. Um
+mount ou uma junction pode expor outro filesystem mantendo-se dentro
+do prefixo do percurso. Uma race TOCTOU pode mudar um componente entre o
 controlo dos symlinks e a operação real: o Hagar não usa `openat2`,
 `O_NOFOLLOW` em cada componente ou handle Windows, pelo que não garante
-atomicidade entre verificação e acesso.
+atomicidade entre check e acesso.
 
-As ferramentas de filesystem do Hagar não criam hard links. Se um hard
-link ou um mount já existir dentro de um diretório da sandbox, o Hagar
-trata-o como um ficheiro ou diretório normal e pode lê-lo, modificá-lo ou
-apagar o seu nome interno.
+As ferramentas filesystem do Hagar não criam hard link. Se um hard link ou um
+mount já existir dentro de uma diretoria da sandbox, o Hagar trata-o como
+um ficheiro ou diretoria normal e pode lê-lo, modificá-lo ou apagar o seu
+nome interno.
 
 A responsabilidade é, portanto, dividida:
 
-- **O Hagar garante** que os caminhos resolvidos permanecem dentro do
-  alias no momento da verificação, que os symlinks são invisíveis, que as
-  permissões `R`/`W`/`X` são aplicadas e que os caminhos reais não vão
-  parar à saída do modelo.
-- **O utilizador garante** que os diretórios configurados em
-  `filesystem.sandbox` não contêm hard links, mounts ou junctions para
+- **O Hagar garante** que os percursos resolvidos permanecem dentro do alias no
+  momento do controlo, que os symlink são invisíveis, que as permissões
+  `R`/`W`/`X` são aplicadas e que os caminhos reais não entram
+  no output do modelo.
+- **O utilizador garante** que as diretorias configuradas em
+  `filesystem.sandbox` não contêm hard link, mount ou junction para
   conteúdos que não devem ser acessíveis, e que nenhum processo
-  concorrente não fidedigno pode modificar esses diretórios durante a
-  execução, se quiser isolamento total.
+  concorrente não fidedigno pode modificar essas diretorias durante
+  a execução, se quiser isolamento total.
 
-As corridas TOCTOU exigem um ator local concorrente com acesso de escrita
-aos diretórios da sandbox: não são um caso acidental do uso normal, mas
-um cenário malicioso ou de ambiente comprometido. Para um isolamento
-forte são necessários um volume dedicado, um utilizador separado, um
-mount namespace ou um container; não é tarefa do resolver de caminhos.
+As race TOCTOU exigem um ator local concorrente com acesso em
+escrita às diretorias da sandbox: não são um caso acidental
+do uso normal, mas um cenário malicioso ou de ambiente comprometido.
+Para um isolamento forte são necessários um volume dedicado, um utilizador separado,
+um mount namespace ou um container; não é tarefa do resolver de paths.
 
-Os pontos estão fechados como **responsabilidade do utilizador**, não como
-dívidas técnicas do Hagar. Hard links, mounts/junctions e corridas TOCTOU
-não são detetados nem bloqueados por esta versão.
+Os pontos estão fechados como **responsabilidade do utilizador**, não como dívidas
+técnicas do Hagar. Hard link, mount/junction e race TOCTOU não são
+detetados nem bloqueados por esta versão.
 
 ---
 
 # 7. Mapa da documentação
 
-- `MANUAL.md` — manual do utilizador: comandos, configuração, política,
-  predefinições.
+- `MANUAL.md` — manual do utilizador: comandos, configuração, política, default.
 - `ARCHITECTURE.md` — este documento: como é o sistema hoje.
-- `ROADMAP.md` — o que fazer, decisões tomadas e pontos em aberto.
+- `ROADMAP.md` — o que fazer, decisões tomadas e pontos abertos.
+- `PLUGINS.md` — contratos para ferramentas e providers LLM plugin.
+- `DOCUMENT_TOOL.md` — especificação da document tool, esquema do grafo e
+  protocolo do host nativo.
+- `SUBAGENTS.md` — MVP subagentes e limites.
 - `CHANGELOG.md` — história das versões.
 - `README.md` — arranque, configuração, testes.
