@@ -1,6 +1,6 @@
 # HAGAR — Manuale utente
 
-Versione: **0.3.0**
+Versione: **0.5.2**
 
 Questo manuale descrive il comportamento osservabile di Hagar: comandi,
 opzioni, configurazione, policy e casi di errore. Per il progetto interno

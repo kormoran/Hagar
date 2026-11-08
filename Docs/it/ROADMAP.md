@@ -1,15 +1,15 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.3.0 pubblicata
+Versione corrente: 0.5.2 (in preparazione)
 Ultimo aggiornamento: 2026-11-07
 
 Le decisioni prese sono indicate come tali; i punti ancora aperti sono
 elencati alla fine di ogni area. Le sezioni 1–9 sono lo storico fino
-alla 0.3.0; il piano operativo corrente è la sezione 0.
+alla 0.5.2; il piano operativo corrente è la sezione 0.
 
 ---
 
-# 0. Piano corrente (post-0.3.0)
+# 0. Piano corrente (post-0.5.2)
 
 ## 0.1 Stato
 
@@ -48,11 +48,12 @@ Completato dopo la release, non ancora rilasciato:
 
 | Release | Obiettivo | Stato |
 |---|---|---|
-| **0.4.0** | Indice SQLite delle memorie | implementato |
-| **0.4.x** | GUI: stop turno, cronologia, vision | prossimo |
-| **0.5.0** | Subagenti | pianificato |
-| **0.6.0** | Broker LLM | pianificato |
-| **0.7.0** | Tool SQL read-only | pianificato |
+| **0.4.0** | Indice SQLite delle memorie | confluito nella 0.5.2 |
+| **0.4.x** | GUI: stop turno, cronologia, vision | confluito nella 0.5.2 |
+| **0.5.0** | Subagenti | confluito nella 0.5.2 |
+| **0.5.2** | Release corrente | in preparazione |
+| **0.6.0** | Broker LLM | prossimo |
+| **0.7.0** | Tool SQL read-only | congelato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
@@ -93,7 +94,7 @@ restituisce gli stessi risultati.
 La vision non deve entrare nella memoria come base64: solo hash e
 descrizione.
 
-## 0.5 0.5.0 — Subagenti
+## 0.5 0.5.x — Subagenti e consolidamento
 
 - [x] MVP sincrono: `AgentSpec`, `agent.run`, tool read-only, memoria
   read-only, conferme negate, audit `agent.*`, usage separato;

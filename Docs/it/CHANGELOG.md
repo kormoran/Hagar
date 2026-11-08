@@ -5,7 +5,20 @@ riferimento al commit quando utile.
 
 ---
 
-# Non rilasciato
+# 0.5.2 — 2026-11-08
+
+## Riepilogo
+
+Release di consolidamento: memoria SQLite, subagenti, vision, tool
+decisionali, schede modello, import/export Markdown e input broker CLI.
+
+## Breaking change
+
+- la memoria predefinita non è più il Vault Markdown: usa
+  `%LOCALAPPDATA%/Hagar/memory.db` o `HAGAR_MEMORY_DB`;
+- il Vault non viene importato automaticamente;
+- il backend `markdown` resta disponibile solo come legacy;
+- `memory.database` e `decisions.*` sono nuove sezioni di configurazione.
 
 ## Nuovi backend LLM
 

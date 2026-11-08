@@ -1,6 +1,6 @@
 # HAGAR — Architettura
 
-Versione: 0.2.0 (in sviluppo)
+Versione: 0.5.2
 Ultimo aggiornamento: 2026-11-03
 
 ---
@@ -882,7 +882,7 @@ La capability `DECISION` è separata da `COMPUTE`, `NETWORK` e
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
 `pyproject.toml`. L'entry point è `hagar = "hagar:main"`. La versione
-corrente è `0.3.0`.
+corrente è `0.5.2`.
 
 La configurazione d'esempio è `hagar.example.yaml`; `hagar.yaml` è un
 file locale ignorato da git. Il Vault predefinito dell'esempio è
