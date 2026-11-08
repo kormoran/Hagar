@@ -848,11 +848,12 @@ def _main(
     try:
 
         config = _load_config(args)
-        broker = ConsoleInputBroker()
+
+        console_confirmation = ConsoleConfirmation()
 
         harness = build_harness(
             config,
-            confirmation=ConsoleConfirmation(broker=broker),
+            confirmation=console_confirmation,
         )
 
     except ConfigError as exc:
@@ -963,7 +964,6 @@ def _main(
             ),
             interactive=sys.stdin.isatty(),
             audit=harness.audit,
-            input_func=broker.read_line,
         )
 
         try:
@@ -996,6 +996,11 @@ def _main(
 
     print()
 
+    broker = ConsoleInputBroker()
+    console_confirmation.broker = broker
+
+    interrupted = False
+
     try:
 
         _interactive_loop(
@@ -1005,16 +1010,30 @@ def _main(
             broker=broker,
         )
 
+    except KeyboardInterrupt:
+
+        interrupted = True
+        raise
+
     finally:
 
-        _finish_session(harness, service, broker)
+        try:
 
-        harness.audit.record(
-            "harness.stop",
-            reason="exit",
-        )
+            if not interrupted:
+                _finish_session(harness, service, broker)
 
-        broker.close()
+        finally:
+
+            harness.audit.record(
+                "harness.stop",
+                reason=(
+                    "interrupt"
+                    if interrupted
+                    else "exit"
+                ),
+            )
+
+            broker.close()
 
 
 def _set_project(

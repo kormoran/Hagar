@@ -104,6 +104,7 @@ riferimento al commit quando utile.
   database primario con `bm25`/`snippet` e fallback `LIKE`.
 - CLI con `ConsoleInputBroker`: un solo lettore di console, titolo di
   attenzione e conferme ASK con `F5` allow / `F8` deny; fallback `y/N`.
+  Il broker salva e ripristina il terminale, anche su Ctrl-C.
 - Artifact store temporaneo e mailbox interna: `artifact.put`,
   `artifact.put_file`, `mailbox.send` per il figlio; `artifact.read`,
   `artifact.list`, `mailbox.inbox/read/ack` per il padre. Capability

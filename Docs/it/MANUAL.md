@@ -204,6 +204,8 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
   il titolo del terminale chiede attenzione e sono accettati `F5` =
   allow, `F8` = deny, oltre a `y/N`. Se il terminale non supporta i tasti
   funzione, restano `y/N` e la GUI.
+- Ctrl-C in CLI ripristina la modalità normale del terminale prima di
+  uscire.
 - La GUI non è ancora multiutente e non espone modifiche dirette alla memoria.
 - Ctrl-C chiude il server e tenta la fine sessione.
 

@@ -50,8 +50,11 @@ class ConsoleInputBroker:
         self._closed = False
         self._old_title: str | None = None
         self._thread: threading.Thread | None = None
+        self._termios_fd: int | None = None
+        self._termios_old = None
 
         if self._tty:
+            self._setup_terminal()
             self._thread = threading.Thread(
                 target=self._run,
                 name="hagar-console-input",
@@ -121,6 +124,7 @@ class ConsoleInputBroker:
         self._closed = True
         self.cancel()
         self._restore_title()
+        self._restore_terminal()
 
         if self._thread is not None:
             self._thread.join(timeout=0.2)
@@ -280,45 +284,81 @@ class ConsoleInputBroker:
 
         return char
 
-    @staticmethod
-    def _read_key_posix() -> str:
+    def _setup_terminal(self) -> None:
 
-        import select
-        import termios
-        import tty
-
-        fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
+        if self._key_reader is not None or sys.platform == "win32":
+            return
 
         try:
+
+            import termios
+            import tty
+
+            fd = sys.stdin.fileno()
+            self._termios_fd = fd
+            self._termios_old = termios.tcgetattr(fd)
             tty.setcbreak(fd)
-            char = sys.stdin.read(1)
 
-            if char != "\x1b":
-                return char
+        except Exception:
 
-            sequence = "\x1b"
+            self._termios_fd = None
+            self._termios_old = None
 
-            while select.select([fd], [], [], 0.03)[0]:
+    def _restore_terminal(self) -> None:
 
-                sequence += sys.stdin.read(1)
+        if (
+            self._termios_fd is None
+            or self._termios_old is None
+        ):
+            return
 
-                if sequence in {
-                    "\x1b[15~",
-                    "\x1b[[E",
-                }:
-                    return "f5"
+        try:
 
-                if sequence in {
-                    "\x1b[19~",
-                    "\x1b[[H",
-                }:
-                    return "f8"
+            import termios
 
-            return "escape"
+            termios.tcsetattr(
+                self._termios_fd,
+                termios.TCSADRAIN,
+                self._termios_old,
+            )
+
+        except Exception:
+            pass
 
         finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+            self._termios_fd = None
+            self._termios_old = None
+
+    def _read_key_posix(self) -> str:
+
+        import select
+
+        fd = sys.stdin.fileno()
+        char = sys.stdin.read(1)
+
+        if char != "\x1b":
+            return char
+
+        sequence = "\x1b"
+
+        while select.select([fd], [], [], 0.03)[0]:
+
+            sequence += sys.stdin.read(1)
+
+            if sequence in {
+                "\x1b[15~",
+                "\x1b[[E",
+            }:
+                return "f5"
+
+            if sequence in {
+                "\x1b[19~",
+                "\x1b[[H",
+            }:
+                return "f8"
+
+        return "escape"
 
     # ==================================================
     # Attenzione terminale
