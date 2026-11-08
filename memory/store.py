@@ -316,6 +316,8 @@ class MemoryStore:
         self.current_turn: str | None = None
         self._index_path = index_path
         self._index = None
+        self._session_activity: dict[str, int] = {}
+        self._activity_counter = 0
 
     @property
     def index(self):
@@ -459,7 +461,11 @@ class MemoryStore:
                     "date": first.timestamp,
                     "turns": len(turns),
                     "archived": archived,
-                    "_mtime": path.stat().st_mtime,
+                    "_mtime": path.stat().st_mtime_ns,
+                    "_activity": self._session_activity.get(
+                        session,
+                        0,
+                    ),
                 }
 
                 existing = sessions.get(session)
@@ -472,6 +478,7 @@ class MemoryStore:
         result = sorted(
             sessions.values(),
             key=lambda item: (
+                item["_activity"],
                 item["_mtime"],
                 item["date"],
                 item["id"],
@@ -481,6 +488,7 @@ class MemoryStore:
 
         for item in result:
             item.pop("_mtime", None)
+            item.pop("_activity", None)
 
         return result[:max(1, int(limit))]
 
@@ -937,6 +945,9 @@ class MemoryStore:
                 f"**Hagar:** {answer}\n"
             ),
         )
+
+        self._activity_counter += 1
+        self._session_activity[self.session_id] = self._activity_counter
 
         return Turn(
             session=self.session_id,

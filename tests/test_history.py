@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from memory.store import MemoryStore
 from memory.vault import Vault
 
@@ -66,6 +68,20 @@ def test_new_session_is_not_in_history_until_a_turn(tmp_path):
     ids = [item["id"] for item in store.list_sessions()]
 
     assert ids == ["sess-new", "sess-old"]
+
+
+def test_new_session_wins_even_with_equal_filesystem_mtime(tmp_path):
+    store = make_store(tmp_path)
+    store.append_turn("t1", "vecchia", "risposta")
+    store.new_session("sess-new")
+    store.append_turn("t2", "nuova", "risposta")
+
+    for path in store.vault.list_files(store.chat_dir, "*.md"):
+        os.utime(path, (0, 0))
+
+    assert [
+        item["id"] for item in store.list_sessions()
+    ] == ["sess-new", "sess-old"]
 
 
 def test_resume_archived_session_keeps_context(tmp_path):
