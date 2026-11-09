@@ -11,120 +11,17 @@ alla 0.5.2; il piano operativo corrente è la sezione 0.
 
 # 0. Piano corrente (post-0.5.2)
 
-## 0.1 Stato
-
-Pubblicato:
-
-- release GitHub `v0.3.0`;
-- CI Linux/macOS/Windows con Python 3.11, 3.12 e 3.13;
-- action aggiornate a Node 24;
-- documentazione italiana più traduzioni in inglese, spagnolo, cinese,
-  russo, portoghese e arabo;
-- backend `lmstudio`, `openai`/`chatgpt` e `model.timeout`.
-
-Completato dopo la release, non ancora rilasciato:
-
-- `HarnessService`: turni, stato, progetti, eventi e fine sessione senza
-  `input()`/`stdout`;
-- `CommandService`: `/help`, `/tools`, `/status`, `/mcp`, `/audit`,
-  `/project`, `/memory` con `CommandResult` strutturato;
-- event bridge `Agent`/`ToolRegistry` → `tool.call`, `tool.result`,
-  `permission.*`;
-- GUI web locale `hagar web` con SSE, chat, progetti, stato e conferme
-  ASK modali;
-- `QueueConfirmationProvider` con timeout e risoluzione da GUI;
-- `core/usage.py`: parsing token per OpenAI/LM Studio/DeepSeek, Claude,
-  Gemini e Ollama; `UsageLedger` per sessione;
-- sidebar GUI con token input/output/totale aggiornati via
-  `usage.updated`;
-- `MemoryIndex`: indice SQLite/FTS5 incrementale e ricostruibile;
-- memoria SQLite come fonte primaria: sessioni, turni, skill e summary;
-- comandi `/memory sessions`, `/memory chat`, `/memory backup`;
-- tool `memory.search`, `/memory search`, `/memory reindex`,
-  `/memory stats`;
-- asset GUI separati in `web/index.html`, `web/style.css`, `web/app.js`.
-
-## 0.2 Ordine delle prossime release
+## 0.1 Ordine delle prossime release
 
 | Release | Obiettivo | Stato |
 |---|---|---|
-| **0.4.0** | Indice SQLite delle memorie | confluito nella 0.5.2 |
-| **0.4.x** | GUI: stop turno, cronologia, vision | confluito nella 0.5.2 |
-| **0.5.0** | Subagenti | confluito nella 0.5.2 |
-| **0.5.2** | Release corrente | in preparazione |
 | **0.6.0** | Broker LLM | prossimo |
 | **0.7.0** | Tool SQL read-only | congelato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
 
-## 0.3 0.4.0 — Indice SQLite delle memorie
-
-Stato: implementato; resta la verifica sul Vault reale e l’eventuale
-misura delle prestazioni.
-
-- posizione: dati locali dell’app, non dentro il Vault sincronizzato;
-- schema: note, skill, decisioni, sessioni, tag, FTS5;
-- sync incrementale per path/hash/mtime;
-- `rebuild()` atomico, indice cancellabile e ricostruibile;
-- fallback alla ricerca lessicale se FTS5 non è disponibile;
-- tool `memory.search` con filtri progetto/kind/status;
-- `/memory reindex` e `/memory stats`;
-- nessun path reale esposto al modello.
-
-Criterio di uscita: cancellare il DB non perde memoria; ricostruirlo
-restituisce gli stessi risultati.
-
-## 0.4 0.4.x — GUI
-
-- pulsante **Stop** del turno — implementato;
-- vision: upload immagine nel composer, con adapter per provider —
-  implementato (OpenAI/LM Studio, Claude, Gemini);
-- cronologia chat visibile dopo un refresh — implementata come elenco
-  delle chat passate con ricarica dal Vault, ripresa della sessione e
-  **+ Nuova chat**;
-- tab Chat, Chat history, Tool output, Audit, Thinking e Memories —
-  implementate; Audit si disabilita se il log è spento, Thinking usa il
-  reasoning se disponibile e altrimenti la timeline;
-- browser memorie in sola lettura — implementato;
-- comando `/usage` lato CLI — implementato;
-- tool e provider LLM come plugin con entry point — implementato;
-  audit sink rimandato.
-
-La vision non deve entrare nella memoria come base64: solo hash e
-descrizione.
-
-## 0.5 0.5.x — Subagenti e consolidamento
-
-- [x] MVP sincrono: `AgentSpec`, `agent.run`, tool read-only, memoria
-  read-only, conferme negate, audit `agent.*`, usage separato;
-- [x] `agent.spawn/status/wait/result/cancel` con thread e fino a due
-  subagenti concorrenti;
-- [x] registry e workspace privato per figlio, input copiati e cleanup;
-- [x] audit serializzato con lock;
-- [x] `reason` obbligatorio e capability `AGENT_SPAWN` separata;
-- [x] artifact store, mailbox e outbox `artifact.put`/`mailbox.send`,
-  con capability `AGENT_DATA` e cleanup;
-- [x] audit `artifact.discarded` per artifact non esportati;
-- [ ] persistenza/orphan retention (solo se necessaria);
-- [x] progetti e decisioni nello stesso database SQLite;
-- [x] export Markdown dal database (`/memory export`);
-- [x] import Markdown nel database (`/memory import`);
-- [x] FTS5 nel database primario con ranking e snippet;
-- [x] timeout a parete di 5 minuti per subagente;
-- [x] policy del figlio strettamente più restrittiva del padre;
-- [x] `agent_id` negli eventi di padre, figli e registry;
-- [x] ASK dei figli inoltrate all'utente con timeout 180 secondi e DENY;
-- [x] tool `decision.choose` con provider LLM e classificatore lineare;
-- [ ] adapter Jev/Kev e training automatico di classificatori;
-- [ ] budget token/costo;
-- [ ] `parent_id` su ogni evento interno del figlio;
-- [ ] `audio.open`/`AudioInput`: il canale allegati è condiviso con le
-  immagini, ma servono provider audio-nativi, formati e semantica ASR
-  diversi; nessuna timeline;
-- [x] conferme ASK da console con input broker, F5/F8 e fallback GUI;
-
-## 0.6 0.6.0 — Broker LLM
+## 0.2 0.6.0 — Broker LLM
 
 - schede tecniche JSON e benchmark dei modelli (`/models test`);
 - rilevamento hardware CPU/RAM/GPU (`/models hardware`);
@@ -136,7 +33,7 @@ descrizione.
 - il broker non concede mai permessi: può solo proporre un sottoinsieme;
 - override umano e audit `broker.decision`.
 
-## 0.7 0.7.0 — Tool SQL
+## 0.3 0.7.0 — Tool SQL
 
 - solo lettura nella prima versione;
 - SQLite `mode=ro`, `PRAGMA query_only`, una sola istruzione;
@@ -147,21 +44,19 @@ descrizione.
 - scrittura e database di rete solo in una fase successiva, con
   `DATABASE_WRITE` e `NETWORK`.
 
-## 0.8 Punti aperti
+## 0.4 Punti aperti
 
 - release workflow idempotente se la release esiste già;
-- PyPI: rimandato, non blocca la 0.4;
+- PyPI: rimandato;
 - MCP OAuth Atlassian: Basic funziona, il flusso OAuth resta da
   validare;
 - test live MCP/OAuth e provider remoti;
 - manutenzione delle traduzioni: si rigenerano solo a release, non a
   ogni commit;
-- concorrenza e scritture atomiche del Vault: da valutare prima di
-  subagenti con memoria condivisa;
 - document tool: contratto e protocollo definiti in `DOCUMENT_TOOL.md`;
   MVP CSV ancora da implementare.
 
-## 0.9 Documentazione
+## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` e `Docs/ar` si
@@ -169,25 +64,7 @@ rigenerano solo quando si prepara una release.
 
 ---
 
-# 1. Direzione
-
-Hagar è passato da "idea" a "sistema funzionante" (v0.1) e poi a un
-harness con audit, backend multipli e suite di test (v0.2 in corso). Il
-prossimo salto non è aggiungere tool: è dare al sistema una **memoria** e
-un modo di chiamare i tool meno fragile del JSON testuale.
-
-Ordine deciso:
-
-1. memoria su Vault;
-2. calling nativo per i provider che lo supportano;
-3. PermissionEvaluator — **v1 fatta** (policy.yaml, ASK, audit);
-4. igiene (audit, MCP, packaging, test live).
-
----
-
-# 2. Priorità 1 — Memoria su Vault
-
-## 2.0 Stato: v2 implementata (2026-11-04)
+## 1.0 Stato: v2 implementata (2026-11-04)
 
 Realizzato:
 
@@ -220,7 +97,7 @@ Realizzato:
 
 Restano: retention delle chat, ricerca semantica, GUI.
 
-## 2.1 Decisioni prese
+## 1.1 Decisioni prese
 
 - **Episodica scritta dall'harness.** I turni di chat vengono registrati
   dal harness di default: è un verbale meccanico, non un giudizio del
@@ -247,7 +124,7 @@ Restano: retention delle chat, ricerca semantica, GUI.
 - **Archivio, non cancellazione.** Transcript e decisioni archiviate
   restano nel Vault; l'archiviazione di un progetto è reversibile.
 
-## 2.2 Tool previsti
+## 1.2 Tool previsti
 
 Nomi implementati nel namespace `memory.*`:
 
@@ -282,7 +159,7 @@ Comportamenti:
   cerca per parole chiave nei turni passati; `limit` viene limitato a
   1..50 per non riversare tutto il Vault nel contesto.
 
-## 2.3 Struttura nel Vault
+## 1.3 Struttura nel Vault
 
 ```text
 <Vault>/Hagar/
@@ -325,7 +202,7 @@ created_at: 2026-11-03T00:15:02+01:00
 Passi / contenuto proposto dal modello.
 ```
 
-## 2.4 Configurazione
+## 1.4 Configurazione
 
 ```yaml
 vault:
@@ -339,7 +216,7 @@ memory:
   max_skill_chars: 4000
 ```
 
-## 2.5 Comportamento dell'harness
+## 1.5 Comportamento dell'harness
 
 - A fine turno: aggiunge domanda e risposta alla nota di sessione (solo
   conversazione, **non** output dei tool: quelli restano nell'audit).
@@ -353,7 +230,7 @@ memory:
 - La memoria episodica è separata dall'audit: l'audit resta forense e
   contiene anche i dati dei tool.
 
-## 2.6 Punti aperti
+## 1.6 Punti aperti
 
 - **Retention chat**: quante sessioni conservare, se riassumere le
   vecchie; la 0.2.0 non cancella nulla.
@@ -368,7 +245,7 @@ memory:
   `project_max_active`; oggi Hagar propone l'archiviazione, non il
   merge delle decisioni duplicate.
 
-## 2.7 Non obiettivi (per ora)
+## 1.7 Non obiettivi (per ora)
 
 - scrittura di memorie sul filesystem reale;
 - modifica di note esistenti dell'utente;
@@ -378,23 +255,13 @@ memory:
 
 ---
 
-# 3. Priorità 2 — Calling nativo (v1, fatta)
-
-**Stato:** implementato il 2026-11-03. `native_step()` per i quattro
-provider, schema dei parametri da `ToolDefinition`, messaggi canonici
-`tool`, più chiamate per turno, fallback automatico su HTTP 400/404/422
-e `--no-native-tools`. Verificato live su Ollama e DeepSeek; Claude e
-Gemini restano da provare. Misurato con `tools/bench_native.py`: nessun
-protocollo vince su tutti i modelli (nativo più veloce, testo a volte più
-preciso). Resta da affinare per i modelli locali che ignorano i tool.
-
-## 3.1 Obiettivo
+## 2 Obiettivo
 
 Eliminare la fragilità del protocollo JSON testuale: niente più
 riparazioni, argomenti validati dallo schema del provider, risultati
 strutturati.
 
-## 3.2 Approccio
+## 2.1 Approccio
 
 - Mantenere il protocollo testuale come **fallback** per i modelli che
   non supportano il calling nativo o lo fanno male.
@@ -405,7 +272,7 @@ strutturati.
 - Il benchmark misura il miglioramento (riparazioni per turno,
   correttezza degli argomenti).
 
-## 3.3 Trasporto per provider
+## 2.2 Trasporto per provider
 
 | provider | richiesta | risultato tool |
 |---|---|---|
@@ -414,7 +281,7 @@ strutturati.
 | `claude` | `tools` + blocchi `tool_use` | blocco `tool_result` |
 | `gemini` | `tools.functionDeclarations` | `functionResponse` |
 
-## 3.4 Rischi
+## 2.3 Rischi
 
 - I modelli locali piccoli spesso non usano bene il calling nativo: serve
   il fallback automatico.
@@ -425,26 +292,11 @@ strutturati.
 
 ---
 
-# 4. Priorità 3 — PermissionEvaluator
+# 3. Priorità 3 — PermissionEvaluator
 
-## 4.1 Stato: v1 implementata
+Stato: v1 implementata
 
-Realizzato:
-
-- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` e
-  `PermissionEvaluator` in `core/permissions.py`;
-- `policy.yaml` letto **prima** del LLM, con fallback a `DENY` totale e
-  warning su audit e chat;
-- tetto di sistema derivato da `permissions.read/write/shell`;
-- scope per `tools` (glob), `paths` e `namespaces` (prefissi);
-- `ASK` con `ConsoleConfirmation` (`lo faccio? (y/N)`, default N);
-- applicazione in `ToolRegistry.execute` e audit di
-  `permission.decision` / `permission.confirmation`;
-- `ToolDefinition.capabilities` per tutti i tool (filesystem e MCP);
-- `requires_confirmation` applicato come pavimento di ASK;
-- 347 test raccolti, 1 skip.
-
-## 4.2 Restano da fare
+## 3.1 Restano da fare
 
 - `ConfirmationProvider` per la GUI (dialog modale) e per l'esecuzione
   non interattiva (deny di default);
@@ -475,10 +327,6 @@ cat workspace://project/readme.md
 find *.py
 ```
 
-I percorsi virtuali risolverebbero anche l'esposizione dei percorsi
-assoluti della sandbox.
-
----
 
 # 6. Igiene e robustezza
 
@@ -496,18 +344,12 @@ Fatta (2026-11-03):
   `include_outputs: false`.
 - **Audit retention**: backup timestampati e `audit.max_files` (default
   100, include il file attivo) con pruning dei più vecchi.
-- **Test live**: marker `live`, esclusi di default, `--live` per Ollama
-  e provider remoti (questi ultimi skippati senza chiave).
-- **Packaging**: metadati completi, entry point `hagar`, `--config`,
-  `--model`, `--no-memory`, `--version`, versione unica.
 - **URL base**: `model.host` vale per tutti i provider.
-- **Legacy**: rimossi `tools/filesystem.py` e `llm/tool_result.py`.
 
 Restano:
 
 - device flow / DPoP per MCP OAuth;
 - compattazione delle sessioni di audit;
-- conferme GUI per `ASK`;
 - allineamento continuo della documentazione.
 
 ---
@@ -521,20 +363,6 @@ Restano:
 - agente personale permanente;
 - provider aggiuntivi (OpenAI è quasi gratis: stesso client di DeepSeek
   con un base URL diverso).
-
----
-
-# 8. Ordine di lavoro
-
-1. Memoria v2: fatta (ciclo di vita, review CLI, iniezione confermate);
-   restano retention chat, ricerca semantica e GUI.
-2. PermissionEvaluator: v1 fatta; restano conferme GUI e policy
-   dinamiche.
-3. Igiene: fatta (packaging, test live, MCP auth/OAuth, audit con
-   retention, base URL, legacy).
-4. Calling nativo: v1 fatta; resta la misura col benchmark.
-5. Release 0.3.0: preparata per GitHub, con CI multipiattaforma e
-   workflow di release.
 
 ---
 
