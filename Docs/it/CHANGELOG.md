@@ -28,6 +28,19 @@ riferimento al commit quando utile.
 - `write_file`, `write_bytes`, `create_file` e `edit_file` usano la
   scrittura atomica.
 
+## Checkpoint, timeout, spill e compaction
+
+- Checkpoint per turno dei file modificati, con `/undo` e
+  `workspace.undo`.
+- `tools.timeout` per singola tool call e `tool.timeout`; il timeout è
+  best effort.
+- Repeat guard `tools.repeat_limit` sull'hash `tool + argomenti`, con
+  audit `tool.repeat`.
+- Output spill su `ArtifactStore` oltre 12.000 caratteri, con
+  `tool.spilled`.
+- Compaction deterministica del contesto oltre 24.000 caratteri, con
+  `context.compacted`.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

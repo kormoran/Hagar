@@ -489,6 +489,8 @@ def build_harness(
         ),
         audit=audit,
         agent_id=audit.session_id,
+        default_timeout=config.tools.timeout,
+        repeat_limit=config.tools.repeat_limit,
     )
 
     # ==========================================
@@ -735,6 +737,7 @@ def build_harness(
         ),
         agent_id=audit.session_id,
         hifi=hifi,
+        artifact_store=getattr(subagents, "artifacts", None),
     )
 
     # ==========================================

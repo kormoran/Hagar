@@ -97,6 +97,10 @@ class CommandService:
 
             return self._models(arguments)
 
+        if command == "/undo":
+
+            return self._undo()
+
         return CommandResult(
             command=command,
             ok=False,
@@ -123,6 +127,7 @@ class CommandService:
             "  /project ...          gestione progetti",
             "  /memory ...           memoria, skill e archivio",
             "  /models ...           schede e benchmark dei modelli",
+            "  /undo                 annulla le modifiche dell'ultimo turno",
             "  exit | quit            esci",
             "",
             "I tool sono chiamati dal modello, non digitati come comandi.",
@@ -132,6 +137,66 @@ class CommandService:
             command="/help",
             lines=lines,
             data={"commands": lines},
+        )
+
+    # ==================================================
+    # Undo
+    # ==================================================
+
+    def _undo(self) -> CommandResult:
+
+        filesystem = getattr(self.harness, "filesystem", None)
+
+        if filesystem is None:
+            return CommandResult(
+                command="/undo",
+                ok=False,
+                error="filesystem unavailable",
+                lines=["Filesystem non disponibile."],
+            )
+
+        status = filesystem.checkpoint_status()
+
+        if status is None:
+            return CommandResult(
+                command="/undo",
+                ok=False,
+                error="no checkpoint",
+                lines=["Nessun turno da annullare."],
+            )
+
+        try:
+            restored = filesystem.rollback_last_checkpoint()
+
+        except Exception as exc:
+
+            return CommandResult(
+                command="/undo",
+                ok=False,
+                error=str(exc),
+                lines=[f"Undo non riuscito: {exc}"],
+            )
+
+        audit = getattr(self.harness, "audit", None)
+
+        if audit is not None:
+            audit.record(
+                "workspace.undo",
+                checkpoint=status["checkpoint_id"],
+                files=status["files"],
+                restored=restored,
+            )
+
+        return CommandResult(
+            command="/undo",
+            lines=[
+                f"Undo completato: {restored} file ripristinati.",
+                f"Checkpoint: {status['checkpoint_id']}",
+            ],
+            data={
+                "checkpoint": status,
+                "restored": restored,
+            },
         )
 
     # ==================================================

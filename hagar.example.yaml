@@ -58,6 +58,12 @@ hifi:
   margin: 0.20
   interpretations: 3
 
+tools:
+  # Timeout per singola tool call; 0 disabilita il limite.
+  timeout: 120
+  # Blocca la terza chiamata identica nello stesso turno; 0 disabilita.
+  repeat_limit: 3
+
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.
   # Permissions: R = read/list/search/stat, W = write/create/rename/

@@ -22,3 +22,5 @@ class ToolResult:
     error: str | None = None
 
     images: tuple[ImageInput, ...] = ()
+
+    artifact_id: str | None = None

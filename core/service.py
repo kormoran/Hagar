@@ -103,6 +103,21 @@ class HarnessService:
             ),
         )
 
+        filesystem = getattr(
+            self.harness,
+            "filesystem",
+            None,
+        )
+        checkpoint_started = False
+
+        if filesystem is not None:
+
+            try:
+                filesystem.begin_checkpoint()
+                checkpoint_started = True
+            except Exception:
+                checkpoint_started = False
+
         try:
             if images:
                 answer = self.harness.agent.ask(
@@ -149,6 +164,13 @@ class HarnessService:
 
                 try:
                     manager.finish_turn()
+                except Exception:
+                    pass
+
+            if checkpoint_started and filesystem is not None:
+
+                try:
+                    filesystem.commit_checkpoint()
                 except Exception:
                     pass
 

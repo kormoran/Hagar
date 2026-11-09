@@ -58,6 +58,13 @@ limiti; niente broker senza subagenti e model registry.**
 
 ## 0.4.1 Versione completa filesystem — congelata
 
+Implementato ora:
+
+- `edit_file` con scrittura atomica;
+- checkpoint del turno e `/undo`;
+- timeout per tool e repeat guard;
+- output spill e compaction del contesto.
+
 L'MVP implementato copre `edit_file`, scrittura atomica,
 read-before-overwrite/delete/rename e versione `mtime_ns+size`.
 La versione completa è congelata; non entra nella prossima release:

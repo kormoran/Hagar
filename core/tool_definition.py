@@ -60,6 +60,8 @@ class ToolDefinition:
 
     requires_confirmation: bool = False
 
+    timeout: float | None = None
+
     preflight: (
         Callable[[dict[str, Any]], str | None] | None
     ) = None

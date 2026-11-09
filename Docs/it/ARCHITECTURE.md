@@ -907,6 +907,31 @@ L'evento `hifi.interpretations` registra le probabilità e l'eventuale
 chiarimento. Un JSON non valido produce `hifi.failed` e il turno
 prosegue senza pre-pass.
 
+## 3.11.9 Checkpoint (`core/checkpoints.py`)
+
+`HarnessService.ask` apre un `WorkspaceCheckpoint` sul sandbox. Il
+checkpoint non copia il workspace: annota solo i file che una mutazione
+sta per cambiare. `delete_file`, `rename` e `copy_file` registrano anche
+la destinazione. `/undo` ripristina l'ultimo checkpoint completato.
+
+Limite: 32 MB di snapshot, solo file regolari, solo l'ultimo turno.
+Se il checkpoint è incompleto, l'undo viene rifiutato.
+
+## 3.11.10 Guardie runtime e contesto (`core/tool_registry.py`, `core/context.py`)
+
+`ToolRegistry` applica:
+
+- `tools.timeout` per singola chiamata, tramite worker demone;
+- `tools.repeat_limit` sull'hash `tool + argomenti` per turno.
+
+Il timeout è best effort: un handler Python già partito non viene
+ucciso. Il repeat guard azzera il conteggio a ogni `Agent.ask`.
+
+`OutputSpiller` sposta gli output oltre 12.000 caratteri
+nell'`ArtifactStore` e restituisce un riepilogo con `artifact_id`.
+`ContextCompactor` sostituisce i messaggi più vecchi quando il contesto
+supera 24.000 caratteri, preservando gli ultimi 8 e i messaggi system.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1072,7 +1097,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 840 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 849 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

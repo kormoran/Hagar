@@ -242,6 +242,12 @@ Con `--hifi` Hagar chiede al modello tre interpretazioni della richiesta
 e, se le due più probabili sono troppo vicine, chiede un chiarimento
 invece di rispondere. Dettagli in [HIFI.md](HIFI.md).
 
+## 3.9 Checkpoint, timeout e contesto
+
+Hagar salva un checkpoint dei file modificati nel turno, limita le
+chiamate ai tool, spilla gli output grandi e pota il contesto vecchio.
+Dettagli in [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
+
 ---
 
 # 4. Documentazione
@@ -257,6 +263,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
   e questioni ancora aperte.
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
 - [HIFI.md](HIFI.md) — pre-pass di interpretazione e chiarimento.
+- [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill e compaction.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,

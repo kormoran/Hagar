@@ -65,6 +65,7 @@ modello**: Hagar risponde `Comando sconosciuto` e suggerisce `/help`.
 | `/usage` | mostra i token consumati nella sessione |
 | `/models ...` | schede, benchmark e hardware per il broker |
 | `/models hardware` | rileva CPU, RAM e GPU della macchina |
+| `/undo` | annulla le modifiche dell'ultimo turno |
 | `/mcp` | elenca server MCP, endpoint e tool importati |
 | `/audit [n]` | mostra gli ultimi `n` eventi; default 10, massimo 50 |
 | `exit` | esce |
@@ -562,6 +563,19 @@ hifi:
 seconda interpretazione. Sotto quella soglia Hagar chiede chiarimento.
 `interpretations` è il numero di interpretazioni richieste al modello.
 La modalità aggiunge una chiamata LLM per ogni turno.
+
+## 4.11 `tools`
+
+```yaml
+tools:
+  timeout: 120
+  repeat_limit: 3
+```
+
+`timeout` è il limite in secondi per una singola tool call; `0` lo
+disabilita. `repeat_limit` blocca la terza chiamata identica nello stesso
+turno; `0` disabilita il blocco. Il timeout di un handler Python già in
+esecuzione è best effort: il worker può terminare dopo il limite.
 
 ---
 

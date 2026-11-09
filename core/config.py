@@ -24,6 +24,7 @@ from .models import (
     DecisionProviderConfig,
     DecisionsConfig,
     HiFiConfig,
+    ToolsConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -1145,6 +1146,39 @@ class ConfigLoader:
             )
 
         # -------------------------
+        # Tool runtime limits (optional)
+        # -------------------------
+
+        tools_data = _mapping(
+            data.get("tools", {}) or {},
+            "tools",
+        )
+        tools_timeout = tools_data.get("timeout", 120)
+
+        if tools_timeout in {None, 0}:
+            tools_timeout = None
+        elif (
+            isinstance(tools_timeout, bool)
+            or not isinstance(tools_timeout, (int, float))
+            or float(tools_timeout) <= 0
+        ):
+            raise ConfigError(
+                "tools.timeout must be a positive number or 0"
+            )
+        else:
+            tools_timeout = float(tools_timeout)
+
+        tools = ToolsConfig(
+            timeout=tools_timeout,
+            repeat_limit=_non_negative_int(
+                tools_data,
+                "repeat_limit",
+                "tools.repeat_limit",
+                3,
+            ),
+        )
+
+        # -------------------------
         # Hi-Fi mode (optional)
         # -------------------------
 
@@ -1197,4 +1231,5 @@ class ConfigLoader:
             memory=memory,
             decisions=decisions,
             hifi=hifi,
+            tools=tools,
         )

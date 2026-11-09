@@ -161,6 +161,14 @@ class HiFiConfig:
 
 
 @dataclass(slots=True)
+class ToolsConfig:
+    """Limiti runtime per l'esecuzione dei tool."""
+
+    timeout: float | None = 120.0
+    repeat_limit: int = 3
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -231,4 +239,8 @@ class AppConfig:
 
     hifi: HiFiConfig = field(
         default_factory=HiFiConfig
+    )
+
+    tools: ToolsConfig = field(
+        default_factory=ToolsConfig
     )

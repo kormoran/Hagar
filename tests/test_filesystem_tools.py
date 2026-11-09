@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 
+from types import SimpleNamespace
+
 import pytest
 
+from core.command_service import CommandService
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -200,6 +203,57 @@ def test_edit_file_requires_observation(sandbox, workspace):
 
     with pytest.raises(PermissionError):
         sandbox.edit_file("a.txt", "testo", "nuovo")
+
+
+def test_checkpoint_restores_previous_turn(sandbox, workspace):
+    (workspace / "a.txt").write_text("prima", encoding="utf-8")
+    sandbox.read_file("a.txt")
+
+    sandbox.begin_checkpoint()
+    sandbox.edit_file("a.txt", "prima", "dopo")
+    sandbox.create_file("nuovo.txt", "x")
+    sandbox.commit_checkpoint()
+
+    assert (workspace / "a.txt").read_text(encoding="utf-8") == "dopo"
+    assert (workspace / "nuovo.txt").exists()
+
+    restored = sandbox.rollback_last_checkpoint()
+
+    assert restored >= 2
+    assert (workspace / "a.txt").read_text(encoding="utf-8") == "prima"
+    assert not (workspace / "nuovo.txt").exists()
+
+
+def test_checkpoint_captures_delete(sandbox, workspace):
+    (workspace / "a.txt").write_text("contenuto", encoding="utf-8")
+    sandbox.read_file("a.txt")
+
+    sandbox.begin_checkpoint()
+    sandbox.delete_file("a.txt")
+    sandbox.commit_checkpoint()
+
+    sandbox.rollback_last_checkpoint()
+
+    assert (workspace / "a.txt").read_text(encoding="utf-8") == "contenuto"
+
+
+def test_undo_command_restores_checkpoint(sandbox, workspace):
+    (workspace / "a.txt").write_text("prima", encoding="utf-8")
+    sandbox.read_file("a.txt")
+
+    sandbox.begin_checkpoint()
+    sandbox.edit_file("a.txt", "prima", "dopo")
+    sandbox.commit_checkpoint()
+
+    commands = CommandService(
+        SimpleNamespace(filesystem=sandbox, audit=None),
+        SimpleNamespace(),
+    )
+
+    result = commands.handle("/undo")
+
+    assert result.ok is True
+    assert (workspace / "a.txt").read_text(encoding="utf-8") == "prima"
 
 
 def test_delete_file(registry, workspace):

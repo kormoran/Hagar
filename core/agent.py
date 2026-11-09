@@ -12,6 +12,7 @@ from typing import Any
 from core.events import EventSink
 from core.events import emit
 from core.hifi import HiFiError
+from core.context import ContextCompactor, OutputSpiller
 from core.images import ImageInput
 from core.images import MAX_IMAGES
 from core.tool_call import ToolCall
@@ -45,6 +46,9 @@ class Agent:
         agent_id: str | None = None,
         deadline: float | None = None,
         hifi: Any = None,
+        artifact_store: Any = None,
+        max_inline_output_chars: int = 12_000,
+        context_compactor: ContextCompactor | None = None,
     ) -> None:
 
         self.llm = llm
@@ -55,6 +59,13 @@ class Agent:
         self.agent_id = agent_id
         self.deadline = deadline
         self.hifi = hifi
+        self.output_spiller = OutputSpiller(
+            artifact_store,
+            max_inline_chars=max_inline_output_chars,
+        )
+        self.context_compactor = (
+            context_compactor or ContextCompactor()
+        )
         self._cancel = threading.Event()
 
         self.max_tool_calls = (
@@ -134,6 +145,9 @@ class Agent:
 
         turn = uuid.uuid4().hex[:8]
         self.reset_cancel()
+
+        if hasattr(self.tools, "begin_turn"):
+            self.tools.begin_turn()
 
         content: Any = question
 
@@ -317,6 +331,7 @@ class Agent:
 
         while True:
 
+            self._compact_messages(turn, messages)
             self._check_cancel(turn)
 
             #
@@ -526,6 +541,7 @@ class Agent:
 
         while True:
 
+            self._compact_messages(turn, messages)
             self._check_cancel(turn)
 
             try:
@@ -799,6 +815,21 @@ class Agent:
 
         return tool_result
 
+    def _compact_messages(
+        self,
+        turn: str,
+        messages: list[dict[str, Any]],
+    ) -> None:
+
+        removed = self.context_compactor.compact(messages)
+
+        if removed:
+            self._record(
+                "context.compacted",
+                turn=turn,
+                messages=removed,
+            )
+
     def _execute_tool(
         self,
         tool_call: ToolCall,
@@ -818,13 +849,15 @@ class Agent:
                 if result.tool_name is None:
                     result.tool_name = tool_call.tool
 
-                return result
+                return self._spill_result(result)
 
-            return ToolResult(
-                tool_name=tool_call.tool,
-                success=True,
-                output=str(result),
-                error=None,
+            return self._spill_result(
+                ToolResult(
+                    tool_name=tool_call.tool,
+                    success=True,
+                    output=str(result),
+                    error=None,
+                )
             )
 
         except Exception as exc:
@@ -835,6 +868,42 @@ class Agent:
                 output="",
                 error=str(exc),
             )
+
+    def _spill_result(
+        self,
+        result: ToolResult,
+    ) -> ToolResult:
+
+        if not result.success or not result.output:
+            return result
+
+        try:
+            output, artifact_id = self.output_spiller.spill(
+                result.output,
+                owner=self.agent_id or "main",
+                tool=result.tool_name or "unknown",
+            )
+        except Exception as exc:
+            self._record(
+                "tool.spill_failed",
+                tool=result.tool_name,
+                error=str(exc),
+            )
+            return result
+
+        if artifact_id is None:
+            return result
+
+        original_chars = len(result.output)
+        result.output = output
+        result.artifact_id = artifact_id
+        self._record(
+            "tool.spilled",
+            tool=result.tool_name,
+            artifact_id=artifact_id,
+            original_chars=original_chars,
+        )
+        return result
 
     def _attach_images(
         self,

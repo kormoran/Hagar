@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import FileSystemLimits
+from .checkpoints import CheckpointError
+from .checkpoints import WorkspaceCheckpoint
+from .checkpoints import checkpoint_summary
 
 
 @dataclass(slots=True)
@@ -111,6 +114,10 @@ class FileSystemSandbox:
 
         # Versione osservata dei file per il gate read-before-write.
         self._observed: dict[Path, tuple[int, int]] = {}
+
+        # Checkpoint del turno corrente e ultimo checkpoint completato.
+        self._current_checkpoint: WorkspaceCheckpoint | None = None
+        self.last_checkpoint: WorkspaceCheckpoint | None = None
 
         self.roots = {
             p.resolve(): perms
@@ -375,11 +382,58 @@ class FileSystemSandbox:
 
         self._observed.pop(target, None)
 
-    def _require_observed(
+    def begin_checkpoint(self) -> WorkspaceCheckpoint:
+
+        if self._current_checkpoint is not None:
+            raise CheckpointError(
+                "a checkpoint is already active"
+            )
+
+        self._current_checkpoint = WorkspaceCheckpoint()
+        return self._current_checkpoint
+
+    def commit_checkpoint(self) -> WorkspaceCheckpoint | None:
+
+        checkpoint = self._current_checkpoint
+        self._current_checkpoint = None
+
+        if checkpoint is not None:
+            self.last_checkpoint = checkpoint
+
+        return checkpoint
+
+    def rollback_last_checkpoint(self) -> int:
+
+        checkpoint = self.last_checkpoint
+
+        if checkpoint is None:
+            raise CheckpointError("no checkpoint to undo")
+
+        restored = checkpoint.restore(self)
+        self.last_checkpoint = None
+        return restored
+
+    def checkpoint_status(self) -> dict | None:
+
+        checkpoint = self.last_checkpoint
+
+        if checkpoint is None:
+            return None
+
+        return checkpoint_summary(checkpoint)
+
+    def _note_before(
         self,
         target: Path,
     ) -> None:
 
+        if self._current_checkpoint is not None:
+            self._current_checkpoint.capture(target)
+
+    def _require_observed(
+        self,
+        target: Path,
+    ) -> None:
         expected = self._observed.get(target)
 
         if expected is None:
@@ -1495,6 +1549,7 @@ class FileSystemSandbox:
             required_space,
         )
 
+        self._note_before(dst)
         shutil.copy2(
             src,
             dst,
@@ -1548,6 +1603,8 @@ class FileSystemSandbox:
 
         self._require_observed(src)
 
+        self._note_before(src)
+        self._note_before(dst)
         src.rename(dst)
         self._forget(src)
         self._observe(dst)
@@ -1593,6 +1650,7 @@ class FileSystemSandbox:
             required_space,
         )
 
+        self._note_before(target)
         self._atomic_write_text(target, content)
         self._observe(target)
 
@@ -1645,6 +1703,7 @@ class FileSystemSandbox:
             required_space,
         )
 
+        self._note_before(target)
         self._atomic_write_bytes(target, data)
         self._observe(target)
         self._record_write(required_space)
@@ -1681,6 +1740,7 @@ class FileSystemSandbox:
             required_space,
         )
 
+        self._note_before(target)
         self._atomic_write_text(target, content)
         self._observe(target)
         self._record_write(required_space)
@@ -1751,6 +1811,7 @@ class FileSystemSandbox:
         required_space = len(updated.encode("utf-8"))
 
         self._check_write_limits(target, required_space)
+        self._note_before(target)
         self._atomic_write_text(target, updated)
         self._observe(target)
         self._record_write(required_space)
@@ -1780,6 +1841,7 @@ class FileSystemSandbox:
 
         self._require_observed(target)
 
+        self._note_before(target)
         target.unlink()
         self._forget(target)
 

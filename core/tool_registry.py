@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import threading
+
 from typing import Any
 
 from .events import EventSink
@@ -16,6 +20,10 @@ from .permissions import (
     capability_names,
 )
 from .tool_definition import ToolDefinition
+
+
+class ToolTimeoutError(RuntimeError):
+    """Un tool ha superato il timeout configurato."""
 
 
 class ToolRegistry:
@@ -44,6 +52,8 @@ class ToolRegistry:
         event_sink: EventSink | None = None,
         agent_id: str | None = None,
         parent_id: str | None = None,
+        default_timeout: float | None = None,
+        repeat_limit: int = 3,
     ) -> None:
 
         self._tools: dict[
@@ -58,6 +68,9 @@ class ToolRegistry:
         self.event_sink = event_sink
         self.agent_id = agent_id
         self.parent_id = parent_id
+        self.default_timeout = default_timeout
+        self.repeat_limit = int(repeat_limit)
+        self._repeat_counts: dict[str, int] = {}
 
     # ==================================================
     # Registration
@@ -221,6 +234,28 @@ class ToolRegistry:
     # Execution
     # ==================================================
 
+    def begin_turn(self) -> None:
+        """Azzera il conteggio delle ripetizioni per un nuovo turno."""
+
+        self._repeat_counts.clear()
+
+    @staticmethod
+    def _repeat_key(
+        name: str,
+        arguments: dict[str, Any],
+    ) -> str:
+
+        payload = json.dumps(
+            arguments,
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        )
+        digest = hashlib.sha256(
+            f"{name}:{payload}".encode("utf-8")
+        ).hexdigest()
+        return digest
+
     def execute(
         self,
         name: str,
@@ -237,9 +272,93 @@ class ToolRegistry:
 
         self._authorize(tool, kwargs)
 
-        return tool.handler(
-            **kwargs
+        key = self._repeat_key(name, kwargs)
+        count = self._repeat_counts.get(key, 0) + 1
+        self._repeat_counts[key] = count
+
+        if self.repeat_limit > 0 and count >= self.repeat_limit:
+
+            self._record(
+                "tool.repeat",
+                tool=name,
+                count=count,
+                blocked=True,
+            )
+
+            raise RuntimeError(
+                f"tool {name} repeated {count} times with the same "
+                "arguments in this turn; blocked"
+            )
+
+        if self.repeat_limit > 0 and count == 2:
+
+            self._record(
+                "tool.repeat",
+                tool=name,
+                count=count,
+                blocked=False,
+            )
+
+        timeout = (
+            tool.timeout
+            if tool.timeout is not None
+            else self.default_timeout
         )
+
+        if timeout is not None and float(timeout) > 0:
+
+            return self._execute_with_timeout(
+                tool,
+                kwargs,
+                float(timeout),
+            )
+
+        return tool.handler(**kwargs)
+
+    def _execute_with_timeout(
+        self,
+        tool: ToolDefinition,
+        arguments: dict[str, Any],
+        timeout: float,
+    ) -> Any:
+
+        box: dict[str, Any] = {}
+        finished = threading.Event()
+
+        def run() -> None:
+
+            try:
+                box["value"] = tool.handler(**arguments)
+
+            except BaseException as exc:  # noqa: BLE001
+                box["error"] = exc
+
+            finally:
+                finished.set()
+
+        worker = threading.Thread(
+            target=run,
+            name=f"hagar-tool-{tool.name}",
+            daemon=True,
+        )
+        worker.start()
+
+        if not finished.wait(timeout):
+
+            self._record(
+                "tool.timeout",
+                tool=tool.name,
+                timeout=timeout,
+            )
+
+            raise ToolTimeoutError(
+                f"tool {tool.name} exceeded timeout of {timeout:g}s"
+            )
+
+        if "error" in box:
+            raise box["error"]
+
+        return box.get("value")
 
     # ==================================================
     # Permissions
