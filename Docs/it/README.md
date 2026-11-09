@@ -236,6 +236,12 @@ classificatore lineare locale. Dettagli in [DECISIONS.md](DECISIONS.md).
 una scheda JSON con hardware e data dell'ultima prova. Dettagli in
 [MODEL_CARDS.md](MODEL_CARDS.md).
 
+## 3.8 Modalità Hi-Fi
+
+Con `--hifi` Hagar chiede al modello tre interpretazioni della richiesta
+e, se le due più probabili sono troppo vicine, chiede un chiarimento
+invece di rispondere. Dettagli in [HIFI.md](HIFI.md).
+
 ---
 
 # 4. Documentazione
@@ -250,6 +256,9 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [ROADMAP.md](ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
   e questioni ancora aperte.
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
+- [HIFI.md](HIFI.md) — pre-pass di interpretazione e chiarimento.
+- [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
+- [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
   grafo semantico, plugin di formato e host nativo.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP subagenti, isolamento e limiti.

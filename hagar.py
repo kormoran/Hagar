@@ -16,6 +16,7 @@ from core.command_service import CommandService
 from core.confirmations import QueueConfirmationProvider
 from core.decisions import DecisionError
 from core.decisions import build_decision_registry
+from core.hifi import HiFiResolver
 from core.filesystem import (
     DirectoryPermissions,
     FileSystemSandbox,
@@ -127,6 +128,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "usa il protocollo JSON testuale "
             "invece del calling nativo"
+        ),
+    )
+
+    parser.add_argument(
+        "--hifi",
+        action="store_true",
+        help=(
+            "attiva la modalità Hi-Fi: chiarisce le "
+            "interpretazioni prima di rispondere"
         ),
     )
 
@@ -688,6 +698,26 @@ def build_harness(
         )
 
     # ==========================================
+    # Hi-Fi mode
+    # ==========================================
+
+    hifi = None
+
+    if config.hifi.enabled:
+
+        hifi = HiFiResolver(
+            llm,
+            margin=config.hifi.margin,
+            interpretations=config.hifi.interpretations,
+        )
+
+        audit.record(
+            "hifi.enabled",
+            margin=config.hifi.margin,
+            interpretations=config.hifi.interpretations,
+        )
+
+    # ==========================================
     # Agent
     # ==========================================
 
@@ -704,6 +734,7 @@ def build_harness(
             config.memory.context_project_memories
         ),
         agent_id=audit.session_id,
+        hifi=hifi,
     )
 
     # ==========================================
@@ -800,6 +831,9 @@ def _load_config(
 
     if args.no_native_tools:
         config.model.native_tools = False
+
+    if getattr(args, "hifi", False):
+        config.hifi.enabled = True
 
     return config
 

@@ -152,6 +152,15 @@ class DecisionsConfig:
 
 
 @dataclass(slots=True)
+class HiFiConfig:
+    """Pre-pass di disambiguazione della richiesta utente."""
+
+    enabled: bool = False
+    margin: float = 0.20
+    interpretations: int = 3
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -218,4 +227,8 @@ class AppConfig:
 
     decisions: DecisionsConfig = field(
         default_factory=DecisionsConfig
+    )
+
+    hifi: HiFiConfig = field(
+        default_factory=HiFiConfig
     )

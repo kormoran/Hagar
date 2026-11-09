@@ -23,6 +23,7 @@ from .models import (
     MCPOAuthConfig,
     DecisionProviderConfig,
     DecisionsConfig,
+    HiFiConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -114,6 +115,35 @@ def _positive_int(
 
         raise ConfigError(
             f"{name} must be greater than zero"
+        )
+
+    return value
+
+
+def _fraction(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+    default: float,
+) -> float:
+
+    value = section.get(key, default)
+
+    if isinstance(value, bool) or not isinstance(
+        value,
+        (int, float),
+    ):
+
+        raise ConfigError(
+            f"{name} must be a number"
+        )
+
+    value = float(value)
+
+    if not 0.0 < value < 1.0:
+
+        raise ConfigError(
+            f"{name} must be between 0 and 1"
         )
 
     return value
@@ -1114,6 +1144,47 @@ class ConfigLoader:
                 )
             )
 
+        # -------------------------
+        # Hi-Fi mode (optional)
+        # -------------------------
+
+        hifi_data = _mapping(
+            data.get("hifi", {}) or {},
+            "hifi",
+        )
+
+        hifi_enabled = hifi_data.get("enabled", False)
+
+        if not isinstance(hifi_enabled, bool):
+
+            raise ConfigError(
+                "hifi.enabled must be a boolean"
+            )
+
+        hifi_interpretations = _positive_int(
+            hifi_data,
+            "interpretations",
+            "hifi.interpretations",
+            3,
+        )
+
+        if hifi_interpretations < 2:
+
+            raise ConfigError(
+                "hifi.interpretations must be at least 2"
+            )
+
+        hifi = HiFiConfig(
+            enabled=hifi_enabled,
+            margin=_fraction(
+                hifi_data,
+                "margin",
+                "hifi.margin",
+                0.20,
+            ),
+            interpretations=hifi_interpretations,
+        )
+
         return AppConfig(
             model=model,
             vault=vault,
@@ -1125,4 +1196,5 @@ class ConfigLoader:
             policy=policy,
             memory=memory,
             decisions=decisions,
+            hifi=hifi,
         )

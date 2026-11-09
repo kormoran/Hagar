@@ -11,6 +11,7 @@ from typing import Any
 
 from core.events import EventSink
 from core.events import emit
+from core.hifi import HiFiError
 from core.images import ImageInput
 from core.images import MAX_IMAGES
 from core.tool_call import ToolCall
@@ -43,6 +44,7 @@ class Agent:
         event_sink: EventSink | None = None,
         agent_id: str | None = None,
         deadline: float | None = None,
+        hifi: Any = None,
     ) -> None:
 
         self.llm = llm
@@ -52,6 +54,7 @@ class Agent:
         self.event_sink = event_sink
         self.agent_id = agent_id
         self.deadline = deadline
+        self.hifi = hifi
         self._cancel = threading.Event()
 
         self.max_tool_calls = (
@@ -193,6 +196,76 @@ class Agent:
         )
 
         try:
+
+            if self.hifi is not None and not images:
+
+                try:
+
+                    hifi_result = self.hifi.resolve(question)
+
+                except HiFiError as exc:
+
+                    self._record(
+                        "hifi.failed",
+                        turn=turn,
+                        error=str(exc),
+                    )
+
+                else:
+
+                    self._record(
+                        "hifi.interpretations",
+                        turn=turn,
+                        **hifi_result.audit(),
+                    )
+
+                    if hifi_result.needs_clarification:
+
+                        clarification = self.hifi.clarify(
+                            question,
+                            hifi_result,
+                        )
+
+                        self._record(
+                            "hifi.clarification",
+                            turn=turn,
+                            answer=clarification,
+                        )
+
+                        self._record(
+                            "turn.answer",
+                            turn=turn,
+                            answer=clarification,
+                            tool_calls=0,
+                        )
+
+                        self._remember(
+                            turn,
+                            question,
+                            clarification,
+                        )
+
+                        return clarification
+
+                    effective_question = (
+                        self.hifi.resolved_question(
+                            question,
+                            hifi_result,
+                        )
+                    )
+
+                    messages[-1]["content"] = effective_question
+
+                    self._record(
+                        "hifi.resolved",
+                        turn=turn,
+                        choice=hifi_result.top.text,
+                        probability=round(
+                            hifi_result.top.probability,
+                            6,
+                        ),
+                        margin=round(hifi_result.margin, 6),
+                    )
 
             if native:
 

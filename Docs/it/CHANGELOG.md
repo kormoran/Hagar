@@ -5,6 +5,18 @@ riferimento al commit quando utile.
 
 ---
 
+# Non rilasciato
+
+## Modalità Hi-Fi
+
+- Nuovo pre-pass `core/hifi.py`: il modello propone interpretazioni
+  con probabilità, Hagar sceglie la più probabile se il margine supera
+  la soglia o chiede chiarimento.
+- Attivazione con `--hifi` o `hifi.enabled: true`; `hifi.margin` e
+  `hifi.interpretations` configurabili.
+- Eventi audit `hifi.interpretations`, `hifi.resolved`,
+  `hifi.clarification` e `hifi.failed`.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

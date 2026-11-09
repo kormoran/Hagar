@@ -153,6 +153,7 @@ hagar web [opzioni]
 | `--free` | avvia in attività libera |
 | `--no-memory` | disattiva memoria e progetti per la sessione |
 | `--no-native-tools` | forza il protocollo JSON testuale |
+| `--hifi` | attiva il pre-pass di interpretazione e chiarimento |
 | `--host HOST` | host della GUI web (default `127.0.0.1`) |
 | `--port PORT` | porta della GUI web (default `8765`) |
 | `--version` | stampa la versione |
@@ -547,6 +548,20 @@ Se un server MCP fallisce:
 - il server viene saltato;
 - gli altri server e il resto del harness continuano;
 - `/mcp` mostra zero tool per quel namespace.
+
+## 4.10 `hifi`
+
+```yaml
+hifi:
+  enabled: true
+  margin: 0.20
+  interpretations: 3
+```
+
+`margin` è la distanza minima, in punti percentuali, tra la prima e la
+seconda interpretazione. Sotto quella soglia Hagar chiede chiarimento.
+`interpretations` è il numero di interpretazioni richieste al modello.
+La modalità aggiunge una chiamata LLM per ogni turno.
 
 ---
 

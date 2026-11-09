@@ -878,6 +878,20 @@ La capability `DECISION` è separata da `COMPUTE`, `NETWORK` e
 `FILESYSTEM_*`; i dettagli e il formato del modello sono in
 `DECISIONS.md`. Jev/Kev non sono ancora adapter nativi.
 
+## 3.11.8 Hi-Fi (`core/hifi.py`)
+
+`HiFiResolver` esegue un pre-pass prima del loop agentico:
+
+1. chiede al modello le interpretazioni con probabilità;
+2. normalizza e ordina le probabilità;
+3. se il margine tra prima e seconda supera `hifi.margin`, sostituisce
+   la richiesta con l'interpretazione scelta più il testo originale;
+4. altrimenti chiede al modello una domanda di chiarimento.
+
+L'evento `hifi.interpretations` registra le probabilità e l'eventuale
+chiarimento. Un JSON non valido produce `hifi.failed` e il turno
+prosegue senza pre-pass.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1043,7 +1057,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 832 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 837 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
