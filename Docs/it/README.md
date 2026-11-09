@@ -253,6 +253,7 @@ Dettagli in [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
 `aish.exec` è una shell semantica ristretta: i comandi vengono tradotti
 in tool Hagar, non eseguiti come programmi. È **DENY di default** e va
 abilitata esplicitamente in `policy.yaml`. Dettagli in [AISH.md](AISH.md).
+Le trasformazioni testuali usano [text.transform](TEXT_TRANSFORM.md).
 
 ---
 
@@ -271,6 +272,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [HIFI.md](HIFI.md) — pre-pass di interpretazione e chiarimento.
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill e compaction.
 - [AISH.md](AISH.md) — shell semantica ristretta e policy DENY.
+- [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — trasformazioni testuali bounded.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,

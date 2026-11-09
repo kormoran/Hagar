@@ -33,7 +33,7 @@ MUTATING = frozenset({
 READ_ONLY = frozenset({
     "pwd", "cd", "ls", "stat", "cat", "head", "tail", "wc",
     "grep", "find", "echo", "printf", "sort", "uniq", "cut",
-    "tr", "sha256sum", "df", "date", "basename", "dirname",
+    "tr", "sed", "sha256sum", "df", "date", "basename", "dirname",
     "true", "false",
 })
 
@@ -204,8 +204,41 @@ class AishExecutor:
     def _call(self, tool: str, **kwargs) -> Any:
         return self.registry.execute(tool, **kwargs)
 
-    def _read_text(self, path: str) -> str:
+    def _transform(
+        self,
+        operation: str,
+        *,
+        path: str | None = None,
+        text: str | None = None,
+        **options,
+    ) -> dict:
+        payload = self._call(
+            "text.transform",
+            operation=operation,
+            path=path,
+            text=text,
+            **options,
+        )
+        return json.loads(payload)
 
+    def _source(
+        self,
+        paths: list[str],
+        stdin: str,
+    ) -> tuple[str | None, str | None]:
+
+        if not paths:
+            return None, stdin
+
+        if len(paths) == 1:
+            return paths[0], None
+
+        return None, "".join(
+            self._read_text(path)
+            for path in paths
+        )
+
+    def _read_text(self, path: str) -> str:
         try:
             return self._call(
                 "filesystem.read_file",
@@ -286,50 +319,10 @@ class AishExecutor:
             pieces.append(self._read_text(path))
         return "".join(pieces)
 
-    def _cmd_head(self, args, stdin):
-        count = 10
-        paths = list(args)
-
-        if paths[:1] == ["-n"]:
-            if len(paths) < 2:
-                raise AishError("usage: head -n N [FILE...]")
-            count = int(paths[1])
-            paths = paths[2:]
-
-        text = self._read_text(paths[0]) if paths else stdin
-        return "\n".join(text.splitlines()[:count]) + "\n"
-
-    def _cmd_tail(self, args, stdin):
-        count = 10
-        paths = list(args)
-
-        if paths[:1] == ["-n"]:
-            if len(paths) < 2:
-                raise AishError("usage: tail -n N [FILE...]")
-            count = int(paths[1])
-            paths = paths[2:]
-
-        text = self._read_text(paths[0]) if paths else stdin
-        return "\n".join(text.splitlines()[-count:]) + "\n"
-
-    def _cmd_wc(self, args, stdin):
-        mode = args[0] if args and args[0].startswith("-") else None
-        paths = [arg for arg in args if not arg.startswith("-")]
-
-        text = self._read_text(paths[0]) if paths else stdin
-
-        if mode == "-l":
-            return f"{len(text.splitlines())}\n"
-        if mode == "-w":
-            return f"{len(text.split())}\n"
-        if mode == "-c":
-            return f"{len(text.encode('utf-8'))}\n"
-
-        raise AishError("usage: wc [-l|-w|-c] [FILE]")
-
     def _cmd_grep(self, args, stdin):
         ignore_case = False
         show_lines = False
+        invert = False
         pattern = None
         paths: list[str] = []
 
@@ -338,41 +331,138 @@ class AishExecutor:
                 ignore_case = True
             elif arg == "-n":
                 show_lines = True
+            elif arg == "-v":
+                invert = True
             elif pattern is None:
                 pattern = arg
             else:
                 paths.append(arg)
 
         if pattern is None:
-            raise AishError("usage: grep [-i] [-n] PATTERN [FILE...]")
+            raise AishError("usage: grep [-i] [-n] [-v] PATTERN [FILE...]")
 
-        if len(pattern) > 200:
-            raise AishError("grep pattern is too long")
-
-        try:
-            expression = re.compile(
-                pattern,
-                re.IGNORECASE if ignore_case else 0,
-            )
-        except re.error as exc:
-            raise AishError(f"invalid grep pattern: {exc}") from exc
-
-        sources = (
-            [(path, self._read_text(path)) for path in paths]
-            if paths
-            else [("<stdin>", stdin)]
+        path, text = self._source(paths, stdin)
+        result = self._transform(
+            "grep",
+            path=path,
+            text=text,
+            pattern=pattern,
+            ignore_case=ignore_case,
+            line_numbers=show_lines,
+            invert=invert,
         )
-        lines = []
+        return result["text"]
 
-        for source, text in sources:
+    def _cmd_wc(self, args, stdin):
+        unit = "lines"
+        paths = list(args)
 
-            for number, line in enumerate(text.splitlines(), 1):
+        if paths[:1] == ["-l"]:
+            unit = "lines"
+            paths = paths[1:]
+        elif paths[:1] == ["-w"]:
+            unit = "words"
+            paths = paths[1:]
+        elif paths[:1] == ["-c"]:
+            unit = "bytes"
+            paths = paths[1:]
 
-                if expression.search(line):
-                    prefix = f"{source}:{number}:" if show_lines else ""
-                    lines.append(prefix + line)
+        result = self._transform(
+            "wc",
+            path=paths[0] if len(paths) == 1 else None,
+            text=stdin if not paths else None,
+            unit=unit,
+        )
+        return result["text"]
 
-        return "\n".join(lines) + ("\n" if lines else "")
+    def _cmd_head(self, args, stdin):
+        return self._head_tail("head", args, stdin)
+
+    def _cmd_tail(self, args, stdin):
+        return self._head_tail("tail", args, stdin)
+
+    def _head_tail(self, operation, args, stdin):
+        count = 10
+        paths = list(args)
+
+        if paths[:1] == ["-n"]:
+            if len(paths) < 2:
+                raise AishError(f"usage: {operation} -n N [FILE...]")
+            count = int(paths[1])
+            paths = paths[2:]
+
+        result = self._transform(
+            operation,
+            path=paths[0] if len(paths) == 1 else None,
+            text=stdin if not paths else None,
+            count=count,
+        )
+        return result["text"]
+
+    def _cmd_sed(self, args, stdin):
+        if len(args) not in {1, 2}:
+            raise AishError("usage: sed 's/PATTERN/REPLACEMENT/[g]' [FILE]")
+
+        expression = args[0]
+        path = args[1] if len(args) == 2 else None
+
+        if not expression.startswith("s/"):
+            raise AishError("sed supports only s/PATTERN/REPLACEMENT/[g]")
+
+        body = expression[2:]
+        delimiter = "/"
+        parts = body.split(delimiter)
+
+        if len(parts) < 2:
+            raise AishError("invalid sed expression")
+
+        pattern = parts[0]
+        replacement = parts[1]
+        flags = parts[2] if len(parts) > 2 else ""
+        global_replace = "g" in flags
+
+        result = self._transform(
+            "sed_replace",
+            path=path,
+            text=stdin if path is None else None,
+            pattern=pattern,
+            replacement=replacement,
+            global_replace=global_replace,
+        )
+        return result["text"]
+
+        ignore_case = False
+        show_lines = False
+        invert = False
+        pattern = None
+        paths: list[str] = []
+
+        for arg in args:
+            if arg == "-i":
+                ignore_case = True
+            elif arg == "-n":
+                show_lines = True
+            elif arg == "-v":
+                invert = True
+            elif pattern is None:
+                pattern = arg
+            else:
+                paths.append(arg)
+
+        if pattern is None:
+            raise AishError("usage: grep [-i] [-n] [-v] PATTERN [FILE...]")
+
+        path, text = self._source(paths, stdin)
+        result = self._transform(
+            "grep",
+            path=path,
+            text=text,
+            pattern=pattern,
+            ignore_case=ignore_case,
+            line_numbers=show_lines,
+            invert=invert,
+        )
+        return result["text"]
 
     def _cmd_find(self, args, stdin):
         path = "."
@@ -435,34 +525,25 @@ class AishExecutor:
         numeric = "-n" in args
         unique = "-u" in args
         paths = [arg for arg in args if not arg.startswith("-")]
-        text = self._read_text(paths[0]) if paths else stdin
-        lines = text.splitlines()
 
-        if numeric:
-            lines.sort(
-                key=lambda line: float(line),
-                reverse=reverse,
-            )
-        else:
-            lines.sort(reverse=reverse)
-
-        if unique:
-            lines = list(dict.fromkeys(lines))
-
-        return "\n".join(lines) + ("\n" if lines else "")
-
+        result = self._transform(
+            "sort",
+            path=paths[0] if len(paths) == 1 else None,
+            text=stdin if not paths else None,
+            numeric=numeric,
+            reverse=reverse,
+            unique=unique,
+        )
+        return result["text"]
     def _cmd_uniq(self, args, stdin):
         paths = [arg for arg in args if not arg.startswith("-")]
-        text = self._read_text(paths[0]) if paths else stdin
-        lines = []
-        previous = object()
 
-        for line in text.splitlines():
-            if line != previous:
-                lines.append(line)
-                previous = line
-
-        return "\n".join(lines) + ("\n" if lines else "")
+        result = self._transform(
+            "uniq",
+            path=paths[0] if len(paths) == 1 else None,
+            text=stdin if not paths else None,
+        )
+        return result["text"]
 
     def _cmd_cut(self, args, stdin):
         delimiter = "\t"
@@ -481,31 +562,26 @@ class AishExecutor:
                 paths.append(args[index])
             index += 1
 
-        text = self._read_text(paths[0]) if paths else stdin
-        selected = [
-            int(value) - 1
-            for value in fields.split(",")
-        ]
-        result = []
-
-        for line in text.splitlines():
-            parts = line.split(delimiter)
-            result.append(
-                delimiter.join(
-                    parts[index]
-                    for index in selected
-                    if 0 <= index < len(parts)
-                )
-            )
-
-        return "\n".join(result) + ("\n" if result else "")
+        result = self._transform(
+            "cut",
+            path=paths[0] if len(paths) == 1 else None,
+            text=stdin if not paths else None,
+            delimiter=delimiter,
+            fields=fields,
+        )
+        return result["text"]
 
     def _cmd_tr(self, args, stdin):
         if len(args) != 2:
             raise AishError("usage: tr SET1 SET2")
-        return stdin.translate(
-            str.maketrans(args[0], args[1])
+
+        result = self._transform(
+            "tr",
+            text=stdin,
+            set1=args[0],
+            set2=args[1],
         )
+        return result["text"]
 
     def _cmd_sha256sum(self, args, stdin):
         if len(args) != 1:

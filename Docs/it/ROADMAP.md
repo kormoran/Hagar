@@ -84,6 +84,7 @@ La versione completa è congelata; non entra nella prossima release:
 predefinita. Comandi implementati: navigazione, lettura, testo puro,
 pipeline e mutazioni di file singoli. Non esegue programmi host,
 redirezioni, variabili o command substitution.
+`text.transform` fornisce le operazioni testuali bounded usate da AIsh.
 
 ## 0.5 Documentazione
 

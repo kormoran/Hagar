@@ -949,6 +949,22 @@ abilitarla richiede una modifica esplicita:
 I comandi interni conservano le regole dei tool sottostanti: abilitare
 `aish.exec` non abilita `filesystem.delete_file`.
 
+## 3.11.12 `text.transform` (`local_tools/text_transform_tool.py`)
+
+Tool read-only con operazioni enumerate: `grep`, `sort`, `uniq`, `cut`,
+`tr`, `wc`, `head`, `tail`, `sed_replace`. Accetta un path della sandbox
+o testo inline; applica limiti di input, output, pattern e match.
+
+Capability:
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+Non scrive file. AIsh lo usa per i comandi testuali; il salvataggio del
+risultato passa da `filesystem.write_file`/`create_file` con il gate
+read-before-write.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1114,7 +1130,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 854 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 860 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

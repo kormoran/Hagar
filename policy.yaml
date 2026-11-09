@@ -26,6 +26,12 @@ subjects:
         effect: deny
         tools: ["aish.*"]
 
+      # Trasformazioni testuali read-only: leggono la sandbox ma non
+      # scrivono e non eseguono programmi.
+      - capabilities: [FILESYSTEM_READ, COMPUTE]
+        effect: allow
+        tools: ["text.transform"]
+
       # Lettura e ispezione: sempre permesse.
       - capabilities: [FILESYSTEM_READ]
         effect: allow

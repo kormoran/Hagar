@@ -23,6 +23,7 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from local_tools.aish_tool import AishToolProvider
+from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
 from core.plugins import PluginContext
@@ -509,6 +510,8 @@ def build_harness(
         filesystem,
         audit=audit,
     ).register_tools(registry)
+
+    TextTransformToolProvider(filesystem).register_tools(registry)
 
     vision_provider = VisionToolProvider(filesystem)
     vision_provider.register_tools(registry)

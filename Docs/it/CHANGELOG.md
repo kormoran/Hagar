@@ -50,6 +50,9 @@ riferimento al commit quando utile.
   abilitarla esplicitamente in `policy.yaml`.
 - Audit `aish.command`; i comandi interni mantengono policy, checkpoint
   e audit dei tool sottostanti.
+- Nuovo `text.transform` read-only con operazioni `grep`, `sort`,
+  `uniq`, `cut`, `tr`, `wc`, `head`, `tail`, `sed_replace`; AIsh usa il
+  tool per i comandi testuali e aggiunge `sed` ristretto.
 
 # 0.5.2 — 2026-11-08
 

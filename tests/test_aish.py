@@ -16,6 +16,7 @@ from core.permissions import (
 )
 from core.tool_registry import ToolRegistry
 from local_tools.aish_tool import AishToolProvider
+from local_tools.text_transform_tool import TextTransformToolProvider
 
 
 @pytest.fixture
@@ -28,6 +29,7 @@ def aish_registry(sandbox):
         ),
     )
     FileSystemToolProvider(sandbox).register_tools(registry)
+    TextTransformToolProvider(sandbox).register_tools(registry)
     AishToolProvider(registry, sandbox).register_tools(registry)
     return registry
 
@@ -63,6 +65,15 @@ def test_aish_read_and_pipeline(aish_registry, workspace):
         "grep",
         "wc",
     ]
+
+
+def test_aish_sed_substitution(aish_registry):
+    result = run(
+        aish_registry,
+        "echo uno due | sed 's/uno/tre/g'",
+    )
+
+    assert result["stdout"] == "tre due\n"
 
 
 def test_aish_rejects_redirection_and_host_commands(aish_registry):

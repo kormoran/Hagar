@@ -43,6 +43,7 @@ EXPECTED_TOOLS = {
     "filesystem.free_space",
     "filesystem.stat",
     "aish.exec",
+    "text.transform",
     "memory.create_skill",
     "memory.list_skills",
     "memory.search",

@@ -64,8 +64,11 @@ sha256sum df date basename dirname
 ### Testo
 
 ```text
-echo printf sort uniq cut tr
+echo printf sort uniq cut tr sed
 ```
+
+Usano `text.transform`; `sed` supporta solo
+`s/PATTERN/REPLACEMENT/[g]`.
 
 ### Mutazioni semplici
 
@@ -107,6 +110,9 @@ find -exec      esecuzione
 - l'help dei comandi è volutamente minimale;
 - l'implementazione è volutamente lessicale: non c'è una shell POSIX
   completa.
+
+Le trasformazioni testuali passano da
+[`text.transform`](TEXT_TRANSFORM.md).
 
 ## Audit
 
