@@ -1,6 +1,6 @@
 # `text.transform`
 
-**Stato:** implementato, non rilasciato
+**Stato:** implementato nella 0.6.0
 **Capability:** `FILESYSTEM_READ | COMPUTE`
 **Tipo:** read-only
 

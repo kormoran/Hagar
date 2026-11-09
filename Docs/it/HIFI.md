@@ -1,6 +1,6 @@
 # Modalità Hi-Fi
 
-**Stato:** implementata, non ancora rilasciata
+**Stato:** implementata nella 0.6.0
 **Attivazione:** `hagar --hifi` oppure `hifi.enabled: true`
 **Configurazione:** sezione `hifi`
 

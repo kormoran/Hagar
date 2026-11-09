@@ -1,27 +1,28 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.5.2 (in preparazione)
-Ultimo aggiornamento: 2026-11-07
+Versione corrente: 0.6.0 (in preparazione)
+Ultimo aggiornamento: 2026-11-09
 
 Le decisioni prese sono indicate come tali; i punti ancora aperti sono
 elencati alla fine di ogni area. Le sezioni 1–9 sono lo storico fino
-alla 0.5.2; il piano operativo corrente è la sezione 0.
+alla 0.6.0; il piano operativo corrente è la sezione 0.
 
 ---
 
-# 0. Piano corrente (post-0.5.2)
+# 0. Piano corrente (post-0.6.0)
 
 ## 0.1 Ordine delle prossime release
 
 | Release | Obiettivo | Stato |
 |---|---|---|
-| **0.6.0** | Broker LLM | prossimo |
-| **0.7.0** | Tool SQL read-only | congelato |
+| **0.6.0** | Runtime safety + AIsh | in preparazione |
+| **0.7.0** | Broker LLM | prossimo |
+| **0.8.0** | Tool SQL read-only | congelato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
 
-## 0.2 0.6.0 — Broker LLM
+## 0.2 0.7.0 — Broker LLM
 
 - schede tecniche JSON e benchmark dei modelli (`/models test`);
 - rilevamento hardware CPU/RAM/GPU (`/models hardware`);
@@ -33,7 +34,7 @@ limiti; niente broker senza subagenti e model registry.**
 - il broker non concede mai permessi: può solo proporre un sottoinsieme;
 - override umano e audit `broker.decision`.
 
-## 0.3 0.7.0 — Tool SQL
+## 0.3 0.8.0 — Tool SQL
 
 - solo lettura nella prima versione;
 - SQLite `mode=ro`, `PRAGMA query_only`, una sola istruzione;
@@ -78,7 +79,7 @@ La versione completa è congelata; non entra nella prossima release:
 - copertura di rename/delete di directory;
 - integrazione GUI e messaggi di recupero guidato.
 
-## 0.4.2 AIsh — implementata, non rilasciata
+## 0.4.2 AIsh — implementata nella 0.6.0
 
 `aish.exec` è una shell semantica sopra i tool Hagar, con policy `DENY`
 predefinita. Comandi implementati: navigazione, lettura, testo puro,

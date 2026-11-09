@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hagar"
-version = "0.5.2"
+version = "0.6.0"
 description = "Harness agentico generale per AI resilienti"
 readme = "README.md"
 license = { text = "MIT" }

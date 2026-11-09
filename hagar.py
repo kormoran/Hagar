@@ -60,7 +60,7 @@ from local_tools.plugins import BUILTIN_TOOL_PLUGINS
 from local_tools.vision_tool import VisionToolProvider
 
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 DEFAULT_CONFIG_NAME = "hagar.yaml"
 

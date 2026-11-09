@@ -1,6 +1,6 @@
 # Checkpoint, timeout, spill e compaction
 
-**Stato:** implementati, non rilasciati
+**Stato:** implementati nella 0.6.0
 **Configurazione:** sezione `tools`
 **Comando:** `/undo`
 

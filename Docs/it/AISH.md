@@ -1,6 +1,6 @@
 # AIsh
 
-**Stato:** implementato, non rilasciato
+**Stato:** implementato nella 0.6.0
 **Tool:** `aish.exec`
 **Capability:** `AISH`
 **Policy:** DENY di default

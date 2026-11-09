@@ -5,7 +5,23 @@ riferimento al commit quando utile.
 
 ---
 
-# Non rilasciato
+# 0.6.0 — 2026-11-09
+
+## Riepilogo
+
+Release di sicurezza runtime e interazione controllata: Hi-Fi, edit
+atomico, read-before-write, checkpoint, timeout, repeat guard, spill,
+compaction, AIsh e text.transform.
+
+## Breaking change
+
+- `write_file`, `edit_file`, `delete_file` e `rename` richiedono una
+  lettura precedente nella stessa sandbox e rifiutano file cambiati.
+- `filesystem.write_file`, `write_bytes`, `create_file` e `edit_file`
+  usano la scrittura atomica.
+- `tools.timeout` vale 120 secondi per default; `tools.repeat_limit`
+  blocca la terza chiamata identica dello stesso turno.
+- AIsh è presente ma `AISH` è negata dalla policy predefinita.
 
 ## Modalità Hi-Fi
 
