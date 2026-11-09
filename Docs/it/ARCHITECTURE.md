@@ -932,6 +932,23 @@ nell'`ArtifactStore` e restituisce un riepilogo con `artifact_id`.
 `ContextCompactor` sostituisce i messaggi più vecchi quando il contesto
 supera 24.000 caratteri, preservando gli ultimi 8 e i messaggi system.
 
+## 3.11.11 AIsh (`core/aish.py`, `local_tools/aish_tool.py`)
+
+`aish.exec` implementa un linguaggio di comando, non una shell host.
+`AishExecutor` fa parsing con `shlex`, rifiuta redirezioni, operatori,
+variabili e command substitution, e traduce ogni comando in una chiamata
+al `ToolRegistry`. La capability `AISH` è negata dalla policy predefinita;
+abilitarla richiede una modifica esplicita:
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+I comandi interni conservano le regole dei tool sottostanti: abilitare
+`aish.exec` non abilita `filesystem.delete_file`.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1097,7 +1114,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 849 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 854 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

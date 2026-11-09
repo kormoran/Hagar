@@ -41,6 +41,7 @@ class Capability(IntFlag):
     AGENT_SPAWN = auto()
     AGENT_DATA = auto()
     DECISION = auto()
+    AISH = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -139,6 +140,11 @@ def capabilities_from_permissions(
 
     capabilities |= Capability.MCP_CALL
     capabilities |= Capability.DECISION
+
+    # AIsh è disponibile solo se la policy lo concede esplicitamente;
+    # questa capability serve perché una regola di allow possa farcela
+    # passare, senza renderla attiva di default.
+    capabilities |= Capability.AISH
 
     if agents:
         capabilities |= (

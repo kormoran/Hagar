@@ -78,6 +78,13 @@ La versione completa è congelata; non entra nella prossima release:
 - copertura di rename/delete di directory;
 - integrazione GUI e messaggi di recupero guidato.
 
+## 0.4.2 AIsh — implementata, non rilasciata
+
+`aish.exec` è una shell semantica sopra i tool Hagar, con policy `DENY`
+predefinita. Comandi implementati: navigazione, lettura, testo puro,
+pipeline e mutazioni di file singoli. Non esegue programmi host,
+redirezioni, variabili o command substitution.
+
 ## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory

@@ -41,6 +41,16 @@ riferimento al commit quando utile.
 - Compaction deterministica del contesto oltre 24.000 caratteri, con
   `context.compacted`.
 
+## AIsh
+
+- Nuovo `aish.exec`: linguaggio whitelisted (`pwd`, `ls`, `cat`,
+  `grep`, pipeline di testo, mutazioni di file singoli) che compila ogni
+  comando nei tool Hagar; nessun subprocess e nessun path host.
+- Capability `AISH` con regola `DENY` predefinita; l'utente deve
+  abilitarla esplicitamente in `policy.yaml`.
+- Audit `aish.command`; i comandi interni mantengono policy, checkpoint
+  e audit dei tool sottostanti.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

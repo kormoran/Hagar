@@ -248,6 +248,12 @@ Hagar salva un checkpoint dei file modificati nel turno, limita le
 chiamate ai tool, spilla gli output grandi e pota il contesto vecchio.
 Dettagli in [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
 
+## 3.10 AIsh
+
+`aish.exec` è una shell semantica ristretta: i comandi vengono tradotti
+in tool Hagar, non eseguiti come programmi. È **DENY di default** e va
+abilitata esplicitamente in `policy.yaml`. Dettagli in [AISH.md](AISH.md).
+
 ---
 
 # 4. Documentazione
@@ -264,6 +270,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
 - [HIFI.md](HIFI.md) — pre-pass di interpretazione e chiarimento.
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill e compaction.
+- [AISH.md](AISH.md) — shell semantica ristretta e policy DENY.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,

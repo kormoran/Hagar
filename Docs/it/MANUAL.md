@@ -643,6 +643,7 @@ mostra `lo faccio? (y/N)` e il default è `N`.
 | `NETWORK` | accesso di rete |
 | `MCP_CALL` | chiamata a tool MCP |
 | `COMPUTE` | calcolo locale senza rete/filesystem |
+| `AISH` | esecuzione del linguaggio AIsh |
 
 ## 5.3 Regole e specificità
 
@@ -655,6 +656,10 @@ Una regola può filtrare con:
 Vince la regola più specifica: prima il numero di filtri, poi la
 lunghezza del prefisso. A parità vince l’effetto più restrittivo.
 Senza regole vale `default` del soggetto; il default sicuro è `deny`.
+
+`AISH` è negata dalla regola predefinita `aish.*`. Per abilitare AIsh
+l’utente deve cambiare quella regola in `allow`; i comandi interni
+restano soggetti alle regole dei rispettivi tool.
 
 Lo scope `paths` confronta il path **scritto dal modello**, non quello
 risolto dopo `chdir`: un path assoluto o un cambio di directory può non

@@ -42,6 +42,7 @@ EXPECTED_TOOLS = {
     "filesystem.search",
     "filesystem.free_space",
     "filesystem.stat",
+    "aish.exec",
     "memory.create_skill",
     "memory.list_skills",
     "memory.search",
@@ -90,6 +91,7 @@ DEFAULT_POLICY = {
                         "COMPUTE",
                         "NETWORK",
                         "DECISION",
+                        "AISH",
                     ],
                     "effect": "allow",
                 }

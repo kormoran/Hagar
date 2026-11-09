@@ -19,6 +19,13 @@ subjects:
     default: deny
 
     rules:
+      # AIsh è una shell semantica sopra i tool: disattivata di default.
+      # Per abilitarla, sostituire deny con allow e concedere la stessa
+      # capability alle regole dei tool che AIsh deve poter usare.
+      - capabilities: [AISH]
+        effect: deny
+        tools: ["aish.*"]
+
       # Lettura e ispezione: sempre permesse.
       - capabilities: [FILESYSTEM_READ]
         effect: allow

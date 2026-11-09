@@ -22,6 +22,7 @@ from core.filesystem import (
     FileSystemSandbox,
 )
 from core.filesystem_tools import FileSystemToolProvider
+from local_tools.aish_tool import AishToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
 from core.plugins import PluginContext
@@ -502,6 +503,12 @@ def build_harness(
     )
 
     fs_provider.register_tools(registry)
+
+    AishToolProvider(
+        registry,
+        filesystem,
+        audit=audit,
+    ).register_tools(registry)
 
     vision_provider = VisionToolProvider(filesystem)
     vision_provider.register_tools(registry)
