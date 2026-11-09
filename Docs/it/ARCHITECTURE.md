@@ -298,6 +298,7 @@ permessi globali `permissions.read`/`write` restano un tetto: un alias
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -335,6 +336,20 @@ li trattano come file inesistenti.
 `write_file` sovrascrive solo file esistenti; la creazione passa da
 `create_file`, che richiede il permesso `create`. Non è possibile
 aggirare il divieto di creazione scrivendo un percorso nuovo.
+
+`read_file`, `read_chunk` e `read_bytes` registrano una versione osservata
+del file. `write_file`, `edit_file`, `delete_file` e `rename` richiedono
+che il file sia stato letto nella stessa sandbox e che la versione non sia
+cambiata nel frattempo. La versione è `(st_mtime_ns, st_size)`: è una
+protezione cooperativa contro overwrite ciechi, non un CAS contro race
+TOCTOU.
+
+`edit_file` sostituisce literalmente `old_string` con `new_string`. Di
+default la stringa deve comparire una sola volta; `replace_all` permette
+più sostituzioni. La scrittura usa un file temporaneo nella stessa
+directory e `os.replace`, quindi il contenuto non viene mai visto a metà.
+Lo stesso meccanismo atomico è usato da `write_file`, `write_bytes` e
+`create_file`.
 
 ### Limiti di scrittura
 
@@ -1057,7 +1072,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 837 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 840 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

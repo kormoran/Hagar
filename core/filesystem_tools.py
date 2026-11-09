@@ -55,8 +55,9 @@ class FileSystemToolProvider:
                 name="filesystem.write_file",
                 capabilities=Capability.FILESYSTEM_WRITE,
                 description=(
-                    "Write content to an "
-                    "existing file."
+                    "Write content to an existing file. "
+                    "Read the file first; the write is rejected if it "
+                    "has not been observed or has changed since reading."
                 ),
                 category="filesystem",
                 parameters=[
@@ -75,6 +76,48 @@ class FileSystemToolProvider:
                 ],
                 handler=self.write_file,
                 preflight=self.preflight_write_file,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
+                name="filesystem.edit_file",
+                capabilities=Capability.FILESYSTEM_WRITE,
+                description=(
+                    "Edit an existing UTF-8 text file by replacing "
+                    "literal text. Read the file first; by default "
+                    "old_string must occur exactly once; use replace_all "
+                    "for multiple matches."
+                ),
+                category="filesystem",
+                parameters=[
+                    ToolParameter(
+                        name="path",
+                        param_type="string",
+                        description="File to edit.",
+                    ),
+                    ToolParameter(
+                        name="old_string",
+                        param_type="string",
+                        description="Literal text to replace.",
+                    ),
+                    ToolParameter(
+                        name="new_string",
+                        param_type="string",
+                        description="Replacement text.",
+                    ),
+                    ToolParameter(
+                        name="replace_all",
+                        param_type="boolean",
+                        description=(
+                            "Replace every occurrence instead of "
+                            "requiring a unique match."
+                        ),
+                        required=False,
+                        default=False,
+                    ),
+                ],
+                handler=self.edit_file,
             )
         )
 
@@ -560,6 +603,31 @@ class FileSystemToolProvider:
         return (
             f"File written successfully: "
             f"{self.fs.virtual_path(path)}"
+        )
+
+    def edit_file(
+        self,
+        path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> str:
+
+        replacements = self.fs.edit_file(
+            path,
+            old_string,
+            new_string,
+            replace_all,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "path": self.fs.virtual_path(path),
+                "replacements": replacements,
+            },
+            ensure_ascii=False,
+            indent=2,
         )
 
     def create_file(

@@ -677,6 +677,10 @@ esiste:
 | Tool in `ASK` senza conferma | rifiuto |
 | Limite di scrittura superato | errore del tool, nessuna scrittura |
 | File oltre 4096 byte con `read_file` | errore, usare `read_chunk` |
+| `write_file`/`edit_file`/`delete_file`/`rename` su file non letto | errore: leggere prima il file |
+| File cambiato dopo la lettura | errore: rileggere prima di modificarlo |
+| `edit_file` con `old_string` ambiguo | errore: usare `replace_all` o una stringa più specifica |
+| `edit_file` con `old_string` assente | errore, nessuna modifica |
 | Pagina oltre il limite | `has_more`/`next_offset` |
 | Symlink | invisibile; operazione come path inesistente |
 | Hard link/mount/junction | non rilevati; responsabilità utente |

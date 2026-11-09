@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import stat as stat_module
+import tempfile
 
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -107,6 +108,9 @@ class FileSystemSandbox:
 
         self.limits = limits or FileSystemLimits()
         self._session_write_bytes = 0
+
+        # Versione osservata dei file per il gate read-before-write.
+        self._observed: dict[Path, tuple[int, int]] = {}
 
         self.roots = {
             p.resolve(): perms
@@ -343,6 +347,138 @@ class FileSystemSandbox:
     ) -> Path:
 
         return self.resolve_path(path).parent
+
+    # ==================================================
+    # Observation / atomic write helpers
+    # ==================================================
+
+    @staticmethod
+    def _version(target: Path) -> tuple[int, int]:
+        info = target.stat()
+        return (info.st_mtime_ns, info.st_size)
+
+    def _observe(
+        self,
+        target: Path,
+    ) -> None:
+
+        try:
+            self._observed[target] = self._version(target)
+
+        except OSError:
+            self._observed.pop(target, None)
+
+    def _forget(
+        self,
+        target: Path,
+    ) -> None:
+
+        self._observed.pop(target, None)
+
+    def _require_observed(
+        self,
+        target: Path,
+    ) -> None:
+
+        expected = self._observed.get(target)
+
+        if expected is None:
+
+            raise PermissionError(
+                f"Il file {self._display(target)} non è stato letto. "
+                "Leggerlo prima di modificarlo."
+            )
+
+        try:
+            current = self._version(target)
+
+        except FileNotFoundError as exc:
+
+            raise FileNotFoundError(
+                self._display(target)
+            ) from exc
+
+        if current != expected:
+
+            raise PermissionError(
+                f"Il file {self._display(target)} è cambiato dopo "
+                "la lettura. Rileggerlo prima di modificarlo."
+            )
+
+    @staticmethod
+    def _atomic_write_text(
+        target: Path,
+        content: str,
+    ) -> None:
+
+        try:
+            mode = stat_module.S_IMODE(
+                target.stat().st_mode
+            )
+        except OSError:
+            mode = None
+
+        descriptor, temporary = tempfile.mkstemp(
+            dir=str(target.parent),
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+        )
+        temporary_path = Path(temporary)
+
+        try:
+            with os.fdopen(
+                descriptor,
+                "w",
+                encoding="utf-8",
+                newline="",
+            ) as handle:
+
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+            if mode is not None:
+                os.chmod(temporary_path, mode)
+
+            os.replace(temporary_path, target)
+
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+    @staticmethod
+    def _atomic_write_bytes(
+        target: Path,
+        data: bytes,
+    ) -> None:
+
+        try:
+            mode = stat_module.S_IMODE(
+                target.stat().st_mode
+            )
+        except OSError:
+            mode = None
+
+        descriptor, temporary = tempfile.mkstemp(
+            dir=str(target.parent),
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+        )
+        temporary_path = Path(temporary)
+
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+            if mode is not None:
+                os.chmod(temporary_path, mode)
+
+            os.replace(temporary_path, target)
+
+        finally:
+            temporary_path.unlink(missing_ok=True)
 
     def path_exists(
         self,
@@ -1238,6 +1374,8 @@ class FileSystemSandbox:
             errors="replace",
         )
 
+        self._observe(target)
+
         next_offset = start + len(data)
 
         return {
@@ -1277,9 +1415,13 @@ class FileSystemSandbox:
                 "exceed the context window."
             )
 
-        return target.read_text(
+        content = target.read_text(
             encoding="utf-8"
         )
+
+        self._observe(target)
+
+        return content
 
     def read_bytes(
         self,
@@ -1308,7 +1450,11 @@ class FileSystemSandbox:
                 f"file is too large (max {max_bytes} bytes)"
             )
 
-        return target.read_bytes()
+        data = target.read_bytes()
+
+        self._observe(target)
+
+        return data
 
     def copy_file(
         self,
@@ -1355,6 +1501,7 @@ class FileSystemSandbox:
         )
 
         self._record_write(required_space)
+        self._observe(dst)
     
     def rename(
         self,
@@ -1399,7 +1546,11 @@ class FileSystemSandbox:
         if dst.exists():
             raise FileExistsError(self._display(dst))
 
+        self._require_observed(src)
+
         src.rename(dst)
+        self._forget(src)
+        self._observe(dst)
 
     def write_file(
         self,
@@ -1435,15 +1586,15 @@ class FileSystemSandbox:
         if target.is_dir():
             raise IsADirectoryError(self._display(target))
 
+        self._require_observed(target)
+
         self._check_write_limits(
             target,
             required_space,
         )
 
-        target.write_text(
-            content,
-            encoding="utf-8",
-        )
+        self._atomic_write_text(target, content)
+        self._observe(target)
 
         self._record_write(required_space)
 
@@ -1466,6 +1617,8 @@ class FileSystemSandbox:
 
             if not overwrite:
                 raise FileExistsError(self._display(target))
+
+            self._require_observed(target)
 
             error = self.FS_Guardian(
                 "write",
@@ -1492,7 +1645,8 @@ class FileSystemSandbox:
             required_space,
         )
 
-        target.write_bytes(data)
+        self._atomic_write_bytes(target, data)
+        self._observe(target)
         self._record_write(required_space)
 
     def create_file(
@@ -1527,12 +1681,81 @@ class FileSystemSandbox:
             required_space,
         )
 
-        target.write_text(
-            content,
-            encoding="utf-8",
+        self._atomic_write_text(target, content)
+        self._observe(target)
+        self._record_write(required_space)
+
+    def edit_file(
+        self,
+        path: str | Path,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> int:
+        """Sostituisce testo in un file osservato, con scrittura atomica.
+
+        Restituisce il numero di sostituzioni. Di default ``old_string``
+        deve comparire una sola volta: le modifiche ambigue vengono
+        rifiutate invece di indovinare.
+        """
+
+        if not isinstance(old_string, str) or old_string == "":
+            raise ValueError("old_string must be a non-empty string")
+
+        if not isinstance(new_string, str):
+            raise TypeError("new_string must be a string")
+
+        if old_string == new_string:
+            raise ValueError("old_string and new_string must differ")
+
+        target = self.resolve_path(path)
+
+        error = self.FS_Guardian(
+            "write",
+            target,
+            len(new_string.encode("utf-8")),
         )
 
+        if error:
+            raise PermissionError(error)
+
+        if not target.exists():
+            raise FileNotFoundError(self._display(target))
+
+        if target.is_dir():
+            raise IsADirectoryError(self._display(target))
+
+        self._require_observed(target)
+
+        content = target.read_text(encoding="utf-8")
+        self._require_observed(target)
+        occurrences = content.count(old_string)
+
+        if occurrences == 0:
+            raise ValueError(
+                f"old_string not found in {self._display(target)}"
+            )
+
+        if occurrences > 1 and not replace_all:
+            raise ValueError(
+                f"old_string occurs {occurrences} times in "
+                f"{self._display(target)}; use replace_all or a "
+                "more specific string"
+            )
+
+        updated = content.replace(
+            old_string,
+            new_string,
+            -1 if replace_all else 1,
+        )
+        required_space = len(updated.encode("utf-8"))
+
+        self._check_write_limits(target, required_space)
+        self._atomic_write_text(target, updated)
+        self._observe(target)
         self._record_write(required_space)
+
+        return occurrences if replace_all else 1
 
     def delete_file(
         self,
@@ -1555,7 +1778,10 @@ class FileSystemSandbox:
         if target.is_dir():
             raise IsADirectoryError(self._display(target))
 
+        self._require_observed(target)
+
         target.unlink()
+        self._forget(target)
 
     # ==================================================
     # Metadata

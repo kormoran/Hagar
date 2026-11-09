@@ -56,6 +56,21 @@ limiti; niente broker senza subagenti e model registry.**
 - document tool: contratto e protocollo definiti in `DOCUMENT_TOOL.md`;
   MVP CSV ancora da implementare.
 
+## 0.4.1 Versione completa filesystem — congelata
+
+L'MVP implementato copre `edit_file`, scrittura atomica,
+read-before-overwrite/delete/rename e versione `mtime_ns+size`.
+La versione completa è congelata; non entra nella prossima release:
+
+- `edit_file` con patch a più hunk e diff;
+- hash del contenuto oltre a `mtime_ns`/`size`;
+- scrittura atomica con controllo CAS a livello di filesystem;
+- osservazione per singolo agente con isolamento esplicito tra padre e
+  subagenti;
+- audit `fs.observed`, `fs.guard_denied`, `fs.stale`;
+- copertura di rename/delete di directory;
+- integrazione GUI e messaggi di recupero guidato.
+
 ## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory

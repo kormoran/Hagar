@@ -25,6 +25,7 @@ from core.tool_registry import ToolRegistry
 EXPECTED_TOOLS = {
     "filesystem.read_file",
     "filesystem.write_file",
+    "filesystem.edit_file",
     "filesystem.create_file",
     "filesystem.mkdir",
     "filesystem.chdir",
@@ -65,6 +66,7 @@ def test_tool_capabilities(registry):
     expected = {
         "filesystem.read_file": Capability.FILESYSTEM_READ,
         "filesystem.write_file": Capability.FILESYSTEM_WRITE,
+        "filesystem.edit_file": Capability.FILESYSTEM_WRITE,
         "filesystem.create_file": Capability.FILESYSTEM_CREATE,
         "filesystem.mkdir": Capability.FILESYSTEM_CREATE,
         "filesystem.chdir": Capability.FILESYSTEM_READ,
@@ -152,6 +154,52 @@ def test_list_dir_tool_paginates(registry, workspace):
     assert page["next_offset"] == 2
     assert page["has_more"] is True
     assert page["entries"][0]["path"] == "/home/ai/root/b.txt"
+
+
+def test_edit_file_requires_read_and_rejects_ambiguous_match(
+    sandbox,
+    workspace,
+):
+    (workspace / "a.txt").write_text(
+        "uno due uno",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(PermissionError):
+        sandbox.edit_file("a.txt", "due", "tre")
+
+    sandbox.read_file("a.txt")
+
+    with pytest.raises(ValueError):
+        sandbox.edit_file("a.txt", "uno", "tre")
+
+    assert sandbox.edit_file(
+        "a.txt",
+        "due",
+        "tre",
+    ) == 1
+
+    assert (workspace / "a.txt").read_text(
+        encoding="utf-8"
+    ) == "uno tre uno"
+    assert not list(workspace.glob(".*.tmp"))
+
+
+def test_write_rejects_stale_observation(sandbox, workspace):
+    (workspace / "a.txt").write_text("prima", encoding="utf-8")
+    sandbox.read_file("a.txt")
+
+    (workspace / "a.txt").write_text("esterno", encoding="utf-8")
+
+    with pytest.raises(PermissionError):
+        sandbox.write_file("a.txt", "interno")
+
+
+def test_edit_file_requires_observation(sandbox, workspace):
+    (workspace / "a.txt").write_text("testo", encoding="utf-8")
+
+    with pytest.raises(PermissionError):
+        sandbox.edit_file("a.txt", "testo", "nuovo")
 
 
 def test_delete_file(registry, workspace):

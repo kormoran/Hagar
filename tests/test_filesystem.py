@@ -336,6 +336,7 @@ def test_traversal_is_denied(sandbox, tmp_path):
 def test_write_file_overwrites(sandbox, workspace):
     (workspace / "a.txt").write_text("vecchio", encoding="utf-8")
 
+    sandbox.read_file("a.txt")
     sandbox.write_file("a.txt", "nuovo")
 
     assert (workspace / "a.txt").read_text(
@@ -416,6 +417,7 @@ def test_create_file_denied_without_permission(tmp_path):
 def test_delete_file(sandbox, workspace):
     (workspace / "a.txt").write_text("x", encoding="utf-8")
 
+    sandbox.read_file("a.txt")
     sandbox.delete_file("a.txt")
 
     assert not (workspace / "a.txt").exists()

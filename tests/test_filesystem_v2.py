@@ -121,6 +121,7 @@ def test_copy_file_refuses_existing_destination(
 def test_rename_file(sandbox, workspace):
     (workspace / "a.txt").write_text("a", encoding="utf-8")
 
+    sandbox.read_file("a.txt")
     sandbox.rename("a.txt", "b.txt")
 
     assert not (workspace / "a.txt").exists()

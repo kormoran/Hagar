@@ -17,6 +17,17 @@ riferimento al commit quando utile.
 - Eventi audit `hifi.interpretations`, `hifi.resolved`,
   `hifi.clarification` e `hifi.failed`.
 
+## Filesystem edit e osservazione
+
+- Nuovo `filesystem.edit_file`: sostituzione letterale con match unico
+  (o `replace_all`), scrittura atomica tramite file temporaneo e
+  `os.replace`.
+- `read_file`, `read_chunk` e `read_bytes` registrano la versione
+  osservata; `write_file`, `edit_file`, `delete_file` e `rename`
+  richiedono una lettura precedente e rifiutano file cambiati.
+- `write_file`, `write_bytes`, `create_file` e `edit_file` usano la
+  scrittura atomica.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

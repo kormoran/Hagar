@@ -28,6 +28,7 @@ from memory.vault import Vault
 EXPECTED_TOOLS = {
     "filesystem.read_file",
     "filesystem.write_file",
+    "filesystem.edit_file",
     "filesystem.create_file",
     "filesystem.mkdir",
     "filesystem.chdir",
