@@ -64,6 +64,14 @@ tools:
   # Blocca la terza chiamata identica nello stesso turno; 0 disabilita.
   repeat_limit: 3
 
+dev:
+  # Le ricette sono configurazione fidata per test, debug e build.
+  # Richiede anche la capability DEV_EXEC in policy.yaml.
+  enabled: false
+  recipes: recipes.yaml
+  copy_workspace: true
+  max_output_chars: 100000
+
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.
   # Permissions: R = read/list/search/stat, W = write/create/rename/

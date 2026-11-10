@@ -25,6 +25,7 @@ from .models import (
     DecisionsConfig,
     HiFiConfig,
     ToolsConfig,
+    DevConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -244,6 +245,15 @@ class ConfigLoader:
                 path.resolve().parent
                 / config.policy.path
             )
+
+        if config.dev.recipes:
+
+            recipes_path = Path(config.dev.recipes).expanduser()
+
+            if not recipes_path.is_absolute():
+                recipes_path = path.resolve().parent / recipes_path
+
+            config.dev.recipes = str(recipes_path)
 
         #
         # Il token cache OAuth, se relativo, segue la configurazione.
@@ -1179,8 +1189,36 @@ class ConfigLoader:
         )
 
         # -------------------------
-        # Hi-Fi mode (optional)
+        # Dev recipes (optional)
         # -------------------------
+
+        dev_data = _mapping(
+            data.get("dev", {}) or {},
+            "dev",
+        )
+        dev_enabled = dev_data.get("enabled", False)
+
+        if not isinstance(dev_enabled, bool):
+            raise ConfigError("dev.enabled must be a boolean")
+
+        dev_copy = dev_data.get("copy_workspace", True)
+
+        if not isinstance(dev_copy, bool):
+            raise ConfigError("dev.copy_workspace must be a boolean")
+
+        dev = DevConfig(
+            enabled=dev_enabled,
+            recipes=str(
+                dev_data.get("recipes", "recipes.yaml")
+            ),
+            copy_workspace=dev_copy,
+            max_output_chars=_positive_int(
+                dev_data,
+                "max_output_chars",
+                "dev.max_output_chars",
+                100_000,
+            ),
+        )
 
         hifi_data = _mapping(
             data.get("hifi", {}) or {},
@@ -1232,4 +1270,5 @@ class ConfigLoader:
             decisions=decisions,
             hifi=hifi,
             tools=tools,
+            dev=dev,
         )

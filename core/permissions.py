@@ -42,6 +42,7 @@ class Capability(IntFlag):
     AGENT_DATA = auto()
     DECISION = auto()
     AISH = auto()
+    DEV_EXEC = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -145,6 +146,9 @@ def capabilities_from_permissions(
     # questa capability serve perché una regola di allow possa farcela
     # passare, senza renderla attiva di default.
     capabilities |= Capability.AISH
+
+    # L'esecuzione di ricette è opt-in.
+    capabilities |= Capability.DEV_EXEC
 
     if agents:
         capabilities |= (

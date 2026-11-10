@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 
 from pathlib import Path
 
@@ -93,6 +94,7 @@ DEFAULT_POLICY = {
                         "NETWORK",
                         "DECISION",
                         "AISH",
+                        "DEV_EXEC",
                     ],
                     "effect": "allow",
                 }
@@ -111,6 +113,7 @@ def write_config(
     audit=None,
     policy="permissive",
     memory=None,
+    dev=None,
     vault_exists: bool = True,
 ) -> tuple[Path, Path]:
 
@@ -156,6 +159,9 @@ def write_config(
     else:
         data["memory"] = {"backend": "markdown"}
 
+    if dev is not None:
+        data["dev"] = dev
+
     if policy is not None:
 
         (tmp_path / "policy.yaml").write_text(
@@ -193,6 +199,53 @@ def test_build_harness_wires_all_components(tmp_path):
     assert harness.memory is not None
     assert harness.memory_error is None
     assert harness.vault.root == tmp_path / "vault"
+
+
+def test_build_harness_with_dev_recipes(tmp_path):
+    recipes_path = tmp_path / "recipes.yaml"
+    recipes_path.write_text(
+        "version: 1\n"
+        "recipes:\n"
+        "  hello:\n"
+        "    argv: [" + repr(sys.executable) + ", \"-V\"]\n"
+        "    timeout: 30\n",
+        encoding="utf-8",
+    )
+    path, _ = write_config(
+        tmp_path,
+        dev={
+            "enabled": True,
+            "recipes": str(recipes_path),
+        },
+    )
+    harness = hagar.build_harness(ConfigLoader.load(path))
+    assert "dev.list" in harness.registry.tool_names()
+    assert "dev.run" in harness.registry.tool_names()
+    payload = json.loads(
+        harness.registry.execute("dev.list")
+    )
+    assert payload["recipes"][0]["name"] == "hello"
+    result = json.loads(
+        harness.registry.execute("dev.run", recipe="hello")
+    )
+    assert result["success"] is True
+    assert result["exit_code"] == 0
+
+
+def test_build_harness_rejects_dev_recipes_inside_sandbox(tmp_path):
+    path, workspace = write_config(
+        tmp_path,
+        dev={
+            "enabled": True,
+            "recipes": str(tmp_path / "workspace" / "recipes.yaml"),
+        },
+    )
+    (workspace / "recipes.yaml").write_text(
+        "version: 1\nrecipes: {}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError):
+        hagar.build_harness(ConfigLoader.load(path))
 
 
 def test_write_permission_follows_config(tmp_path):

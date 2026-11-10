@@ -169,6 +169,16 @@ class ToolsConfig:
 
 
 @dataclass(slots=True)
+class DevConfig:
+    """Ricette locali per test, debug e build."""
+
+    enabled: bool = False
+    recipes: str = "recipes.yaml"
+    copy_workspace: bool = True
+    max_output_chars: int = 100_000
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -243,4 +253,8 @@ class AppConfig:
 
     tools: ToolsConfig = field(
         default_factory=ToolsConfig
+    )
+
+    dev: DevConfig = field(
+        default_factory=DevConfig
     )

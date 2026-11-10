@@ -965,6 +965,28 @@ Non scrive file. AIsh lo usa per i comandi testuali; il salvataggio del
 risultato passa da `filesystem.write_file`/`create_file` con il gate
 read-before-write.
 
+## 3.11.13 `dev.run` (`core/dev_recipes.py`, `core/dev_runner.py`)
+
+`DevRecipeLoader` legge `recipes.yaml` una sola volta all’avvio e
+conserva uno snapshot immutabile con hash. Il file deve stare fuori dalla
+sandbox scrivibile.
+
+`DevRunner` esegue una ricetta:
+
+- valida parametri tipizzati e `cwd`;
+- copia il progetto in una directory temporanea;
+- esegue un solo argv con `shell=False`;
+- usa un ambiente minimo;
+- applica timeout e kill del process group;
+- separa stdout/stderr;
+- limita l’output;
+- registra audit.
+
+La capability `DEV_EXEC` è DENY di default. `dev.run` non accetta comandi
+arbitrari e non usa container: le ricette sono fidate; la sandbox non
+isola il processo host. Il container resta congelato per un futuro
+accesso diretto a filesystem/programmi reali.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1130,7 +1152,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 860 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 867 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
   (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.

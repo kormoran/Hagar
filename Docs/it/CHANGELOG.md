@@ -70,6 +70,17 @@ compaction, AIsh e text.transform.
   `uniq`, `cut`, `tr`, `wc`, `head`, `tail`, `sed_replace`; AIsh usa il
   tool per i comandi testuali e aggiunge `sed` ristretto.
 
+## Ricette dev.run
+
+- Nuovi `dev.list` e `dev.run` per ricette fidate di test, debug e
+  build; `DEV_EXEC` è DENY di default.
+- `recipes.yaml` fuori dalla sandbox, caricato una sola volta all'avvio,
+  senza hot reload; ogni modifica richiede il riavvio.
+- Parametri tipizzati, `cwd`, timeout, ambiente esplicito, exit code,
+  output limitato e audit.
+- Esecuzione host su una copia temporanea del progetto, senza shell e
+  senza container.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

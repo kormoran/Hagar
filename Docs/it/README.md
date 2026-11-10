@@ -255,6 +255,12 @@ in tool Hagar, non eseguiti come programmi. È **DENY di default** e va
 abilitata esplicitamente in `policy.yaml`. Dettagli in [AISH.md](AISH.md).
 Le trasformazioni testuali usano [text.transform](TEXT_TRANSFORM.md).
 
+## 3.11 Ricette di sviluppo
+
+`dev.run` esegue ricette fidate per test, debug e build, senza shell e
+senza comandi arbitrari. È **DENY di default** e richiede `DEV_EXEC`.
+Dettagli in [DEV_RUN.md](DEV_RUN.md).
+
 ---
 
 # 4. Documentazione
@@ -273,6 +279,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill e compaction.
 - [AISH.md](AISH.md) — shell semantica ristretta e policy DENY.
 - [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — trasformazioni testuali bounded.
+- [DEV_RUN.md](DEV_RUN.md) — ricette per test, debug e build.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,

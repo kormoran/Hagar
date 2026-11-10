@@ -577,6 +577,21 @@ disabilita. `repeat_limit` blocca la terza chiamata identica nello stesso
 turno; `0` disabilita il blocco. Il timeout di un handler Python già in
 esecuzione è best effort: il worker può terminare dopo il limite.
 
+## 4.12 `dev`
+
+```yaml
+dev:
+  enabled: false
+  recipes: recipes.yaml
+  copy_workspace: true
+  max_output_chars: 100000
+```
+
+Abilita `dev.list` e `dev.run`, che eseguono ricette fidate per test,
+debug e build. `recipes.yaml` deve stare fuori dalla sandbox e viene
+letto solo all’avvio. Serve anche la capability `DEV_EXEC` in policy.
+Dettagli in `DEV_RUN.md`.
+
 ---
 
 # 5. `policy.yaml`
@@ -644,6 +659,7 @@ mostra `lo faccio? (y/N)` e il default è `N`.
 | `MCP_CALL` | chiamata a tool MCP |
 | `COMPUTE` | calcolo locale senza rete/filesystem |
 | `AISH` | esecuzione del linguaggio AIsh |
+| `DEV_EXEC` | esecuzione di ricette dev.run |
 
 ## 5.3 Regole e specificità
 

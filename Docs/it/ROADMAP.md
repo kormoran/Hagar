@@ -87,6 +87,15 @@ pipeline e mutazioni di file singoli. Non esegue programmi host,
 redirezioni, variabili o command substitution.
 `text.transform` fornisce le operazioni testuali bounded usate da AIsh.
 
+## 0.4.3 dev.run — implementato
+
+`dev.list` e `dev.run` eseguono ricette fidate per test, debug e build.
+`recipes.yaml` sta fuori dalla sandbox, viene letto all'avvio e non ha
+hot reload. `DEV_EXEC` è DENY di default; il backend è solo host.
+
+Il container resta congelato per un futuro accesso diretto a
+filesystem/programmi reali, mai dentro la sandbox.
+
 ## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory

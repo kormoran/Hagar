@@ -1,0 +1,45 @@
+# Copia questo file in <config-dir>/recipes.yaml.
+# Il file è configurazione fidata: non deve stare nella sandbox scrivibile
+# dal modello. Viene letto una sola volta all'avvio di Hagar.
+version: 1
+
+recipes:
+  test:
+    description: Esegue la suite pytest.
+    argv:
+      - .venv/Scripts/python.exe
+      - -m
+      - pytest
+      - -q
+    cwd: .
+    timeout: 120
+    env:
+      PYTHONUNBUFFERED: "1"
+
+  lint:
+    description: Esegue Ruff.
+    argv:
+      - .venv/Scripts/python.exe
+      - -m
+      - ruff
+      - check
+      - .
+    cwd: .
+    timeout: 60
+
+  test-target:
+    description: Esegue un sottoinsieme di test.
+    argv:
+      - .venv/Scripts/python.exe
+      - -m
+      - pytest
+      - -q
+      - "{target}"
+    cwd: .
+    timeout: 120
+    parameters:
+      target:
+        type: choice
+        choices:
+          - tests/test_agent.py
+          - tests/test_filesystem.py

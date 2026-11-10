@@ -26,6 +26,11 @@ subjects:
         effect: deny
         tools: ["aish.*"]
 
+      # Esecuzione di ricette di sviluppo: disattivata di default.
+      - capabilities: [DEV_EXEC]
+        effect: deny
+        tools: ["dev.*"]
+
       # Trasformazioni testuali read-only: leggono la sandbox ma non
       # scrivono e non eseguono programmi.
       - capabilities: [FILESYSTEM_READ, COMPUTE]

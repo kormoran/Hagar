@@ -14,6 +14,8 @@ from core.audit import AuditLog
 from core.config import ConfigError, ConfigLoader
 from core.command_service import CommandService
 from core.confirmations import QueueConfirmationProvider
+from core.dev_recipes import DevRecipeError, DevRecipeLoader
+from core.dev_runner import DevExecutionError, DevRunner
 from core.decisions import DecisionError
 from core.decisions import build_decision_registry
 from core.hifi import HiFiResolver
@@ -23,6 +25,7 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from local_tools.aish_tool import AishToolProvider
+from local_tools.dev_tool import DevToolProvider
 from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
@@ -512,6 +515,51 @@ def build_harness(
     ).register_tools(registry)
 
     TextTransformToolProvider(filesystem).register_tools(registry)
+
+    if config.dev.enabled:
+
+        recipe_path = Path(
+            config.dev.recipes
+        ).expanduser().resolve()
+
+        for root in filesystem.roots:
+
+            try:
+                recipe_path.relative_to(root)
+            except ValueError:
+                continue
+
+            raise ConfigError(
+                "dev.recipes must be outside the sandbox"
+            )
+
+        try:
+            recipe_book = DevRecipeLoader().load(recipe_path)
+        except DevRecipeError as exc:
+            raise ConfigError(
+                f"cannot load dev recipes: {exc}"
+            ) from exc
+
+        dev_runner = DevRunner(
+            filesystem,
+            recipe_book,
+            audit=audit,
+            max_output_chars=config.dev.max_output_chars,
+            copy_workspace=config.dev.copy_workspace,
+        )
+
+        DevToolProvider(
+            dev_runner,
+            recipe_book,
+            audit=audit,
+        ).register_tools(registry)
+
+        audit.record(
+            "dev.recipes.loaded",
+            path=str(recipe_path),
+            recipes=len(recipe_book.recipes),
+            sha256=recipe_book.sha256,
+        )
 
     vision_provider = VisionToolProvider(filesystem)
     vision_provider.register_tools(registry)
