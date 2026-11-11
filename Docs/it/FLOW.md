@@ -19,6 +19,9 @@ codice del modello
 
 Non è Python completo e non esegue bytecode Python.
 
+Il modello restituisce il **sorgente** nel parametro `code` di
+`flow.run`; non deve creare un file `.py`.
+
 ## Configurazione
 
 ```yaml

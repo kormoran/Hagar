@@ -63,7 +63,7 @@ class FlowToolProvider:
                     ToolParameter(
                         "code",
                         "string",
-                        "Sorgente Hagar Flow.",
+                        "Sorgente Hagar Flow; non un file .py.",
                     )
                 ],
                 handler=self.validate_code,
@@ -79,6 +79,7 @@ class FlowToolProvider:
                     "class, def, lambda, try, comprehension con più di un "
                     "for, dict/set comprehension o accesso a oggetti. "
                     "Usa solo le primitive elencate da flow.reference. "
+                    "Genera il sorgente, non un file .py. "
                     "Gli errori di validazione possono essere riparati "
                     "automaticamente con un numero limitato di tentativi."
                 ),
@@ -90,7 +91,8 @@ class FlowToolProvider:
                         "string",
                         (
                             "Sorgente Hagar Flow. Sintassi Python ristretta; "
-                            "nessun import."
+                            "nessun import. Non creare un file .py: restituisci "
+                            "solo il testo del sorgente."
                         ),
                     )
                 ],

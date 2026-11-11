@@ -178,6 +178,7 @@ VIETATO:
 - chiamate dinamiche
 
 REGOLE:
+- restituisci SOLO il sorgente Hagar Flow, non creare file .py
 - fs.list(path) restituisce percorsi virtuali completi, non nomi
 - fs.stat(path)["kind"] vale "file" o "directory"
 - niente shell, rete o filesystem fuori dalle primitive

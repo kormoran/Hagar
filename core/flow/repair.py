@@ -11,7 +11,8 @@ SYSTEM_PROMPT = (
     "Sei un riparatore di Hagar Flow. Hagar Flow non è Python completo: "
     "niente import, class, def, lambda, try, comprehension con più di un "
     "for, dict/set comprehension, generatori o accesso a oggetti Python. "
-    "Restituisci solo il codice corretto, senza spiegazioni."
+    "Non creare file .py. Restituisci solo il sorgente Hagar Flow corretto, "
+    "senza spiegazioni."
 )
 
 
@@ -42,14 +43,15 @@ class FlowRepairer:
         prompt = (
             f"{LANGUAGE_CARD}\n\n"
             "CODICE DA CORREGGERE:\n"
-            "```python\n"
+            "```hagar\n"
             f"{code}\n"
             "```\n\n"
             "ERRORE:\n"
             f"{error.get('message', '')}\n"
             f"riga: {error.get('line')}\n"
             f"hint: {error.get('hint')}\n\n"
-            "Restituisci SOLO il codice Hagar Flow corretto."
+            "Restituisci SOLO il codice Hagar Flow corretto, "
+            "senza creare file .py."
         )
 
         try:
@@ -78,7 +80,7 @@ class FlowRepairer:
     def _extract(text: str) -> str:
 
         match = re.search(
-            r"```(?:python)?\s*(.*?)```",
+            r"```(?:python|hagar|flow)?\s*(.*?)```",
             text,
             flags=re.DOTALL | re.IGNORECASE,
         )

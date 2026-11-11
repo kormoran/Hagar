@@ -71,7 +71,7 @@ def make_sandbox(tmp_path):
 
 def extract_code(text: str) -> str:
     match = re.search(
-        r"```(?:python)?\s*(.*?)```",
+        r"```(?:python|hagar|flow)?\s*(.*?)```",
         text,
         flags=re.DOTALL | re.IGNORECASE,
     )
@@ -104,7 +104,7 @@ fs.exists(path) -> bool
 
 Scrivi SOLO codice Hagar Flow, senza spiegazioni e senza markdown,
 che legge /home/ai/root/a.py e restituisce il contenuto con return.
-Non usare print.
+Non usare print e non creare file .py.
 """
 
     raw = make_llm().chat(
@@ -144,7 +144,7 @@ fs.stat(path) -> dict
 
 Scrivi SOLO codice Hagar Flow, senza spiegazioni, che usa UNA list
 comprehension con un solo for e un if per restituire i file .py in
-/home/ai/root. Usa return.
+/home/ai/root. Usa return. Non creare file .py.
 """
 
     raw = make_llm().chat(
