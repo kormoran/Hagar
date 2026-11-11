@@ -26,6 +26,7 @@ from .models import (
     HiFiConfig,
     ToolsConfig,
     DevConfig,
+    BoxesConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -1220,6 +1221,47 @@ class ConfigLoader:
             ),
         )
 
+        # -------------------------
+        # Boxed transforms (optional)
+        # -------------------------
+
+        boxes_data = _mapping(
+            data.get("boxes", {}) or {},
+            "boxes",
+        )
+        boxes_enabled = boxes_data.get("enabled", False)
+
+        if not isinstance(boxes_enabled, bool):
+            raise ConfigError("boxes.enabled must be a boolean")
+
+        boxes = BoxesConfig(
+            enabled=boxes_enabled,
+            max_input_chars=_positive_int(
+                boxes_data,
+                "max_input_chars",
+                "boxes.max_input_chars",
+                200_000,
+            ),
+            max_output_chars=_positive_int(
+                boxes_data,
+                "max_output_chars",
+                "boxes.max_output_chars",
+                20_000,
+            ),
+            chunk_chars=_positive_int(
+                boxes_data,
+                "chunk_chars",
+                "boxes.chunk_chars",
+                8_000,
+            ),
+            max_calls=_positive_int(
+                boxes_data,
+                "max_calls",
+                "boxes.max_calls",
+                20,
+            ),
+        )
+
         hifi_data = _mapping(
             data.get("hifi", {}) or {},
             "hifi",
@@ -1271,4 +1313,5 @@ class ConfigLoader:
             hifi=hifi,
             tools=tools,
             dev=dev,
+            boxes=boxes,
         )

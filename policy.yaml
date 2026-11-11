@@ -31,6 +31,11 @@ subjects:
         effect: deny
         tools: ["dev.*"]
 
+      # Boxed LLM transform: disattivate di default.
+      - capabilities: [BOX_EXEC]
+        effect: deny
+        tools: ["box.*"]
+
       # Trasformazioni testuali read-only: leggono la sandbox ma non
       # scrivono e non eseguono programmi.
       - capabilities: [FILESYSTEM_READ, COMPUTE]

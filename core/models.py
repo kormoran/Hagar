@@ -179,6 +179,17 @@ class DevConfig:
 
 
 @dataclass(slots=True)
+class BoxesConfig:
+    """Trasformazioni LLM bounded, senza memoria né tool."""
+
+    enabled: bool = False
+    max_input_chars: int = 200_000
+    max_output_chars: int = 20_000
+    chunk_chars: int = 8_000
+    max_calls: int = 20
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -257,4 +268,8 @@ class AppConfig:
 
     dev: DevConfig = field(
         default_factory=DevConfig
+    )
+
+    boxes: BoxesConfig = field(
+        default_factory=BoxesConfig
     )

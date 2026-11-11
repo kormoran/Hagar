@@ -96,6 +96,14 @@ hot reload. `DEV_EXEC` è DENY di default; il backend è solo host.
 Il container resta congelato per un futuro accesso diretto a
 filesystem/programmi reali, mai dentro la sandbox.
 
+## 0.4.4 Boxed transform — implementate
+
+`box.list` e `box.run` eseguono `summarize`, `translate` e
+`extract_json` con prompt fisso, input/output su file e nessuna memoria
+o tool. `BOX_EXEC` è DENY di default.
+
+Sono le primitive del futuro DSL.
+
 ## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory

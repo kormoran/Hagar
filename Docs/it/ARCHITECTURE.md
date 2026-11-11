@@ -987,6 +987,30 @@ arbitrari e non usa container: le ricette sono fidate; la sandbox non
 isola il processo host. Il container resta congelato per un futuro
 accesso diretto a filesystem/programmi reali.
 
+## 3.11.14 Boxed transform (`core/boxes.py`)
+
+Le box sono funzioni LLM bounded con prompt fisso, input/output su file
+e nessuna memoria, tool o autonomia.
+
+Tool:
+
+```text
+box.list
+box.run
+```
+
+Box iniziali:
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` legge l’input dalla sandbox, applica chunking dove serve,
+chiama il client LLM, valida l’output JSON e scrive il risultato con il
+gate read-before-write. `BOX_EXEC` è DENY di default.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1152,9 +1176,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 867 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 871 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (743 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (873 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

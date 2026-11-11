@@ -43,6 +43,7 @@ class Capability(IntFlag):
     DECISION = auto()
     AISH = auto()
     DEV_EXEC = auto()
+    BOX_EXEC = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -149,6 +150,9 @@ def capabilities_from_permissions(
 
     # L'esecuzione di ricette è opt-in.
     capabilities |= Capability.DEV_EXEC
+
+    # Le boxed transform sono opt-in.
+    capabilities |= Capability.BOX_EXEC
 
     if agents:
         capabilities |= (

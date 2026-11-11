@@ -592,6 +592,21 @@ debug e build. `recipes.yaml` deve stare fuori dalla sandbox e viene
 letto solo all’avvio. Serve anche la capability `DEV_EXEC` in policy.
 Dettagli in `DEV_RUN.md`.
 
+## 4.13 `boxes`
+
+```yaml
+boxes:
+  enabled: false
+  max_input_chars: 200000
+  max_output_chars: 20000
+  chunk_chars: 8000
+  max_calls: 20
+```
+
+Abilita `box.list` e `box.run`, trasformazioni LLM bounded su file della
+sandbox. Non hanno memoria, tool o prompt libero. Serve `BOX_EXEC` in
+policy. Dettagli in `BOXES.md`.
+
 ---
 
 # 5. `policy.yaml`
@@ -660,6 +675,7 @@ mostra `lo faccio? (y/N)` e il default è `N`.
 | `COMPUTE` | calcolo locale senza rete/filesystem |
 | `AISH` | esecuzione del linguaggio AIsh |
 | `DEV_EXEC` | esecuzione di ricette dev.run |
+| `BOX_EXEC` | esecuzione di boxed transform |
 
 ## 5.3 Regole e specificità
 

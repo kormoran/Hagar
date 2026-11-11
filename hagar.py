@@ -16,6 +16,7 @@ from core.command_service import CommandService
 from core.confirmations import QueueConfirmationProvider
 from core.dev_recipes import DevRecipeError, DevRecipeLoader
 from core.dev_runner import DevExecutionError, DevRunner
+from core.boxes import BoxRunner
 from core.decisions import DecisionError
 from core.decisions import build_decision_registry
 from core.hifi import HiFiResolver
@@ -25,6 +26,7 @@ from core.filesystem import (
 )
 from core.filesystem_tools import FileSystemToolProvider
 from local_tools.aish_tool import AishToolProvider
+from local_tools.box_tool import BoxToolProvider
 from local_tools.dev_tool import DevToolProvider
 from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
@@ -728,6 +730,28 @@ def build_harness(
         )
 
         raise
+
+    # ==========================================
+    # Boxed transforms
+    # ==========================================
+
+    if config.boxes.enabled:
+
+        BoxToolProvider(
+            BoxRunner(
+                llm,
+                filesystem,
+                config.boxes,
+                audit=audit,
+            )
+        ).register_tools(registry)
+
+        audit.record(
+            "boxes.enabled",
+            max_input_chars=config.boxes.max_input_chars,
+            max_output_chars=config.boxes.max_output_chars,
+            max_calls=config.boxes.max_calls,
+        )
 
     # ==========================================
     # Decision tools

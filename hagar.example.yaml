@@ -72,6 +72,15 @@ dev:
   copy_workspace: true
   max_output_chars: 100000
 
+boxes:
+  # Trasformazioni LLM bounded: summarize, translate, extract_json.
+  # Richiede BOX_EXEC in policy.yaml.
+  enabled: false
+  max_input_chars: 200000
+  max_output_chars: 20000
+  chunk_chars: 8000
+  max_calls: 20
+
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.
   # Permissions: R = read/list/search/stat, W = write/create/rename/

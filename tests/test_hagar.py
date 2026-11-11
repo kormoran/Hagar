@@ -95,6 +95,7 @@ DEFAULT_POLICY = {
                         "DECISION",
                         "AISH",
                         "DEV_EXEC",
+                        "BOX_EXEC",
                     ],
                     "effect": "allow",
                 }
@@ -114,6 +115,7 @@ def write_config(
     policy="permissive",
     memory=None,
     dev=None,
+    boxes=None,
     vault_exists: bool = True,
 ) -> tuple[Path, Path]:
 
@@ -161,6 +163,9 @@ def write_config(
 
     if dev is not None:
         data["dev"] = dev
+
+    if boxes is not None:
+        data["boxes"] = boxes
 
     if policy is not None:
 
@@ -230,6 +235,26 @@ def test_build_harness_with_dev_recipes(tmp_path):
     )
     assert result["success"] is True
     assert result["exit_code"] == 0
+
+
+def test_build_harness_with_boxes(tmp_path):
+    path, _ = write_config(
+        tmp_path,
+        boxes={"enabled": True},
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert "box.list" in harness.registry.tool_names()
+    assert "box.run" in harness.registry.tool_names()
+    payload = json.loads(
+        harness.registry.execute("box.list")
+    )
+    assert {item["name"] for item in payload["boxes"]} == {
+        "summarize",
+        "translate",
+        "extract_json",
+    }
 
 
 def test_build_harness_rejects_dev_recipes_inside_sandbox(tmp_path):

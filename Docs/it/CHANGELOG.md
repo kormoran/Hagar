@@ -81,6 +81,14 @@ compaction, AIsh e text.transform.
 - Esecuzione host su una copia temporanea del progetto, senza shell e
   senza container.
 
+## Boxed transform
+
+- Nuovi `box.list` e `box.run` per `summarize`, `translate` e
+  `extract_json`; `BOX_EXEC` è DENY di default.
+- Input/output nella sandbox, prompt fisso, nessuna memoria o tool,
+  chunking per i documenti lunghi e validazione JSON.
+- Output scritto con il gate read-before-write.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

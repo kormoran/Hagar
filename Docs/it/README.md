@@ -261,6 +261,12 @@ Le trasformazioni testuali usano [text.transform](TEXT_TRANSFORM.md).
 senza comandi arbitrari. È **DENY di default** e richiede `DEV_EXEC`.
 Dettagli in [DEV_RUN.md](DEV_RUN.md).
 
+## 3.12 Boxed transform
+
+`box.run` esegue trasformazioni LLM bounded (`summarize`, `translate`,
+`extract_json`) senza memoria, tool o prompt libero. È **DENY di default**
+e richiede `BOX_EXEC`. Dettagli in [BOXES.md](BOXES.md).
+
 ---
 
 # 4. Documentazione
@@ -280,6 +286,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [AISH.md](AISH.md) — shell semantica ristretta e policy DENY.
 - [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — trasformazioni testuali bounded.
 - [DEV_RUN.md](DEV_RUN.md) — ricette per test, debug e build.
+- [BOXES.md](BOXES.md) — trasformazioni LLM bounded.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
