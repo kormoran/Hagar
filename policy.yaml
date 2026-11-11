@@ -36,6 +36,11 @@ subjects:
         effect: deny
         tools: ["box.*"]
 
+      # DSL flow: disattivato di default.
+      - capabilities: [FLOW_EXEC]
+        effect: deny
+        tools: ["flow.*"]
+
       # Trasformazioni testuali read-only: leggono la sandbox ma non
       # scrivono e non eseguono programmi.
       - capabilities: [FILESYSTEM_READ, COMPUTE]
@@ -48,11 +53,14 @@ subjects:
         tools:
           - "filesystem.*"
           - "vision.open"
+          - "fs.*"
 
       # Scrittura e creazione: chiedono conferma in chat.
       - capabilities: [FILESYSTEM_WRITE, FILESYSTEM_CREATE]
         effect: ask
-        tools: ["filesystem.*"]
+        tools:
+          - "filesystem.*"
+          - "fs.*"
 
       # La cancellazione resta vietata per impostazione predefinita.
       - capabilities: [FILESYSTEM_DELETE]

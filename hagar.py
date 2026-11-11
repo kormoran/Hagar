@@ -17,6 +17,7 @@ from core.confirmations import QueueConfirmationProvider
 from core.dev_recipes import DevRecipeError, DevRecipeLoader
 from core.dev_runner import DevExecutionError, DevRunner
 from core.boxes import BoxRunner
+from core.flow import FlowRunner
 from core.decisions import DecisionError
 from core.decisions import build_decision_registry
 from core.hifi import HiFiResolver
@@ -28,6 +29,8 @@ from core.filesystem_tools import FileSystemToolProvider
 from local_tools.aish_tool import AishToolProvider
 from local_tools.box_tool import BoxToolProvider
 from local_tools.dev_tool import DevToolProvider
+from local_tools.flow_primitives import FlowPrimitiveProvider
+from local_tools.flow_tool import FlowToolProvider
 from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
@@ -735,15 +738,19 @@ def build_harness(
     # Boxed transforms
     # ==========================================
 
+    box_runner = None
+
     if config.boxes.enabled:
 
+        box_runner = BoxRunner(
+            llm,
+            filesystem,
+            config.boxes,
+            audit=audit,
+        )
+
         BoxToolProvider(
-            BoxRunner(
-                llm,
-                filesystem,
-                config.boxes,
-                audit=audit,
-            )
+            box_runner
         ).register_tools(registry)
 
         audit.record(
@@ -751,6 +758,47 @@ def build_harness(
             max_input_chars=config.boxes.max_input_chars,
             max_output_chars=config.boxes.max_output_chars,
             max_calls=config.boxes.max_calls,
+        )
+
+    # ==========================================
+    # Hagar Flow
+    # ==========================================
+
+    if config.flow.enabled:
+
+        primitive_registry = ToolRegistry(
+            evaluator=evaluator,
+            subject=subject,
+            confirmation=(
+                confirmation
+                or DenyAllConfirmation()
+            ),
+            audit=audit,
+            agent_id=audit.session_id,
+            default_timeout=config.flow.timeout,
+            repeat_limit=0,
+        )
+
+        primitive_provider = FlowPrimitiveProvider(
+            filesystem,
+            box_runner,
+        )
+        primitive_provider.register_tools(primitive_registry)
+
+        FlowToolProvider(
+            FlowRunner(
+                primitive_registry,
+                config.flow,
+                primitive_provider.primitives,
+                audit=audit,
+            )
+        ).register_tools(registry)
+
+        audit.record(
+            "flow.enabled",
+            primitives=len(primitive_provider.primitives),
+            max_steps=config.flow.max_steps,
+            max_tool_calls=config.flow.max_tool_calls,
         )
 
     # ==========================================

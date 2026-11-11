@@ -27,6 +27,7 @@ from .models import (
     ToolsConfig,
     DevConfig,
     BoxesConfig,
+    FlowConfig,
 )
 
 _RESERVED_ALIASES = {
@@ -1262,6 +1263,59 @@ class ConfigLoader:
             ),
         )
 
+        # -------------------------
+        # Hagar Flow (optional)
+        # -------------------------
+
+        flow_data = _mapping(
+            data.get("flow", {}) or {},
+            "flow",
+        )
+        flow_enabled = flow_data.get("enabled", False)
+
+        if not isinstance(flow_enabled, bool):
+            raise ConfigError("flow.enabled must be a boolean")
+
+        flow = FlowConfig(
+            enabled=flow_enabled,
+            max_source_chars=_positive_int(
+                flow_data,
+                "max_source_chars",
+                "flow.max_source_chars",
+                20_000,
+            ),
+            max_steps=_positive_int(
+                flow_data,
+                "max_steps",
+                "flow.max_steps",
+                10_000,
+            ),
+            max_tool_calls=_positive_int(
+                flow_data,
+                "max_tool_calls",
+                "flow.max_tool_calls",
+                50,
+            ),
+            max_loop_iterations=_positive_int(
+                flow_data,
+                "max_loop_iterations",
+                "flow.max_loop_iterations",
+                1_000,
+            ),
+            timeout=_positive_int(
+                flow_data,
+                "timeout",
+                "flow.timeout",
+                120,
+            ),
+            max_output_chars=_positive_int(
+                flow_data,
+                "max_output_chars",
+                "flow.max_output_chars",
+                20_000,
+            ),
+        )
+
         hifi_data = _mapping(
             data.get("hifi", {}) or {},
             "hifi",
@@ -1314,4 +1368,5 @@ class ConfigLoader:
             tools=tools,
             dev=dev,
             boxes=boxes,
+            flow=flow,
         )

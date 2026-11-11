@@ -267,6 +267,13 @@ Dettagli in [DEV_RUN.md](DEV_RUN.md).
 `extract_json`) senza memoria, tool o prompt libero. È **DENY di default**
 e richiede `BOX_EXEC`. Dettagli in [BOXES.md](BOXES.md).
 
+## 3.13 Hagar Flow
+
+`flow.run` esegue un sottoinsieme lineare di Python validato e
+interpretato da Hagar, senza import, funzioni, try o accesso a oggetti
+Python. È **DENY di default** e richiede `FLOW_EXEC`. Dettagli in
+[FLOW.md](FLOW.md).
+
 ---
 
 # 4. Documentazione
@@ -287,6 +294,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — trasformazioni testuali bounded.
 - [DEV_RUN.md](DEV_RUN.md) — ricette per test, debug e build.
 - [BOXES.md](BOXES.md) — trasformazioni LLM bounded.
+- [FLOW.md](FLOW.md) — DSL ristretto e interprete.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,

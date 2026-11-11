@@ -81,6 +81,17 @@ boxes:
   chunk_chars: 8000
   max_calls: 20
 
+flow:
+  # DSL Hagar Flow: sottoinsieme lineare di Python.
+  # Richiede FLOW_EXEC in policy.yaml.
+  enabled: false
+  max_source_chars: 20000
+  max_steps: 10000
+  max_tool_calls: 50
+  max_loop_iterations: 1000
+  timeout: 120
+  max_output_chars: 20000
+
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.
   # Permissions: R = read/list/search/stat, W = write/create/rename/

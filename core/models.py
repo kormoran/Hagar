@@ -190,6 +190,19 @@ class BoxesConfig:
 
 
 @dataclass(slots=True)
+class FlowConfig:
+    """Limiti del DSL ristretto hagar.flow."""
+
+    enabled: bool = False
+    max_source_chars: int = 20_000
+    max_steps: int = 10_000
+    max_tool_calls: int = 50
+    max_loop_iterations: int = 1_000
+    timeout: int = 120
+    max_output_chars: int = 20_000
+
+
+@dataclass(slots=True)
 class MCPOAuthConfig:
     """
     Parametri del flusso OAuth interattivo per un server MCP.
@@ -272,4 +285,8 @@ class AppConfig:
 
     boxes: BoxesConfig = field(
         default_factory=BoxesConfig
+    )
+
+    flow: FlowConfig = field(
+        default_factory=FlowConfig
     )

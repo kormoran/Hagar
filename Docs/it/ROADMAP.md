@@ -104,6 +104,14 @@ o tool. `BOX_EXEC` è DENY di default.
 
 Sono le primitive del futuro DSL.
 
+## 0.4.5 Hagar Flow — MVP
+
+`flow.run` esegue un sottoinsieme lineare di Python con validatore AST e
+interprete Hagar, senza `eval`/`exec`. Primitive `fs.*` e `box.*`, limiti
+di step e tool call. `FLOW_EXEC` è DENY di default.
+
+HIR, parallelismo e subagenti restano fuori dall’MVP.
+
 ## 0.5 Documentazione
 
 `Docs/it` è l’unica fonte mantenuta durante lo sviluppo. Le directory

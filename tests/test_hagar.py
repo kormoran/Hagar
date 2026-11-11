@@ -96,6 +96,7 @@ DEFAULT_POLICY = {
                         "AISH",
                         "DEV_EXEC",
                         "BOX_EXEC",
+                        "FLOW_EXEC",
                     ],
                     "effect": "allow",
                 }
@@ -116,6 +117,7 @@ def write_config(
     memory=None,
     dev=None,
     boxes=None,
+    flow=None,
     vault_exists: bool = True,
 ) -> tuple[Path, Path]:
 
@@ -166,6 +168,9 @@ def write_config(
 
     if boxes is not None:
         data["boxes"] = boxes
+
+    if flow is not None:
+        data["flow"] = flow
 
     if policy is not None:
 
@@ -255,6 +260,26 @@ def test_build_harness_with_boxes(tmp_path):
         "translate",
         "extract_json",
     }
+
+
+def test_build_harness_with_flow(tmp_path):
+    path, _ = write_config(
+        tmp_path,
+        flow={"enabled": True},
+    )
+
+    harness = hagar.build_harness(ConfigLoader.load(path))
+
+    assert "flow.run" in harness.registry.tool_names()
+    assert "flow.validate" in harness.registry.tool_names()
+    payload = json.loads(
+        harness.registry.execute(
+            "flow.run",
+            code="return 1 + 1",
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["result"] == 2
 
 
 def test_build_harness_rejects_dev_recipes_inside_sandbox(tmp_path):

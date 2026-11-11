@@ -1011,6 +1011,23 @@ extract_json
 chiama il client LLM, valida l’output JSON e scrive il risultato con il
 gate read-before-write. `BOX_EXEC` è DENY di default.
 
+## 3.11.15 Hagar Flow (`core/flow/`)
+
+`validate()` parsa il codice con `ast.parse`, rifiuta import, classi,
+funzioni, lambda, try, comprehension, dunder e chiamate dinamiche, e
+verifica le primitive disponibili.
+
+`FlowRunner` interpreta l’AST validato senza `eval`/`exec`:
+
+- scope lineare;
+- budget di step, iterazioni, tool call e timeout;
+- primitive `fs.*` e `box.*` passate da un registry interno;
+- policy e conferme per ogni primitiva;
+- errori con riga e colonna.
+
+`FLOW_EXEC` è DENY di default. L’HIR non è ancora presente: l’AST
+validato è l’IR dell’MVP.
+
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
@@ -1176,9 +1193,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 871 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 880 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (873 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (882 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

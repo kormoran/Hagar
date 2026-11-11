@@ -44,6 +44,7 @@ class Capability(IntFlag):
     AISH = auto()
     DEV_EXEC = auto()
     BOX_EXEC = auto()
+    FLOW_EXEC = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -153,6 +154,9 @@ def capabilities_from_permissions(
 
     # Le boxed transform sono opt-in.
     capabilities |= Capability.BOX_EXEC
+
+    # Il DSL flow è opt-in.
+    capabilities |= Capability.FLOW_EXEC
 
     if agents:
         capabilities |= (

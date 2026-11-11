@@ -89,6 +89,16 @@ compaction, AIsh e text.transform.
   chunking per i documenti lunghi e validazione JSON.
 - Output scritto con il gate read-before-write.
 
+## Hagar Flow
+
+- Nuovi `flow.reference`, `flow.validate` e `flow.run`; `FLOW_EXEC` è
+  DENY di default.
+- DSL Python ristretto con validatore AST e interprete senza
+  `eval`/`exec`; niente import, class, def, lambda, try, comprehension o
+  accesso a oggetti Python.
+- Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
+  timeout; errori con riga e colonna.
+
 # 0.5.2 — 2026-11-08
 
 ## Riepilogo

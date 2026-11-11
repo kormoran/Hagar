@@ -607,6 +607,25 @@ Abilita `box.list` e `box.run`, trasformazioni LLM bounded su file della
 sandbox. Non hanno memoria, tool o prompt libero. Serve `BOX_EXEC` in
 policy. Dettagli in `BOXES.md`.
 
+## 4.14 `flow`
+
+```yaml
+flow:
+  enabled: false
+  max_source_chars: 20000
+  max_steps: 10000
+  max_tool_calls: 50
+  max_loop_iterations: 1000
+  timeout: 120
+  max_output_chars: 20000
+```
+
+Abilita `flow.reference`, `flow.validate` e `flow.run`, il DSL lineare
+`Hagar Flow`. Non è Python completo: niente import, class, def, lambda,
+try, comprehension o accesso a oggetti Python. Serve `FLOW_EXEC` in
+policy; le primitive `fs.*` usano le capability filesystem. Dettagli in
+`FLOW.md`.
+
 ---
 
 # 5. `policy.yaml`
@@ -676,6 +695,7 @@ mostra `lo faccio? (y/N)` e il default è `N`.
 | `AISH` | esecuzione del linguaggio AIsh |
 | `DEV_EXEC` | esecuzione di ricette dev.run |
 | `BOX_EXEC` | esecuzione di boxed transform |
+| `FLOW_EXEC` | esecuzione del DSL Hagar Flow |
 
 ## 5.3 Regole e specificità
 
