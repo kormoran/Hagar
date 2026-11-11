@@ -5,6 +5,52 @@ riferimento al commit quando utile.
 
 ---
 
+# Non rilasciato — 0.7.0
+
+## Riepilogo
+
+Release di orchestrazione locale: ricette `dev.run`, boxed transform,
+DSL Hagar Flow e list comprehension. Il container mode resta fuori da
+questa release.
+
+## Ricette dev.run
+
+- Nuovi `dev.list` e `dev.run` per ricette fidate di test, debug e
+  build; `DEV_EXEC` è DENY di default.
+- `recipes.yaml` fuori dalla sandbox, caricato una sola volta all'avvio,
+  senza hot reload; ogni modifica richiede il riavvio.
+- Parametri tipizzati, `cwd`, timeout, ambiente esplicito, exit code,
+  output limitato e audit.
+- Esecuzione host su una copia temporanea del progetto, senza shell e
+  senza container.
+
+## Boxed transform
+
+- Nuovi `box.list` e `box.run` per `summarize`, `translate` e
+  `extract_json`; `BOX_EXEC` è DENY di default.
+- Input/output nella sandbox, prompt fisso, nessuna memoria o tool,
+  chunking per i documenti lunghi e validazione JSON.
+- Output scritto con il gate read-before-write.
+
+## Hagar Flow
+
+- Nuovi `flow.reference`, `flow.validate` e `flow.run`; `FLOW_EXEC` è
+  DENY di default.
+- DSL Python ristretto con validatore AST e interprete senza
+  `eval`/`exec`; niente import, class, def, lambda, try, dict/set
+  comprehension o accesso a oggetti Python.
+- List comprehension con un solo `for` e `if` opzionali, con scope
+  locale e budget di iterazioni.
+- Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
+  timeout; errori con riga e colonna.
+
+## Repair loop
+
+- `flow.run` ripara automaticamente gli errori di validazione con un
+  numero limitato di tentativi.
+- Non ripara errori di runtime, policy, conferma o timeout.
+- Ogni tentativo è registrato nell'audit e nel risultato.
+
 # 0.6.0 — 2026-11-09
 
 ## Riepilogo
@@ -69,37 +115,6 @@ compaction, AIsh e text.transform.
 - Nuovo `text.transform` read-only con operazioni `grep`, `sort`,
   `uniq`, `cut`, `tr`, `wc`, `head`, `tail`, `sed_replace`; AIsh usa il
   tool per i comandi testuali e aggiunge `sed` ristretto.
-
-## Ricette dev.run
-
-- Nuovi `dev.list` e `dev.run` per ricette fidate di test, debug e
-  build; `DEV_EXEC` è DENY di default.
-- `recipes.yaml` fuori dalla sandbox, caricato una sola volta all'avvio,
-  senza hot reload; ogni modifica richiede il riavvio.
-- Parametri tipizzati, `cwd`, timeout, ambiente esplicito, exit code,
-  output limitato e audit.
-- Esecuzione host su una copia temporanea del progetto, senza shell e
-  senza container.
-
-## Boxed transform
-
-- Nuovi `box.list` e `box.run` per `summarize`, `translate` e
-  `extract_json`; `BOX_EXEC` è DENY di default.
-- Input/output nella sandbox, prompt fisso, nessuna memoria o tool,
-  chunking per i documenti lunghi e validazione JSON.
-- Output scritto con il gate read-before-write.
-
-## Hagar Flow
-
-- Nuovi `flow.reference`, `flow.validate` e `flow.run`; `FLOW_EXEC` è
-  DENY di default.
-- DSL Python ristretto con validatore AST e interprete senza
-  `eval`/`exec`; niente import, class, def, lambda, try, dict/set
-  comprehension o accesso a oggetti Python.
-- List comprehension con un solo `for` e `if` opzionali, con scope
-  locale e budget di iterazioni.
-- Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
-  timeout; errori con riga e colonna.
 
 # 0.5.2 — 2026-11-08
 

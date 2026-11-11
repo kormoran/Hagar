@@ -24,6 +24,7 @@ class FlowResult:
     tool_calls: int = 0
     duration_ms: int = 0
     trace: list[dict] | None = None
+    repair_attempts: int = 0
 
 
 class _Return(Exception):
@@ -159,6 +160,9 @@ class FlowRunner:
     def _record(self, event: str, **fields: Any) -> None:
         if self.audit is not None:
             self.audit.record(event, **fields)
+
+    def record(self, event: str, **fields: Any) -> None:
+        self._record(event, **fields)
 
 
 class _Interpreter:

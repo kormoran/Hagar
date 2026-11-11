@@ -1314,6 +1314,12 @@ class ConfigLoader:
                 "flow.max_output_chars",
                 20_000,
             ),
+            repair_attempts=_non_negative_int(
+                flow_data,
+                "repair_attempts",
+                "flow.repair_attempts",
+                2,
+            ),
         )
 
         hifi_data = _mapping(

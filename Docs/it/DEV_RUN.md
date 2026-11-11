@@ -1,6 +1,6 @@
 # `dev.run` — ricette di sviluppo
 
-**Stato:** implementato nella 0.6.0
+**Stato:** implementato nella 0.7.0
 **Tool:** `dev.list`, `dev.run`
 **Capability:** `DEV_EXEC`
 **Policy:** DENY di default

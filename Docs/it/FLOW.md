@@ -30,6 +30,7 @@ flow:
   max_loop_iterations: 1000
   timeout: 120
   max_output_chars: 20000
+  repair_attempts: 2
 ```
 
 ## Policy
@@ -136,6 +137,37 @@ return result
 ```
 
 ## Tool
+
+## Repair loop
+
+`flow.run` ripara solo gli errori di **validazione**:
+
+```text
+massimo repair_attempts tentativi
+un errore per tentativo
+stesso modello configurato in Hagar
+```
+
+Non ripara:
+
+```text
+errori di runtime
+policy o conferma negata
+timeout
+errori di primitive
+```
+
+Il risultato include `repair_attempts`. Gli eventi audit sono:
+
+```text
+flow.repair.start
+flow.repair.attempt
+flow.repair.result
+flow.repair.gave_up
+flow.repair.error
+```
+
+`repair_attempts: 0` disabilita la riparazione.
 
 ### `flow.reference`
 

@@ -200,6 +200,7 @@ class FlowConfig:
     max_loop_iterations: int = 1_000
     timeout: int = 120
     max_output_chars: int = 20_000
+    repair_attempts: int = 2
 
 
 @dataclass(slots=True)

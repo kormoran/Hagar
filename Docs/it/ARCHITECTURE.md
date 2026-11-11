@@ -1,6 +1,6 @@
 # HAGAR — Architettura
 
-Versione: 0.6.0
+Versione: 0.7.0
 Ultimo aggiornamento: 2026-11-03
 
 ---
@@ -1027,14 +1027,16 @@ sono supportate.
 - policy e conferme per ogni primitiva;
 - errori con riga e colonna.
 
-`FLOW_EXEC` è DENY di default. L’HIR non è ancora presente: l’AST
-validato è l’IR dell’MVP.
+`FLOW_EXEC` è DENY di default. Gli errori di validazione possono essere
+riparati automaticamente con un massimo di `flow.repair_attempts`
+tentativi; errori di runtime, policy, conferma e timeout non vengono
+riparati. L’HIR non è ancora presente: l’AST validato è l’IR dell’MVP.
 
 ## 3.12 Avvio e packaging
 
 Il progetto si installa con `pip install -e .` e dichiara i package in
 `pyproject.toml`. L'entry point è `hagar = "hagar:main"`. La versione
-corrente è `0.6.0`.
+corrente è `0.7.0`.
 
 La configurazione d'esempio è `hagar.example.yaml`; `hagar.yaml` è un
 file locale ignorato da git. Il Vault predefinito dell'esempio è
@@ -1195,9 +1197,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 884 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 888 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (886 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (890 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

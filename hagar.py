@@ -68,7 +68,7 @@ from local_tools.plugins import BUILTIN_TOOL_PLUGINS
 from local_tools.vision_tool import VisionToolProvider
 
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 DEFAULT_CONFIG_NAME = "hagar.yaml"
 
@@ -791,7 +791,8 @@ def build_harness(
                 config.flow,
                 primitive_provider.primitives,
                 audit=audit,
-            )
+            ),
+            llm=llm,
         ).register_tools(registry)
 
         audit.record(

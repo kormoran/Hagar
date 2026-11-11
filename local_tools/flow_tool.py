@@ -10,6 +10,7 @@ from core.flow import (
     LANGUAGE_CARD,
     validate,
 )
+from core.flow.repair import FlowRepairer
 from core.permissions import Capability
 from core.tool_definition import ToolDefinition, ToolParameter
 from core.tool_registry import ToolRegistry
@@ -20,9 +21,15 @@ class FlowToolProvider:
     def __init__(
         self,
         runner: FlowRunner,
+        llm=None,
     ) -> None:
 
         self.runner = runner
+        self.repairer = FlowRepairer(
+            llm,
+            max_attempts=runner.config.repair_attempts,
+            audit=runner.audit,
+        )
 
     def register_tools(self, registry: ToolRegistry) -> None:
 
@@ -45,9 +52,10 @@ class FlowToolProvider:
                 name="flow.validate",
                 description=(
                     "Valida codice Hagar Flow senza eseguirlo. "
-                    "Hagar Flow è un sottoinsieme lineare di Python: "
-                    "niente import, class, def, lambda, try, comprehension "
-                    "o accesso a oggetti Python."
+                    "Hagar Flow è un sottoinsieme di Python: niente import, "
+                    "class, def, lambda, try, dict/set comprehension, "
+                    "generatori o accesso a oggetti Python. Sono ammesse "
+                    "list comprehension con un solo for."
                 ),
                 category="flow",
                 capabilities=Capability.FLOW_EXEC,
@@ -68,10 +76,11 @@ class FlowToolProvider:
                 description=(
                     "Esegue codice Hagar Flow, un sottoinsieme lineare e "
                     "ristretto di Python. Non è Python: niente import, "
-                    "class, def, lambda, try, comprehension o accesso a "
-                    "oggetti. Usa solo le primitive elencate da "
-                    "flow.reference. Se la validazione fallisce, correggi "
-                    "il codice in base all'errore."
+                    "class, def, lambda, try, comprehension con più di un "
+                    "for, dict/set comprehension o accesso a oggetti. "
+                    "Usa solo le primitive elencate da flow.reference. "
+                    "Gli errori di validazione possono essere riparati "
+                    "automaticamente con un numero limitato di tentativi."
                 ),
                 category="flow",
                 capabilities=Capability.FLOW_EXEC,
@@ -134,6 +143,47 @@ class FlowToolProvider:
 
     def run_code(self, code: str) -> str:
         result = self.runner.run(code)
+        attempts = 0
+
+        while (
+            not result.ok
+            and result.error is not None
+            and result.error.get("kind") == "validation"
+            and attempts < self.repairer.max_attempts
+        ):
+            attempts += 1
+            candidate = self.repairer.propose(
+                code,
+                result.error,
+            )
+
+            if candidate is None:
+                break
+
+            self.runner.record(
+                "flow.repair.attempt",
+                attempt=attempts,
+            )
+            code = candidate
+            result = self.runner.run(code)
+
+        if (
+            not result.ok
+            and attempts > 0
+            and result.error is not None
+            and result.error.get("kind") == "validation"
+        ):
+            self.runner.record(
+                "flow.repair.gave_up",
+                attempts=attempts,
+            )
+
+        if result.ok:
+            self.runner.record(
+                "flow.repair.result",
+                attempts=attempts,
+            )
+
         return json.dumps(
             {
                 "ok": result.ok,
@@ -143,6 +193,7 @@ class FlowToolProvider:
                 "tool_calls": result.tool_calls,
                 "duration_ms": result.duration_ms,
                 "trace": result.trace,
+                "repair_attempts": attempts,
             },
             ensure_ascii=False,
             indent=2,

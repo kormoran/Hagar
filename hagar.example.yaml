@@ -91,6 +91,7 @@ flow:
   max_loop_iterations: 1000
   timeout: 120
   max_output_chars: 20000
+  repair_attempts: 2
 
 filesystem:
   # Host paths, exposed to the model as /home/ai/<alias>.

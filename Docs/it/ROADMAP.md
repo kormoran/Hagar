@@ -1,6 +1,6 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.6.0 (in preparazione)
+Versione corrente: 0.7.0 (in sviluppo)
 Ultimo aggiornamento: 2026-11-09
 
 Le decisioni prese sono indicate come tali; i punti ancora aperti sono
@@ -15,14 +15,24 @@ alla 0.6.0; il piano operativo corrente è la sezione 0.
 
 | Release | Obiettivo | Stato |
 |---|---|---|
-| **0.6.0** | Runtime safety + AIsh | in preparazione |
-| **0.7.0** | Broker LLM | prossimo |
-| **0.8.0** | Tool SQL read-only | congelato |
+| **0.6.0** | Runtime safety + AIsh | rilasciata |
+| **0.7.0** | dev.run + box + Hagar Flow | in sviluppo |
+| **0.8.0** | Broker LLM | prossimo |
+| **0.9.0** | Tool SQL read-only | congelato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
 
-## 0.2 0.7.0 — Broker LLM
+## 0.1.1 0.7.0 — Orchestrazione locale
+
+- `dev.run` con ricette fidate fuori dalla sandbox;
+- `box.list` e `box.run` per trasformazioni LLM bounded;
+- `flow.run`, `flow.validate` e `flow.reference`;
+- list comprehension con un solo `for`;
+- repair loop limitato agli errori di validazione;
+- niente container mode in questa release.
+
+## 0.2 0.8.0 — Broker LLM
 
 - schede tecniche JSON e benchmark dei modelli (`/models test`);
 - rilevamento hardware CPU/RAM/GPU (`/models hardware`);

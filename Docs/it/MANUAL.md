@@ -1,6 +1,6 @@
 # HAGAR — Manuale utente
 
-Versione: **0.6.0**
+Versione: **0.7.0**
 
 Questo manuale descrive il comportamento osservabile di Hagar: comandi,
 opzioni, configurazione, policy e casi di errore. Per il progetto interno
@@ -618,13 +618,17 @@ flow:
   max_loop_iterations: 1000
   timeout: 120
   max_output_chars: 20000
+  repair_attempts: 2
 ```
 
 Abilita `flow.reference`, `flow.validate` e `flow.run`, il DSL lineare
 `Hagar Flow`. Non è Python completo: niente import, class, def, lambda,
-try, comprehension o accesso a oggetti Python. Serve `FLOW_EXEC` in
-policy; le primitive `fs.*` usano le capability filesystem. Dettagli in
-`FLOW.md`.
+try, dict/set comprehension o accesso a oggetti Python; sono ammesse
+list comprehension con un solo `for`. Serve `FLOW_EXEC` in policy; le
+primitive `fs.*` usano le capability filesystem.
+
+`repair_attempts` è il numero massimo di riparazioni automatiche degli
+errori di validazione; `0` le disabilita. Dettagli in `FLOW.md`.
 
 ---
 
