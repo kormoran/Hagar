@@ -273,19 +273,7 @@ class _Interpreter:
     def _exec_for(self, node: ast.For) -> None:
 
         iterable = self._eval(node.iter)
-
-        if isinstance(iterable, dict):
-            values = list(iterable)
-        elif isinstance(iterable, (str, list, tuple, range)):
-            values = iterable
-        else:
-            try:
-                values = list(iterable)
-            except TypeError as exc:
-                raise self._error(
-                    node,
-                    "for requires a list, tuple, string, dict or range",
-                ) from exc
+        values = self._iterable_values(node.iter, iterable)
 
         for item in values:
             self._loop(node)
@@ -299,6 +287,64 @@ class _Interpreter:
                 break
         else:
             self._exec_block(node.orelse)
+
+    def _iterable_values(
+        self,
+        node: ast.AST,
+        iterable: Any,
+    ) -> list | tuple | range:
+
+        if isinstance(iterable, dict):
+            return list(iterable)
+
+        if isinstance(iterable, (str, list, tuple, range)):
+            return iterable
+
+        try:
+            return list(iterable)
+        except TypeError as exc:
+            raise self._error(
+                node,
+                "iteration requires a list, tuple, string, dict or range",
+            ) from exc
+
+    def _eval_listcomp(self, node: ast.ListComp) -> list:
+
+        if len(node.generators) != 1:
+            raise self._error(
+                node,
+                "only one for is allowed in a list comprehension",
+            )
+
+        generator = node.generators[0]
+        iterable = self._eval(generator.iter)
+        values = self._iterable_values(generator.iter, iterable)
+
+        outer_env = self.env
+        scope = dict(outer_env)
+        self.env = scope
+        result = []
+
+        try:
+            for item in values:
+                self._loop(node)
+                self._assign(generator.target, item)
+
+                if all(
+                    self._truth(self._eval(condition))
+                    for condition in generator.ifs
+                ):
+                    result.append(self._eval(node.elt))
+
+                    if len(result) > self.config.max_loop_iterations:
+                        raise self._error(
+                            node,
+                            "list comprehension result is too large",
+                        )
+        finally:
+            self.env = outer_env
+
+        return result
 
     def _exec_while(self, node: ast.While) -> None:
 
@@ -456,6 +502,9 @@ class _Interpreter:
 
         if isinstance(node, ast.Subscript):
             return self._eval(node.value)[self._slice_key(node.slice)]
+
+        if isinstance(node, ast.ListComp):
+            return self._eval_listcomp(node)
 
         if isinstance(node, ast.IfExp):
             return self._eval(

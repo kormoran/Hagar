@@ -100,6 +100,48 @@ def test_filesystem_primitives(sandbox, workspace):
     )
 
 
+def test_list_comprehension(sandbox):
+    runner = make_runner(sandbox)
+
+    result = runner.run(
+        "values = [1, 2, 3, 4]\n"
+        "doubled = [item * 2 for item in values if item > 2]\n"
+        "return doubled\n"
+    )
+
+    assert result.ok is True
+    assert result.result == [6, 8]
+
+
+def test_list_comprehension_scope_does_not_leak(sandbox):
+    runner = make_runner(sandbox)
+
+    result = runner.run(
+        "item = 99\n"
+        "values = [item for item in [1, 2]]\n"
+        "return [item, values]\n"
+    )
+
+    assert result.ok is True
+    assert result.result == [99, [1, 2]]
+
+
+def test_list_comprehension_rejects_two_for():
+    with pytest.raises(FlowValidationError):
+        validate(
+            "[x for x in [1] for y in [2]]",
+            {"fs.read"},
+        )
+
+
+def test_dict_comprehension_is_rejected():
+    with pytest.raises(FlowValidationError):
+        validate(
+            "{x: x for x in [1]}",
+            {"fs.read"},
+        )
+
+
 def test_imports_and_functions_are_rejected():
     with pytest.raises(FlowValidationError):
         validate("import os", {"fs.read"})

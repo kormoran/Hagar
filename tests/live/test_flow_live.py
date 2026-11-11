@@ -104,6 +104,7 @@ fs.exists(path) -> bool
 
 Scrivi SOLO codice Hagar Flow, senza spiegazioni e senza markdown,
 che legge /home/ai/root/a.py e restituisce il contenuto con return.
+Non usare print.
 """
 
     raw = make_llm().chat(
@@ -119,6 +120,49 @@ che legge /home/ai/root/a.py e restituisce il contenuto con return.
 
     assert result.ok, result.error
     assert "x = 1" in result.result
+
+
+def test_lmstudio_flow_list_comprehension(tmp_path):
+    sandbox, workspace = make_sandbox(tmp_path)
+    (workspace / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (workspace / "b.txt").write_text("no\n", encoding="utf-8")
+
+    registry = ToolRegistry()
+    provider = FlowPrimitiveProvider(sandbox)
+    provider.register_tools(registry)
+    runner = FlowRunner(
+        registry,
+        FlowConfig(enabled=True),
+        provider.primitives,
+    )
+
+    prompt = f"""{LANGUAGE_CARD}
+
+Primitive:
+fs.list(path=".") -> list[str], percorsi completi
+fs.stat(path) -> dict
+
+Scrivi SOLO codice Hagar Flow, senza spiegazioni, che usa UNA list
+comprehension con un solo for e un if per restituire i file .py in
+/home/ai/root. Usa return.
+"""
+
+    raw = make_llm().chat(
+        [
+            {
+                "role": "system",
+                "content": "Scrivi Hagar Flow, non Python completo.",
+            },
+            {"role": "user", "content": prompt},
+        ]
+    )
+    result = runner.run(extract_code(raw))
+
+    assert result.ok, result.error
+    assert any(
+        path.endswith("a.py")
+        for path in result.result
+    )
 
 
 def test_lmstudio_box_summarize(tmp_path):

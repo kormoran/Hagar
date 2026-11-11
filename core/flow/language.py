@@ -83,6 +83,8 @@ _ALLOWED_NODES = {
     ast.JoinedStr,
     ast.FormattedValue,
     ast.IfExp,
+    ast.ListComp,
+    ast.comprehension,
     ast.BoolOp,
     ast.BinOp,
     ast.UnaryOp,
@@ -139,10 +141,18 @@ _DISALLOWED = {
     ast.Raise: ("raise is not allowed", None),
     ast.Match: ("match is not allowed", None),
     ast.NamedExpr: ("walrus := is not allowed", None),
-    ast.ListComp: ("comprehension is not allowed", "Usa un ciclo for."),
-    ast.DictComp: ("comprehension is not allowed", "Usa un ciclo for."),
-    ast.SetComp: ("comprehension is not allowed", "Usa un ciclo for."),
-    ast.GeneratorExp: ("generator is not allowed", "Usa una lista."),
+    ast.DictComp: (
+        "dict comprehension is not allowed",
+        "Usa una list comprehension o un ciclo for.",
+    ),
+    ast.SetComp: (
+        "set comprehension is not allowed",
+        "Usa una lista o un ciclo for.",
+    ),
+    ast.GeneratorExp: (
+        "generator is not allowed",
+        "Usa una list comprehension.",
+    ),
     ast.Starred: ("starred expression is not allowed", None),
     ast.Set: ("set is not allowed", "Usa una lista."),
 }
@@ -154,6 +164,7 @@ Hagar Flow v1 — sintassi Python ristretta, NON Python.
 CONSENTITO:
 - assegnazioni, if/elif/else, for, while, break, continue, return
 - liste, tuple, dict, stringhe, numeri, bool, None, f-string
+- list comprehension con UN SOLO for e zero o piu if
 - metodi whitelisted su str/list/dict
 - builtin: len, range, str, int, float, bool, sorted, enumerate,
   zip, min, max, sum, any, all, print
@@ -162,7 +173,8 @@ VIETATO:
 - import, class, def, lambda, try, with, async, yield
 - eval, exec, open, getattr, setattr, compile
 - dunder, accesso a oggetti Python
-- comprehension, generatori
+- dict/set comprehension, generator expression
+- comprehension con piu di un for
 - chiamate dinamiche
 
 REGOLE:
@@ -366,6 +378,23 @@ class _Validator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_For(self, node: ast.For) -> None:
+        self._check_target(node.target)
+        self.generic_visit(node)
+
+    def visit_ListComp(self, node: ast.ListComp) -> None:
+        if len(node.generators) != 1:
+            self._error(
+                node,
+                "only one for is allowed in a list comprehension",
+                "Spezza il calcolo in più comprehension o usa un ciclo for.",
+            )
+
+        self.generic_visit(node)
+
+    def visit_comprehension(self, node: ast.comprehension) -> None:
+        if node.is_async:
+            self._error(node, "async comprehension is not allowed")
+
         self._check_target(node.target)
         self.generic_visit(node)
 

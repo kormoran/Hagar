@@ -64,6 +64,7 @@ return
 liste, tuple, dict
 stringhe, numeri, bool, None
 f-string
+list comprehension con un solo for e zero o più if
 operatori aritmetici, logici, confronti
 subscript
 metodi whitelisted su str/list/dict
@@ -81,7 +82,8 @@ try / except
 with
 async / await
 yield / generatori
-comprehension
+dict/set comprehension
+comprehension con più di un for
 global / nonlocal
 del
 assert
@@ -102,6 +104,10 @@ fs.exists(path) -> bool
 fs.stat(path) -> dict
 fs.mkdir(path)
 ```
+
+Le list comprehension hanno uno scope locale: la variabile del `for`
+non modifica quella esterna. Il numero di elementi prodotti è limitato
+da `max_loop_iterations`.
 
 `fs.list` restituisce percorsi virtuali completi, non nomi. Per
 distinguere file e directory usare `fs.stat(path)["kind"]`.

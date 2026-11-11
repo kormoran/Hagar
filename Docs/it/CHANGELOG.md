@@ -94,8 +94,10 @@ compaction, AIsh e text.transform.
 - Nuovi `flow.reference`, `flow.validate` e `flow.run`; `FLOW_EXEC` è
   DENY di default.
 - DSL Python ristretto con validatore AST e interprete senza
-  `eval`/`exec`; niente import, class, def, lambda, try, comprehension o
-  accesso a oggetti Python.
+  `eval`/`exec`; niente import, class, def, lambda, try, dict/set
+  comprehension o accesso a oggetti Python.
+- List comprehension con un solo `for` e `if` opzionali, con scope
+  locale e budget di iterazioni.
 - Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
   timeout; errori con riga e colonna.
 
