@@ -41,8 +41,9 @@ questa release.
   comprehension o accesso a oggetti Python.
 - List comprehension con un solo `for` e `if` opzionali, con scope
   locale e budget di iterazioni.
-- Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
-  timeout; errori con riga e colonna.
+- Primitive `fs.*`, `box.*`, `memory.search`, `memory.context`,
+  `memory.skill` e `project.context`, con budget di step, tool call,
+  iterazioni e timeout; errori con riga e colonna.
 
 ## Repair esplicito
 

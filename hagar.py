@@ -782,6 +782,9 @@ def build_harness(
         primitive_provider = FlowPrimitiveProvider(
             filesystem,
             box_runner,
+            memory=memory,
+            project_store=project_store,
+            project_id_getter=lambda: project_state["id"],
         )
         primitive_provider.register_tools(primitive_registry)
 

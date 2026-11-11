@@ -29,7 +29,9 @@ limiti; niente broker senza subagenti e model registry.**
 - `box.list` e `box.run` per trasformazioni LLM bounded;
 - `flow.run`, `flow.validate` e `flow.reference`;
 - list comprehension con un solo `for`;
-- repair loop limitato agli errori di validazione;
+- primitive di memoria read-only: `memory.search`, `memory.context`,
+  `memory.skill` e `project.context`;
+- repair esplicito con `flow.repair`;
 - niente container mode in questa release.
 
 ## 0.2 0.8.0 — Broker LLM

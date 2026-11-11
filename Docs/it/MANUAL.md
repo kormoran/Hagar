@@ -630,6 +630,8 @@ primitive `fs.*` usano le capability filesystem.
 `repair_attempts` è il numero massimo di tentativi di `flow.repair`;
 `0` disabilita la riparazione. `flow.run` non ripara mai il codice da
 solo: restituisce l’errore e il chiamante decide se usare `flow.repair`.
+Con la memoria attiva sono disponibili `memory.search`, `memory.context`
+e `memory.skill`; con un progetto attivo `project.context`.
 Dettagli in `FLOW.md`.
 
 ---

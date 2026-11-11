@@ -283,6 +283,7 @@ def test_build_harness_with_flow(tmp_path):
     assert payload["result"] == 2
     reference = harness.registry.execute("flow.reference")
     assert "fs.read" in reference
+    assert "memory.search" in reference
     assert "percorsi virtuali completi" in reference
 
 

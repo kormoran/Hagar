@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from pathlib import Path
 
 from core.boxes import BoxRunner
 from core.permissions import Capability
@@ -16,10 +17,16 @@ class FlowPrimitiveProvider:
         self,
         filesystem,
         box_runner: BoxRunner | None = None,
+        memory=None,
+        project_store=None,
+        project_id_getter=None,
     ) -> None:
 
         self.fs = filesystem
         self.box_runner = box_runner
+        self.memory = memory
+        self.project_store = project_store
+        self.project_id_getter = project_id_getter
         self.primitives: set[str] = set()
 
     def register_tools(self, registry: ToolRegistry) -> None:
@@ -106,6 +113,116 @@ class FlowPrimitiveProvider:
             handler=self.mkdir,
         )
 
+        if self.memory is not None:
+
+            self._register(
+                registry,
+                name="memory.search",
+                description="Cerca nella memoria e nell'indice.",
+                parameters=[
+                    ToolParameter("query", "string", "Testo da cercare."),
+                    ToolParameter(
+                        "kind",
+                        "string",
+                        "Filtro opzionale.",
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        "status",
+                        "string",
+                        "Filtro opzionale.",
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        "limit",
+                        "integer",
+                        "Numero massimo di risultati.",
+                        required=False,
+                        default=10,
+                    ),
+                ],
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="search",
+                handler=self.memory_search,
+            )
+
+            self._register(
+                registry,
+                name="memory.context",
+                description="Legge i turni recenti o cercati.",
+                parameters=[
+                    ToolParameter(
+                        "limit",
+                        "integer",
+                        "Numero massimo di turni.",
+                        required=False,
+                        default=5,
+                    ),
+                    ToolParameter(
+                        "query",
+                        "string",
+                        "Ricerca testuale.",
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        "session",
+                        "string",
+                        "Sessione opzionale.",
+                        required=False,
+                        default="",
+                    ),
+                ],
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="chat",
+                handler=self.memory_context,
+            )
+
+            self._register(
+                registry,
+                name="memory.skill",
+                description="Legge una skill completa per id.",
+                parameters=[
+                    ToolParameter(
+                        "skill_id",
+                        "string",
+                        "Id della skill.",
+                    )
+                ],
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="skills",
+                handler=self.memory_skill,
+            )
+
+        if self.project_store is not None:
+
+            self._register(
+                registry,
+                name="project.context",
+                description="Legge le decisioni del progetto attivo.",
+                parameters=[
+                    ToolParameter(
+                        "query",
+                        "string",
+                        "Filtro opzionale.",
+                        required=False,
+                        default="",
+                    ),
+                    ToolParameter(
+                        "limit",
+                        "integer",
+                        "Numero massimo di decisioni.",
+                        required=False,
+                        default=10,
+                    ),
+                ],
+                capabilities=Capability.MEMORY_READ,
+                policy_namespace="projects",
+                handler=self.project_context,
+            )
+
         if self.box_runner is not None:
 
             self._register(
@@ -165,6 +282,7 @@ class FlowPrimitiveProvider:
         parameters: list[ToolParameter],
         capabilities: Capability,
         handler,
+        policy_namespace: str | None = None,
     ) -> None:
 
         self.primitives.add(name)
@@ -177,6 +295,7 @@ class FlowPrimitiveProvider:
                 capabilities=capabilities,
                 handler=handler,
                 origin="flow",
+                policy_namespace=policy_namespace,
             )
         )
 
@@ -250,6 +369,121 @@ class FlowPrimitiveProvider:
         self.fs.mkdir(path)
 
     # --------------------------------------------------
+    # Memory
+    # --------------------------------------------------
+
+    def memory_search(
+        self,
+        query: str,
+        kind: str = "",
+        status: str = "",
+        limit: int = 10,
+    ) -> list[dict]:
+
+        query = query.strip()
+
+        if not query:
+            raise ValueError("query is required")
+
+        results = self.memory.index.search(
+            query,
+            kind=kind or None,
+            status=status or None,
+            limit=_clamp(limit, 10, 50),
+        )
+
+        for item in results:
+            path = item.get("path")
+
+            if item.get("kind") == "skill" and isinstance(path, str):
+                item["id"] = Path(path).stem
+
+        return results
+
+    def memory_context(
+        self,
+        limit: int = 5,
+        query: str = "",
+        session: str = "",
+    ) -> list[dict]:
+
+        amount = _clamp(limit, 5, 50)
+        session_id = session.strip() or None
+        query_text = query.strip()
+
+        if query_text:
+            turns = self.memory.search_turns(
+                query_text,
+                limit=amount,
+                session=session_id,
+            )
+        else:
+            turns = self.memory.recent_turns(
+                limit=amount,
+                session=session_id,
+            )
+
+        return [turn.as_dict() for turn in turns]
+
+    def memory_skill(self, skill_id: str) -> dict | None:
+
+        value = skill_id.strip()
+
+        if value.endswith(".md") or "/" in value or "\\" in value:
+            value = Path(value).stem
+
+        skill = self.memory.get_skill(value)
+
+        if skill is None:
+            return None
+
+        return {
+            **skill.summary(),
+            "content": skill.content,
+        }
+
+    def project_context(
+        self,
+        query: str = "",
+        limit: int = 10,
+    ) -> list[dict]:
+
+        project_id = (
+            self.project_id_getter()
+            if self.project_id_getter is not None
+            else None
+        )
+
+        if not project_id:
+            raise ValueError("nessun progetto attivo")
+
+        amount = _clamp(limit, 10, 50)
+        query_text = query.strip()
+
+        if query_text:
+            decisions = self.project_store.search_decisions(
+                project_id,
+                query_text,
+                limit=amount,
+            )
+        else:
+            decisions = self.project_store.list_decisions(
+                project_id,
+                status="active",
+                limit=amount,
+            )
+
+        return [
+            {
+                **item.summary(),
+                "decision": item.decision,
+                "alternatives": list(item.alternatives),
+                "rationale": item.rationale,
+            }
+            for item in decisions
+        ]
+
+    # --------------------------------------------------
     # Box
     # --------------------------------------------------
 
@@ -285,3 +519,15 @@ class FlowPrimitiveProvider:
             input,
             output,
         )
+
+
+def _clamp(value, default: int, maximum: int) -> int:
+    if value is None or isinstance(value, bool):
+        number = default
+    else:
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            number = default
+
+    return max(1, min(number, maximum))

@@ -1023,7 +1023,8 @@ sono supportate.
 
 - scope lineare;
 - budget di step, iterazioni, tool call e timeout;
-- primitive `fs.*` e `box.*` passate da un registry interno;
+- primitive `fs.*`, `box.*`, `memory.*` e `project.context` passate da
+  un registry interno;
 - policy e conferme per ogni primitiva;
 - errori con riga e colonna.
 
@@ -1198,9 +1199,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 888 superati, 2 skip
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 891 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (890 superati, 0
+  (2026-11-06): tutti i test verdi, inclusi i symlink (893 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

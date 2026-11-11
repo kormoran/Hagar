@@ -118,7 +118,9 @@ subjects:
       # Memoria: lettura libera, scrittura con conferma.
       - capabilities: [MEMORY_READ]
         effect: allow
-        tools: ["memory.*"]
+        tools:
+          - "memory.*"
+          - "project.*"
 
       - capabilities: [MEMORY_WRITE]
         effect: ask
