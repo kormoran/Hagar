@@ -141,36 +141,46 @@ return result
 
 ## Tool
 
-## Repair loop
+## Repair esplicito
 
-`flow.run` ripara solo gli errori di **validazione**:
+`flow.run` **non modifica mai** il codice e non chiama il modello per
+ripararlo. In caso di errore di validazione restituisce l’errore.
 
-```text
-massimo repair_attempts tentativi
-un errore per tentativo
-stesso modello configurato in Hagar
-```
-
-Non ripara:
+La riparazione è un passaggio separato:
 
 ```text
-errori di runtime
-policy o conferma negata
-timeout
-errori di primitive
+flow.run(code)
+→ errore di validazione
+→ flow.repair(code)
+→ codice corretto, non eseguito
+→ flow.run(codice_corretto)
 ```
 
-Il risultato include `repair_attempts`. Gli eventi audit sono:
+`flow.repair`:
 
-```text
-flow.repair.start
-flow.repair.attempt
-flow.repair.result
-flow.repair.gave_up
-flow.repair.error
+- valida il codice;
+- chiede al modello una correzione;
+- rivalida il candidato;
+- restituisce il primo candidato valido;
+- non esegue il candidato;
+- non scrive file.
+
+```json
+{
+  "ok": true,
+  "repaired": true,
+  "code": "return 1 + 1",
+  "attempts": 1,
+  "error": {
+    "kind": "validation",
+    "line": 1,
+    "message": "import is not allowed"
+  }
+}
 ```
 
-`repair_attempts: 0` disabilita la riparazione.
+`repair_attempts: 0` disabilita `flow.repair`.
+Non vengono riparati errori di runtime, policy, conferma o timeout.
 
 ### `flow.reference`
 

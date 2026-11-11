@@ -627,8 +627,10 @@ try, dict/set comprehension o accesso a oggetti Python; sono ammesse
 list comprehension con un solo `for`. Serve `FLOW_EXEC` in policy; le
 primitive `fs.*` usano le capability filesystem.
 
-`repair_attempts` è il numero massimo di riparazioni automatiche degli
-errori di validazione; `0` le disabilita. Dettagli in `FLOW.md`.
+`repair_attempts` è il numero massimo di tentativi di `flow.repair`;
+`0` disabilita la riparazione. `flow.run` non ripara mai il codice da
+solo: restituisce l’errore e il chiamante decide se usare `flow.repair`.
+Dettagli in `FLOW.md`.
 
 ---
 

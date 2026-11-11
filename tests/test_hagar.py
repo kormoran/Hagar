@@ -271,6 +271,7 @@ def test_build_harness_with_flow(tmp_path):
     harness = hagar.build_harness(ConfigLoader.load(path))
 
     assert "flow.run" in harness.registry.tool_names()
+    assert "flow.repair" in harness.registry.tool_names()
     assert "flow.validate" in harness.registry.tool_names()
     payload = json.loads(
         harness.registry.execute(

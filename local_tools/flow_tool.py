@@ -49,6 +49,28 @@ class FlowToolProvider:
 
         registry.register(
             ToolDefinition(
+                name="flow.repair",
+                description=(
+                    "Propone una correzione per un errore di validazione di "
+                    "Hagar Flow senza eseguire il codice. Restituisce il "
+                    "sorgente corretto; il chiamante deve poi usare "
+                    "flow.run per eseguirlo."
+                ),
+                category="flow",
+                capabilities=Capability.FLOW_EXEC,
+                parameters=[
+                    ToolParameter(
+                        "code",
+                        "string",
+                        "Sorgente Hagar Flow da riparare; non un file .py.",
+                    )
+                ],
+                handler=self.repair_code,
+            )
+        )
+
+        registry.register(
+            ToolDefinition(
                 name="flow.validate",
                 description=(
                     "Valida codice Hagar Flow senza eseguirlo. "
@@ -79,9 +101,8 @@ class FlowToolProvider:
                     "class, def, lambda, try, comprehension con più di un "
                     "for, dict/set comprehension o accesso a oggetti. "
                     "Usa solo le primitive elencate da flow.reference. "
-                    "Genera il sorgente, non un file .py. "
-                    "Gli errori di validazione possono essere riparati "
-                    "automaticamente con un numero limitato di tentativi."
+                    "Non ripara il codice: usa flow.repair e poi richiama "
+                    "flow.run con il sorgente corretto."
                 ),
                 category="flow",
                 capabilities=Capability.FLOW_EXEC,
@@ -143,48 +164,91 @@ class FlowToolProvider:
             ensure_ascii=False,
         )
 
-    def run_code(self, code: str) -> str:
-        result = self.runner.run(code)
+    def repair_code(self, code: str) -> str:
+        try:
+            validate(
+                code,
+                self.runner.primitives,
+                max_source_chars=self.runner.config.max_source_chars,
+            )
+        except FlowValidationError as exc:
+            error = exc.as_dict()
+        else:
+            return json.dumps(
+                {
+                    "ok": True,
+                    "repaired": False,
+                    "code": code,
+                    "attempts": 0,
+                    "error": None,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        current = code
+        last_error = error
         attempts = 0
 
-        while (
-            not result.ok
-            and result.error is not None
-            and result.error.get("kind") == "validation"
-            and attempts < self.repairer.max_attempts
-        ):
+        while attempts < self.repairer.max_attempts:
             attempts += 1
+            self.runner.record(
+                "flow.repair.attempt",
+                attempt=attempts,
+            )
             candidate = self.repairer.propose(
-                code,
-                result.error,
+                current,
+                last_error,
             )
 
             if candidate is None:
                 break
 
-            self.runner.record(
-                "flow.repair.attempt",
-                attempt=attempts,
-            )
-            code = candidate
-            result = self.runner.run(code)
+            try:
+                validate(
+                    candidate,
+                    self.runner.primitives,
+                    max_source_chars=self.runner.config.max_source_chars,
+                )
+            except FlowValidationError as exc:
+                current = candidate
+                last_error = exc.as_dict()
+                continue
 
-        if (
-            not result.ok
-            and attempts > 0
-            and result.error is not None
-            and result.error.get("kind") == "validation"
-        ):
-            self.runner.record(
-                "flow.repair.gave_up",
-                attempts=attempts,
-            )
-
-        if result.ok:
             self.runner.record(
                 "flow.repair.result",
                 attempts=attempts,
             )
+            return json.dumps(
+                {
+                    "ok": True,
+                    "repaired": True,
+                    "code": candidate,
+                    "attempts": attempts,
+                    "error": last_error,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        self.runner.record(
+            "flow.repair.gave_up",
+            attempts=attempts,
+        )
+        return json.dumps(
+            {
+                "ok": False,
+                "repaired": False,
+                "code": None,
+                "attempts": attempts,
+                "error": last_error,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    def run_code(self, code: str) -> str:
+        result = self.runner.run(code)
 
         return json.dumps(
             {
@@ -195,7 +259,7 @@ class FlowToolProvider:
                 "tool_calls": result.tool_calls,
                 "duration_ms": result.duration_ms,
                 "trace": result.trace,
-                "repair_attempts": attempts,
+                "repair_attempts": 0,
             },
             ensure_ascii=False,
             indent=2,

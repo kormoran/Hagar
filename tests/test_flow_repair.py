@@ -1,4 +1,4 @@
-"""Test del repair loop di Hagar Flow."""
+"""Test del repair esplicito di Hagar Flow."""
 
 from __future__ import annotations
 
@@ -39,7 +39,24 @@ def make_provider(sandbox, llm, repair_attempts=2):
     return FlowToolProvider(runner, llm=llm)
 
 
-def test_repairs_validation_error(sandbox):
+def test_repair_returns_code_without_running_it(sandbox, workspace):
+    llm = FakeLLM(["return 1 + 1"])
+    provider = make_provider(sandbox, llm)
+
+    payload = json.loads(
+        provider.repair_code("import os\nreturn 0")
+    )
+
+    assert payload["ok"] is True
+    assert payload["repaired"] is True
+    assert payload["attempts"] == 1
+    assert payload["code"] == "return 1 + 1"
+    assert llm.calls == 1
+    # repair non deve eseguire il codice né produrre file.
+    assert not (workspace / "repaired.py").exists()
+
+
+def test_flow_run_does_not_repair(sandbox):
     llm = FakeLLM(["return 1 + 1"])
     provider = make_provider(sandbox, llm)
 
@@ -47,22 +64,8 @@ def test_repairs_validation_error(sandbox):
         provider.run_code("import os\nreturn 0")
     )
 
-    assert payload["ok"] is True
-    assert payload["result"] == 2
-    assert payload["repair_attempts"] == 1
-    assert llm.calls == 1
-
-
-def test_does_not_repair_runtime_error(sandbox):
-    llm = FakeLLM(["return 1 + 1"])
-    provider = make_provider(sandbox, llm)
-
-    payload = json.loads(
-        provider.run_code("return fs.read('/missing')")
-    )
-
     assert payload["ok"] is False
-    assert payload["error"]["kind"] == "runtime"
+    assert payload["error"]["kind"] == "validation"
     assert payload["repair_attempts"] == 0
     assert llm.calls == 0
 
@@ -75,12 +78,12 @@ def test_repair_attempts_are_bounded(sandbox):
     provider = make_provider(sandbox, llm, repair_attempts=2)
 
     payload = json.loads(
-        provider.run_code("import os\nreturn 0")
+        provider.repair_code("import os\nreturn 0")
     )
 
     assert payload["ok"] is False
-    assert payload["error"]["kind"] == "validation"
-    assert payload["repair_attempts"] == 2
+    assert payload["repaired"] is False
+    assert payload["attempts"] == 2
     assert llm.calls == 2
 
 
@@ -89,9 +92,9 @@ def test_zero_attempts_does_not_call_llm(sandbox):
     provider = make_provider(sandbox, llm, repair_attempts=0)
 
     payload = json.loads(
-        provider.run_code("import os\nreturn 0")
+        provider.repair_code("import os\nreturn 0")
     )
 
     assert payload["ok"] is False
-    assert payload["repair_attempts"] == 0
+    assert payload["attempts"] == 0
     assert llm.calls == 0

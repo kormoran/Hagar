@@ -1027,10 +1027,11 @@ sono supportate.
 - policy e conferme per ogni primitiva;
 - errori con riga e colonna.
 
-`FLOW_EXEC` è DENY di default. Gli errori di validazione possono essere
-riparati automaticamente con un massimo di `flow.repair_attempts`
-tentativi; errori di runtime, policy, conferma e timeout non vengono
-riparati. L’HIR non è ancora presente: l’AST validato è l’IR dell’MVP.
+`FLOW_EXEC` è DENY di default. `flow.run` non ripara mai il codice:
+`flow.repair` propone un candidato valido senza eseguirlo, con un
+massimo di `flow.repair_attempts` tentativi. Errori di runtime, policy,
+conferma e timeout non vengono riparati. L’HIR non è ancora presente:
+l’AST validato è l’IR dell’MVP.
 
 ## 3.12 Avvio e packaging
 

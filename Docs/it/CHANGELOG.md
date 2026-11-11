@@ -44,11 +44,13 @@ questa release.
 - Primitive `fs.*` e `box.*`, budget di step, tool call, iterazioni e
   timeout; errori con riga e colonna.
 
-## Repair loop
+## Repair esplicito
 
-- `flow.run` ripara automaticamente gli errori di validazione con un
-  numero limitato di tentativi.
-- Non ripara errori di runtime, policy, conferma o timeout.
+- Nuovo `flow.repair`: propone una correzione valida senza eseguirla.
+- `flow.run` non modifica mai il codice e non chiama il modello per
+  ripararlo.
+- `flow.repair` non ripara errori di runtime, policy, conferma o
+  timeout.
 - Ogni tentativo è registrato nell'audit e nel risultato.
 
 # 0.6.0 — 2026-11-09
