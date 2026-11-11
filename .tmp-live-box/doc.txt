@@ -1,1 +1,0 @@
-Hagar e un harness per agenti. Supporta tool, memoria SQLite e policy. Le boxed transform riassumono documenti. flow e un DSL ristretto.

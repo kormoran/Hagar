@@ -183,6 +183,7 @@ cython_debug/
 
 # Temporary directory used by the test runner / local tooling
 .tmp/
+.tmp-live-*/
 
 # Scratch area of tools/bench_models.py
 .bench/
