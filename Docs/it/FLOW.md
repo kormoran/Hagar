@@ -103,6 +103,9 @@ fs.stat(path) -> dict
 fs.mkdir(path)
 ```
 
+`fs.list` restituisce percorsi virtuali completi, non nomi. Per
+distinguere file e directory usare `fs.stat(path)["kind"]`.
+
 Con `boxes.enabled: true`:
 
 ```text

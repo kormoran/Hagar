@@ -90,14 +90,26 @@ class FlowToolProvider:
         )
 
     def reference(self) -> str:
-        primitives = "\n".join(
-            f"- {name}"
-            for name in sorted(self.runner.primitives)
-        )
+        lines = []
+
+        for name in sorted(self.runner.primitives):
+            tool = self.runner.registry.get(name)
+            parameters = ", ".join(
+                (
+                    parameter.name
+                    if parameter.required
+                    else f"{parameter.name}={parameter.default!r}"
+                )
+                for parameter in tool.parameters
+            )
+            lines.append(
+                f"- {name}({parameters}): {tool.description}"
+            )
+
         return (
             LANGUAGE_CARD
             + "\nPRIMITIVE DISPONIBILI:\n"
-            + (primitives or "- nessuna")
+            + ("\n".join(lines) or "- nessuna")
             + "\n"
         )
 

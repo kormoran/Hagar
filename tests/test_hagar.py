@@ -280,6 +280,9 @@ def test_build_harness_with_flow(tmp_path):
     )
     assert payload["ok"] is True
     assert payload["result"] == 2
+    reference = harness.registry.execute("flow.reference")
+    assert "fs.read" in reference
+    assert "percorsi virtuali completi" in reference
 
 
 def test_build_harness_rejects_dev_recipes_inside_sandbox(tmp_path):

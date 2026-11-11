@@ -166,6 +166,8 @@ VIETATO:
 - chiamate dinamiche
 
 REGOLE:
+- fs.list(path) restituisce percorsi virtuali completi, non nomi
+- fs.stat(path)["kind"] vale "file" o "directory"
 - niente shell, rete o filesystem fuori dalle primitive
 - il codice è lineare; non definire funzioni
 - un errore interrompe il flusso: correggi e riprova
