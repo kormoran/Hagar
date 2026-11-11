@@ -1,0 +1,1 @@
+Il documento descrive Hagar come un insieme di funzionalità per gli agenti, inclusa la gestione di strumenti, una memoria basata su SQLite e politiche. Inoltre, menziona che i "boxed transform" sono responsabili della riassunzione dei documenti, mentre Flow è descritto come un linguaggio di dominio specifico limitato.
