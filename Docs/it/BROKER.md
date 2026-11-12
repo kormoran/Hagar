@@ -1,6 +1,7 @@
 # Broker LLM
 
-**Stato:** in sviluppo — ModelRegistry implementato
+**Stato:** in sviluppo — ModelRegistry, TaskProfile, Broker e
+BrokerLLMClient implementati
 
 ## Scopo
 
@@ -247,15 +248,49 @@ Se `broker.enabled` è false, o il catalogo non è valido, Hagar continua
 ad avviarsi e il comando restituisce un errore esplicito. L’errore viene
 registrato nell’audit come `broker.disabled`.
 
+## BrokerLLMClient
+
+Con `broker.enabled: true`, Hagar crea il client LLM tramite il broker:
+
+```text
+config.model = fallback dichiarato
+broker.default_profile = profilo usato per la scelta
+```
+
+La scelta avviene una volta, alla costruzione del client:
+
+```text
+broker.decision   modello scelto, profilo, score
+broker.fallback   nessun modello eleggibile, si usa config.model
+broker.fallback_client  il client scelto non si costruisce
+```
+
+L’adapter delega:
+
+```text
+chat
+generate
+request_tool_call
+native_step
+native_tools
+usage_sink
+last_usage
+last_reasoning
+```
+
+Il broker non concede capability, non modifica la policy e non cambia
+sandbox. La scelta viene registrata nell’audit.
+
+La selezione non avviene ancora per ogni turno: usa il profilo
+`broker.default_profile`. La scelta dinamica per task arriverà dopo.
+
 ## Cosa manca
 
 ```text
-TaskProfile
-Broker.select
-/models route
-/models explain
-BrokerLLMClient
+selezione dinamica per task
 benchmark di qualità per task
+scelta esplicita del profilo per un turno
+integrazione con i subagenti
 ```
 
 ## Regole future

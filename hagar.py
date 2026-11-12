@@ -53,6 +53,7 @@ from core.permissions import (
 )
 from core.tool_registry import ToolRegistry
 from llm.base import LLMClient
+from llm.broker_client import BrokerLLMClient
 from llm.factory import create_llm
 from llm.mcp_client import (
     MCPClient,
@@ -219,6 +220,45 @@ class Harness:
     subagents: Any = None
     broker: Any = None
     broker_error: str | None = None
+
+
+def _load_broker(
+    config: AppConfig,
+    audit: AuditLog,
+) -> tuple[Broker | None, str | None]:
+    """Carica catalogo e profili, senza rendere il broker obbligatorio."""
+
+    if not config.broker.enabled:
+        return None, None
+
+    try:
+        broker_registry = ModelRegistry.load(
+            config.broker.catalog
+        )
+        broker_profiles = TaskProfileStore.load(
+            config.broker.profiles
+        )
+        broker_service = Broker(
+            broker_registry,
+            broker_profiles,
+        )
+    except (ModelRegistryError, TaskProfileError) as exc:
+
+        error = str(exc)
+        audit.record(
+            "broker.disabled",
+            error=error,
+        )
+        return None, error
+
+    audit.record(
+        "broker.enabled",
+        catalog=config.broker.catalog,
+        profiles=config.broker.profiles,
+        models=len(broker_registry.entries),
+        profiles_count=len(broker_profiles.profiles),
+    )
+    return broker_service, None
 
 
 def build_harness(
@@ -721,12 +761,25 @@ def build_harness(
     # LLM
     # ==========================================
 
+    broker_service, broker_error = _load_broker(
+        config,
+        audit,
+    )
+
     try:
 
         llm = create_llm(
             config.model,
             audit=audit,
         )
+
+        if broker_service is not None:
+            llm = BrokerLLMClient(
+                broker_service,
+                config.model,
+                profile=config.broker.default_profile,
+                audit=audit,
+            )
 
     except Exception as exc:
 
@@ -937,38 +990,6 @@ def build_harness(
             "error": memory_error,
         },
     )
-
-    broker_service = None
-    broker_error = None
-
-    if config.broker.enabled:
-
-        try:
-            broker_registry = ModelRegistry.load(
-                config.broker.catalog
-            )
-            broker_profiles = TaskProfileStore.load(
-                config.broker.profiles
-            )
-            broker_service = Broker(
-                broker_registry,
-                broker_profiles,
-            )
-        except (ModelRegistryError, TaskProfileError) as exc:
-
-            broker_error = str(exc)
-            audit.record(
-                "broker.disabled",
-                error=broker_error,
-            )
-        else:
-            audit.record(
-                "broker.enabled",
-                catalog=config.broker.catalog,
-                profiles=config.broker.profiles,
-                models=len(broker_registry.entries),
-                profiles_count=len(broker_profiles.profiles),
-            )
 
     return Harness(
         config=config,
