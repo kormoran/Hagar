@@ -15,6 +15,41 @@ class ModelRegistryError(RuntimeError):
     pass
 
 
+def _quality_from_section(
+    section: Any,
+    task: str,
+) -> float | None:
+
+    if isinstance(section, (int, float)) and not isinstance(
+        section,
+        bool,
+    ):
+        return float(section)
+
+    if not isinstance(section, dict):
+        return None
+
+    tasks = section.get("tasks")
+
+    if not isinstance(tasks, dict):
+        return None
+
+    item = tasks.get(task)
+
+    if not isinstance(item, dict):
+        return None
+
+    value = item.get("mean", item.get("score"))
+
+    if isinstance(value, bool) or not isinstance(
+        value,
+        (int, float),
+    ):
+        return None
+
+    return float(value)
+
+
 CAPABILITIES = frozenset({
     "chat",
     "structured_json",
@@ -77,36 +112,17 @@ class ModelEntry:
         if not isinstance(self.card, dict):
             return None
 
-        quality = self.card.get("quality")
+        for section in ("quality", "vision"):
 
-        if isinstance(quality, (int, float)) and not isinstance(
-            quality,
-            bool,
-        ):
-            return float(quality)
+            value = _quality_from_section(
+                self.card.get(section),
+                task,
+            )
 
-        if not isinstance(quality, dict):
-            return None
+            if value is not None:
+                return value
 
-        tasks = quality.get("tasks")
-
-        if not isinstance(tasks, dict):
-            return None
-
-        item = tasks.get(task)
-
-        if not isinstance(item, dict):
-            return None
-
-        value = item.get("mean", item.get("score"))
-
-        if isinstance(value, bool) or not isinstance(
-            value,
-            (int, float),
-        ):
-            return None
-
-        return float(value)
+        return None
 
 
     def as_dict(self) -> dict[str, Any]:

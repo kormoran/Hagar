@@ -182,6 +182,21 @@ La qualità misurata viene cercata in `card.quality.tasks` usando
 `TaskProfile.quality_task`; se manca, si usa il nome del profilo. Se la
 scheda non contiene il task, si usa la qualità dichiarata nel catalogo.
 
+Task disponibili:
+
+```text
+extraction
+instruction
+reasoning
+coding
+summary
+translation
+vision
+```
+
+`vision` è disponibile solo dopo `/models test vision` e per modelli
+con capacità vision.
+
 Pesi per `prefer`:
 
 ```text

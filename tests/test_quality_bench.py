@@ -36,19 +36,43 @@ class FakeLLM:
         if "print(len" in prompt:
             return self.responses.get("coding", "3")
 
+        if "Riassumi" in prompt:
+            return self.responses.get(
+                "summary",
+                "Hagar 0.8 introduce il broker e i modelli locali. "
+                "La memoria arriva nella 0.9, il runtime locale dopo la 1.0.",
+            )
+
+        if "Traduci in inglese" in prompt:
+            return self.responses.get(
+                "translation_it_en",
+                "Hagar runs tools in the sandbox. The report is in "
+                "/home/ai/workspace/report.txt and the command is "
+                "`hagar --config hagar.yaml`.",
+            )
+
+        if "Traduci in italiano" in prompt:
+            return self.responses.get(
+                "translation_en_it",
+                "Il broker sceglie un modello, ma non concede mai "
+                "capability.",
+            )
+
         return "OK"
 
 
 def test_quality_benchmark_perfect_answers():
     report = benchmark_quality(FakeLLM(), attempts=2)
 
-    assert report["suite_version"] == 1
+    assert report["suite_version"] == 2
     assert report["overall"] == 1.0
     assert set(report["tasks"]) == {
         "extraction",
         "instruction",
         "reasoning",
         "coding",
+        "summary",
+        "translation",
     }
     assert all(
         item["mean"] == 1.0
@@ -84,7 +108,7 @@ def test_quality_benchmark_errors_are_reported():
 
     assert report["overall"] == 0.0
     assert all(
-        len(item["errors"]) == 2
+        len(item["errors"]) == 2 * item["cases"]
         for item in report["tasks"].values()
     )
 

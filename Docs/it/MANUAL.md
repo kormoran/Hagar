@@ -63,7 +63,10 @@ modello**: Hagar risponde `Comando sconosciuto` e suggerisce `/help`.
 | `/tools [categoria]` | elenca i tool e le capability; il filtro è opzionale |
 | `/status` | mostra modello, progetto, memoria, audit e sandbox |
 | `/usage` | mostra i token consumati nella sessione |
-| `/models ...` | schede, benchmark e hardware per il broker |
+| `/models ...` | schede, benchmark, storico e hardware per il broker |
+| `/models test` | benchmark testo e qualità del modello corrente |
+| `/models test vision` | benchmark vision su immagini sintetiche |
+| `/models runs [n]` | ultimi run di benchmark salvati |
 | `/models hardware` | rileva CPU, RAM e GPU della macchina |
 | `/undo` | annulla le modifiche dell'ultimo turno |
 | `/mcp` | elenca server MCP, endpoint e tool importati |
