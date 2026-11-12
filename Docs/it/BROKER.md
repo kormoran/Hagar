@@ -150,6 +150,75 @@ enabled                  booleano
 
 Un profilo non nomina provider o modelli. La scelta spetta al broker.
 
+## Broker.select
+
+Il broker applica prima i filtri hard, poi un punteggio.
+
+Filtri:
+
+```text
+enabled
+required_capabilities
+min_context
+privacy
+max_latency_ms
+max_cost_per_1k_input
+max_cost_per_1k_output
+quality_floor
+```
+
+Punteggio:
+
+```text
+quality        qualità dichiarata
+latency        p50 misurata nella scheda
+cost           costo massimo input/output dichiarato
+context        contesto disponibile
+```
+
+Pesi per `prefer`:
+
+```text
+quality   0.70 qualità, 0.15 latenza, 0.075 costo, 0.075 contesto
+latency   0.20 qualità, 0.60 latenza, 0.10 costo, 0.10 contesto
+cost      0.20 qualità, 0.10 latenza, 0.60 costo, 0.10 contesto
+context   0.20 qualità, 0.10 latenza, 0.10 costo, 0.60 contesto
+balanced  0.35 qualità, 0.25 latenza, 0.20 costo, 0.20 contesto
+```
+
+Un dato mancante non vale zero: riceve un penalty e il motivo viene
+registrato.
+
+La selezione è deterministica:
+
+```text
+score desc
+quality desc
+model_id asc
+```
+
+## API
+
+```python
+broker = Broker(registry, profiles)
+selection = broker.select("coding")
+report = broker.explain("coding")
+```
+
+`selection` contiene:
+
+```text
+profile
+model_id
+provider
+model
+score
+reasons
+excluded
+```
+
+`excluded` contiene, per ogni modello scartato, il motivo.
+
 ## Cosa manca
 
 ```text
