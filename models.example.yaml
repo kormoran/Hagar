@@ -1,0 +1,46 @@
+version: 1
+
+models:
+  - id: lmstudio/qwen2.5-coder-7b
+    provider: lmstudio
+    model: qwen2.5-coder-7b-instruct
+    context_window: 32768
+    capabilities:
+      - chat
+      - structured_json
+      - tool_calling
+      - native_tools
+    locality: local
+    quality: 0.75
+    cost_per_1k_input: 0
+    cost_per_1k_output: 0
+    enabled: true
+
+  - id: lmstudio/qwen2.5-coder-14b
+    provider: lmstudio
+    model: qwen2.5-coder-14b-instruct
+    context_window: 32768
+    capabilities:
+      - chat
+      - structured_json
+      - tool_calling
+      - native_tools
+    locality: local
+    quality: 0.85
+    cost_per_1k_input: 0
+    cost_per_1k_output: 0
+    enabled: true
+
+  - id: lmstudio/llama3.1-8b
+    provider: lmstudio
+    model: llama3.1-8b
+    context_window: 32768
+    capabilities:
+      - chat
+      - structured_json
+      - tool_calling
+    locality: local
+    quality: 0.70
+    cost_per_1k_input: 0
+    cost_per_1k_output: 0
+    enabled: true
