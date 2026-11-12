@@ -132,6 +132,9 @@ class SubagentManager:
         project_state: dict[str, Any] | None = None,
         parent_id: str | None = None,
         llm_factory: Callable[[Any, Any], Any] | None = None,
+        broker: Any = None,
+        broker_profile: str | None = None,
+        broker_local_only: bool = True,
         max_tool_calls: int = 8,
         max_concurrent: int = 2,
         max_seconds: float = 300.0,
@@ -146,6 +149,9 @@ class SubagentManager:
         self.project_state = project_state or {}
         self.parent_id = parent_id
         self.llm_factory = llm_factory
+        self.broker = broker
+        self.broker_profile = broker_profile
+        self.broker_local_only = broker_local_only
         self.max_tool_calls = int(max_tool_calls)
         self.max_concurrent = max(1, int(max_concurrent))
         self.max_seconds = float(max_seconds)
@@ -495,13 +501,38 @@ class SubagentManager:
             job.workspace = workspace
             self._copy_inputs(job.spec, workspace)
 
-            llm = (
-                self.llm_factory
-                or self._default_llm_factory
-            )(
-                self.config.model,
-                self.audit,
-            )
+            if self.llm_factory is not None:
+
+                llm = self.llm_factory(
+                    self.config.model,
+                    self.audit,
+                )
+
+            elif self.broker is not None:
+
+                from llm.broker_client import BrokerLLMClient
+
+                llm = BrokerLLMClient(
+                    self.broker,
+                    self.config.model,
+                    profile=(
+                        self.broker_profile
+                        or getattr(
+                            self.config.broker,
+                            "default_profile",
+                            "coding",
+                        )
+                    ),
+                    audit=self.audit,
+                    local_only=self.broker_local_only,
+                )
+
+            else:
+
+                llm = self._default_llm_factory(
+                    self.config.model,
+                    self.audit,
+                )
 
             usage = UsageLedger()
 

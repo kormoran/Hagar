@@ -26,6 +26,7 @@ class BrokerLLMClient(LLMClient):
         profile: str = "coding",
         audit: Any = None,
         llm_factory: Callable[..., LLMClient] | None = None,
+        local_only: bool = False,
     ) -> None:
 
         self.broker = broker
@@ -33,11 +34,12 @@ class BrokerLLMClient(LLMClient):
         self.profile = profile
         self.audit = audit
         self._factory = llm_factory or create_llm
+        self.local_only = local_only
         self.fallback_reason: str | None = None
         self.selection: Any = None
 
         try:
-            selection = broker.select(profile)
+            selection = self._select(profile)
         except BrokerError as exc:
 
             self.fallback_reason = str(exc)
@@ -92,7 +94,7 @@ class BrokerLLMClient(LLMClient):
         """
 
         try:
-            selection = self.broker.select(profile)
+            selection = self._select(profile)
         except BrokerError as exc:
 
             self._record(
@@ -184,6 +186,22 @@ class BrokerLLMClient(LLMClient):
             return
 
         self.audit.record(event, **fields)
+
+    def _select(self, profile: str) -> Any:
+
+        if not self.local_only:
+            return self.broker.select(profile)
+
+        task = self.broker.profiles.get(profile)
+
+        if task is None:
+            raise BrokerError(
+                f"unknown task profile: {profile}"
+            )
+
+        return self.broker.select(
+            replace(task, privacy="local_only")
+        )
 
     # --------------------------------------------------
     # Identità e proprietà delegate

@@ -8,6 +8,7 @@ import pytest
 
 from core.filesystem import DirectoryPermissions
 from core.filesystem import FileSystemSandbox
+from core.models import ModelConfig
 from core.permissions import ALL_CAPABILITIES
 from core.permissions import Capability
 from core.permissions import Effect
@@ -477,3 +478,56 @@ def test_saved_artifact_is_not_reported_as_discarded(tmp_path):
         for event, _ in audit.events
         if event == "artifact.discarded"
     ]
+
+
+def test_subagent_uses_local_broker(monkeypatch):
+    from core.task_profile import TaskProfile, TaskProfileStore
+
+    class Broker:
+        profiles = TaskProfileStore([
+            TaskProfile(name="coding"),
+        ])
+
+        def select(self, profile):
+            assert profile.privacy == "local_only"
+            return SimpleNamespace(
+                entry=SimpleNamespace(
+                    id="lmstudio/local",
+                    provider="lmstudio",
+                    model="local",
+                ),
+                score=0.8,
+            )
+
+    llm = FakeLLM()
+    audit = Audit()
+    config = make_config()
+    config.model = ModelConfig(
+        provider="lmstudio",
+        name="same-model",
+    )
+    config.broker = SimpleNamespace(default_profile="coding")
+    monkeypatch.setattr(
+        "llm.broker_client.create_llm",
+        lambda config, audit=None: llm,
+    )
+
+    manager = SubagentManager(
+        config,
+        make_parent_registry(),
+        audit,
+        broker=Broker(),
+        broker_profile="coding",
+    )
+
+    result = manager.run(
+        AgentSpec(task="analizza", reason="test")
+    )
+
+    assert result.status == "completed", result.error
+    assert result.answer == "risposta del subagente"
+    assert llm.registry is not None
+    assert any(
+        event == "broker.decision"
+        for event, _ in audit.events
+    )

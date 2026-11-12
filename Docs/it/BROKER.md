@@ -296,13 +296,21 @@ sandbox. La scelta viene registrata nell’audit.
 La selezione non avviene ancora per ogni turno: usa il profilo
 `broker.default_profile`. La scelta dinamica per task arriverà dopo.
 
+## Subagenti
+
+I subagenti usano lo stesso registry e gli stessi profili del padre, ma
+la selezione è forzata a `privacy: local_only`. Se nessun modello locale
+soddisfa il profilo, il subagente usa `config.model` come fallback; non
+viene scelto silenziosamente un modello remoto.
+
+Il profilo usato è `broker.default_profile`, salvo override del
+`SubagentManager`.
+
 ## Cosa manca
 
 ```text
-selezione dinamica per task
-benchmark di qualità per task
-scelta esplicita del profilo per un turno
-integrazione con i subagenti
+selezione automatica del profilo per singolo turno
+benchmark semantico di qualità
 ```
 
 ## Regole future

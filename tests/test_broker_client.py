@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from core.broker import BrokerError
 from core.models import ModelConfig
+from core.task_profile import TaskProfile, TaskProfileStore
 from llm.broker_client import BrokerLLMClient
 
 
@@ -165,6 +166,40 @@ def test_missing_audit_is_allowed():
     client = make_client(FakeBroker(), factory, audit=None)
 
     assert client.model == "coder"
+
+
+def test_local_only_forces_local_privacy():
+    seen = []
+
+    class LocalBroker:
+        profiles = TaskProfileStore([
+            TaskProfile(name="coding", privacy="any"),
+        ])
+
+        def select(self, profile):
+            seen.append(profile)
+            return SimpleNamespace(
+                entry=SimpleNamespace(
+                    id="lmstudio/local",
+                    provider="lmstudio",
+                    model="local",
+                ),
+                score=0.8,
+            )
+
+    def factory(config, audit=None):
+        return FakeLLM(config.name)
+
+    client = BrokerLLMClient(
+        LocalBroker(),
+        ModelConfig(provider="lmstudio", name="base"),
+        profile="coding",
+        llm_factory=factory,
+        local_only=True,
+    )
+
+    assert client.model == "local"
+    assert seen[0].privacy == "local_only"
 
 
 def test_switch_profile_replaces_client():

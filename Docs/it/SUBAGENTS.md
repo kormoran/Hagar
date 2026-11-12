@@ -46,7 +46,8 @@ figlio è `timed_out` e l’audit registra `agent.timed_out`.
 
 Ogni figlio:
 
-- usa lo stesso modello locale del padre, ma un client LLM separato;
+- usa un client LLM separato; con il broker attivo il modello viene
+  scelto dal profilo `broker.default_profile` e deve essere locale;
 - ha un registry separato;
 - vede solo i tool con capability `FILESYSTEM_READ`,
   `MEMORY_READ` e `COMPUTE`, più `AGENT_DATA`;
@@ -174,7 +175,7 @@ Alla fine del turno del padre:
 
 | Componente | Padre | Figlio |
 |---|---|---|
-| LLM client | `harness.llm` | nuova istanza, stesso modello |
+| LLM client | `harness.llm` | nuova istanza; broker locale se attivo |
 | Tool registry | completo | filtrato read-only |
 | Filesystem | workspace padre | workspace privato in sola lettura |
 | Memoria | `MemoryStore` | `memory=None`, nessuna scrittura |
@@ -317,4 +318,4 @@ concorrenti completati, ciascuno con usage separato.
 - annidamento controllato, se richiesto;
 - `agent_id` su tutti gli eventi interni;
 - conferme delegate al padre o alla GUI;
-- modello scelto dal broker, non dal manager.
+- modello scelto dal broker, non dal manager; solo locale.

@@ -766,6 +766,10 @@ def build_harness(
         audit,
     )
 
+    if subagents is not None:
+        subagents.broker = broker_service
+        subagents.broker_profile = config.broker.default_profile
+
     try:
 
         llm = create_llm(
