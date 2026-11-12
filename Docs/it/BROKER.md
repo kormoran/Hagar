@@ -145,6 +145,7 @@ max_latency_ms           latenza massima
 max_cost_per_1k_input    costo massimo input
 max_cost_per_1k_output   costo massimo output
 quality_floor            qualità minima dichiarata
+quality_task             task della suite qualità, opzionale
 prefer                   quality, latency, cost, context, balanced
 enabled                  booleano
 ```
@@ -171,11 +172,15 @@ quality_floor
 Punteggio:
 
 ```text
-quality        qualità dichiarata
+quality        qualità misurata nella scheda, altrimenti dichiarata
 latency        p50 misurata nella scheda
 cost           costo massimo input/output dichiarato
 context        contesto disponibile
 ```
+
+La qualità misurata viene cercata in `card.quality.tasks` usando
+`TaskProfile.quality_task`; se manca, si usa il nome del profilo. Se la
+scheda non contiene il task, si usa la qualità dichiarata nel catalogo.
 
 Pesi per `prefer`:
 

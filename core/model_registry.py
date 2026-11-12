@@ -71,6 +71,44 @@ class ModelEntry:
     def has_capability(self, name: str) -> bool:
         return name in self.capabilities
 
+    def measured_quality(self, task: str) -> float | None:
+        """Qualità misurata per un task, se presente nella scheda."""
+
+        if not isinstance(self.card, dict):
+            return None
+
+        quality = self.card.get("quality")
+
+        if isinstance(quality, (int, float)) and not isinstance(
+            quality,
+            bool,
+        ):
+            return float(quality)
+
+        if not isinstance(quality, dict):
+            return None
+
+        tasks = quality.get("tasks")
+
+        if not isinstance(tasks, dict):
+            return None
+
+        item = tasks.get(task)
+
+        if not isinstance(item, dict):
+            return None
+
+        value = item.get("mean", item.get("score"))
+
+        if isinstance(value, bool) or not isinstance(
+            value,
+            (int, float),
+        ):
+            return None
+
+        return float(value)
+
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,

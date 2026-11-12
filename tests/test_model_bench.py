@@ -117,3 +117,5 @@ def test_models_command_runs_benchmark(tmp_path, monkeypatch):
     assert result.ok is True
     assert cards.list()[0]["provider"] == "fake"
     assert result.data["last_tested_at"]
+    assert result.data["quality"]["suite_version"] == 1
+    assert "extraction" in result.data["quality"]["tasks"]

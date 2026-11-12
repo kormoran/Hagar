@@ -48,6 +48,11 @@ def test_registry_loads_list_and_merges_card(tmp_path):
             "last_tested_at": "2026-11-12T20:00:00+00:00",
             "capabilities": {"tool_calling": True},
             "benchmarks": {},
+            "quality": {
+                "tasks": {
+                    "coding": {"mean": 0.75},
+                }
+            },
         }
     )
 
@@ -59,6 +64,8 @@ def test_registry_loads_list_and_merges_card(tmp_path):
     assert entry.model == "coder"
     assert entry.context_window == 32768
     assert entry.has_capability("tool_calling")
+    assert entry.measured_quality("coding") == 0.75
+    assert entry.measured_quality("missing") is None
     assert entry.card is not None
     assert entry.measured_at == "2026-11-12T20:00:00+00:00"
     assert entry.card_path is not None

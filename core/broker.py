@@ -121,7 +121,7 @@ class Broker:
         eligible.sort(
             key=lambda item: (
                 -item[1],
-                -(item[0].quality or 0.0),
+                -(_quality(item[0], task) or 0.0),
                 item[0].id,
             )
         )
@@ -290,11 +290,13 @@ class Broker:
 
         if task.quality_floor is not None:
 
-            if entry.quality is None:
+            quality = _quality(entry, task)
+
+            if quality is None:
                 reasons.append("quality unknown")
-            elif entry.quality < task.quality_floor:
+            elif quality < task.quality_floor:
                 reasons.append(
-                    f"quality {entry.quality:g} < "
+                    f"quality {quality:g} < "
                     f"{task.quality_floor:g}"
                 )
 
@@ -313,7 +315,7 @@ class Broker:
         weights = self.WEIGHTS[task.prefer]
         reasons = []
 
-        quality = entry.quality
+        quality = _quality(entry, task)
 
         if quality is None:
             quality_score = 0.30
@@ -389,8 +391,21 @@ def _chat_p50(entry: ModelEntry) -> float | None:
     return float(value)
 
 
-def _cost(entry: ModelEntry) -> float | None:
+def _quality(
+    entry: ModelEntry,
+    task: TaskProfile,
+) -> float | None:
 
+    task_name = task.quality_task or task.name
+    measured = entry.measured_quality(task_name)
+
+    if measured is not None:
+        return measured
+
+    return entry.quality
+
+
+def _cost(entry: ModelEntry) -> float | None:
     values = [
         value
         for value in (

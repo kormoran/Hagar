@@ -45,6 +45,7 @@ class TaskProfile:
     prefer: str = "balanced"
     description: str = ""
     enabled: bool = True
+    quality_task: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -61,6 +62,7 @@ class TaskProfile:
             "prefer": self.prefer,
             "description": self.description,
             "enabled": self.enabled,
+            "quality_task": self.quality_task,
         }
 
 
@@ -202,6 +204,7 @@ class TaskProfileStore:
             "prefer",
             "description",
             "enabled",
+            "quality_task",
         }
         unknown = set(raw) - allowed
 
@@ -318,6 +321,20 @@ class TaskProfileStore:
                 f"{where}.enabled must be a boolean"
             )
 
+        quality_task = raw.get("quality_task")
+
+        if quality_task is not None:
+
+            if (
+                not isinstance(quality_task, str)
+                or not quality_task.strip()
+            ):
+                raise TaskProfileError(
+                    f"{where}.quality_task must be a non-empty string"
+                )
+
+            quality_task = quality_task.strip()
+
         return TaskProfile(
             name=name.strip(),
             required_capabilities=frozenset(capabilities),
@@ -330,6 +347,7 @@ class TaskProfileStore:
             prefer=prefer,
             description=description,
             enabled=enabled,
+            quality_task=quality_task,
         )
 
     @staticmethod

@@ -19,6 +19,7 @@ def entry(
     cost=0.0,
     capabilities=("chat", "tool_calling"),
     enabled=True,
+    measured_quality=None,
 ):
     card = None
 
@@ -28,6 +29,14 @@ def entry(
                 "chat": {
                     "duration_ms": {"p50": latency}
                 }
+            }
+        }
+
+    if measured_quality is not None:
+        card = card or {}
+        card["quality"] = {
+            "tasks": {
+                "coding": {"mean": measured_quality},
             }
         }
 
@@ -212,6 +221,30 @@ def test_disabled_model_and_unknown_profile():
 
     with pytest.raises(BrokerError):
         broker.select("missing")
+
+
+def test_quality_floor_uses_measured_quality():
+    declared_high = entry(
+        "declared-high",
+        quality=0.95,
+        measured_quality=0.40,
+    )
+    measured_high = entry(
+        "measured-high",
+        quality=0.70,
+        measured_quality=0.90,
+    )
+    broker = make_broker([declared_high, measured_high])
+
+    selection = broker.select(
+        coding_profile(quality_floor=0.50)
+    )
+
+    assert selection.entry.id == "measured-high"
+    assert any(
+        item["model_id"] == "declared-high"
+        for item in selection.excluded
+    )
 
 
 def test_selection_serializes():

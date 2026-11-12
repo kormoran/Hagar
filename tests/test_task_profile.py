@@ -32,6 +32,7 @@ def test_profiles_load_mapping(tmp_path):
                 "privacy": "local_only",
                 "max_latency_ms": 30000,
                 "quality_floor": 0.7,
+                "quality_task": "coding",
                 "prefer": "quality",
             }
         },
@@ -50,6 +51,7 @@ def test_profiles_load_mapping(tmp_path):
     assert profile.privacy == "local_only"
     assert profile.max_latency_ms == 30000
     assert profile.quality_floor == 0.7
+    assert profile.quality_task == "coding"
     assert profile.prefer == "quality"
 
 
@@ -90,6 +92,7 @@ def test_profiles_load_list_and_filter(tmp_path):
         {"name": "a", "max_latency_ms": -1},
         {"name": "a", "max_cost_per_1k_input": -1},
         {"name": "a", "bogus": True},
+        {"name": "a", "quality_task": ""},
     ],
 )
 def test_profiles_reject_invalid(tmp_path, profile):

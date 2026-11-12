@@ -97,7 +97,45 @@ oppure `HAGAR_MODEL_CARDS`, o `$XDG_STATE_HOME/hagar/models`.
 - validità JSON;
 - scelta valida nell'insieme delle label;
 - tool calling con un tool di benchmark;
+- qualità deterministica su task;
 - hardware al momento della prova.
+
+## Qualità per task
+
+`/models test` esegue anche una suite qualità deterministica:
+
+```text
+extraction   estrazione di campi in JSON
+instruction  rispetto di un'istruzione esatta
+reasoning    calcolo numerico semplice
+coding       lettura di un frammento Python
+```
+
+Ogni task viene eseguito due volte. Il punteggio è la media delle
+risposte corrette, da 0 a 1. Non è un benchmark semantico: è un test
+compatto e ripetibile per dare al broker un segnale migliore della
+qualità dichiarata.
+
+La scheda contiene:
+
+```json
+{
+  "quality": {
+    "suite_version": 1,
+    "overall": 0.75,
+    "tasks": {
+      "extraction": {"attempts": 2, "mean": 0.83},
+      "instruction": {"attempts": 2, "mean": 1.0},
+      "reasoning": {"attempts": 2, "mean": 1.0},
+      "coding": {"attempts": 2, "mean": 0.5}
+    }
+  }
+}
+```
+
+Un `quality_task` nel TaskProfile seleziona il task da usare; se manca,
+il broker usa il nome del profilo. Se la scheda non ha qualità misurata,
+usa la qualità dichiarata nel catalogo.
 
 Non misura ancora:
 

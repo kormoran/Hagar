@@ -12,6 +12,7 @@ from core.model_bench import benchmark_model
 from core.model_cards import ModelCardError
 from core.model_cards import ModelCardStore
 from core.permissions import capability_names
+from core.quality_bench import benchmark_quality
 from core.service import HarnessService
 from memory.export import MarkdownExporter
 from memory.import_markdown import MarkdownImporter
@@ -311,6 +312,7 @@ class CommandService:
                     f"Ultima prova: {card.get('last_tested_at')}",
                     f"Capabilities: {card.get('capabilities')}",
                     f"Benchmarks: {card.get('benchmarks')}",
+                    f"Quality: {card.get('quality')}",
                 ],
                 data=card,
             )
@@ -329,6 +331,7 @@ class CommandService:
 
             try:
                 report = benchmark_model(llm)
+                report["quality"] = benchmark_quality(llm)
                 report["last_tested_at"] = report["tested_at"]
                 path = self.model_cards.save(report)
 
@@ -353,6 +356,7 @@ class CommandService:
                 f"{structured['attempts']} "
                 f"(choice {structured['valid_choice']})",
                 f"Tool: {tools['successes']}/{tools['attempts']}",
+                f"Qualità: {report['quality']['overall']:.4f}",
                 f"Ultima prova: {report['last_tested_at']}",
             ]
 
@@ -366,6 +370,7 @@ class CommandService:
                     chat_p50_ms=chat["duration_ms"]["p50"],
                     structured_valid=structured["valid_json"],
                     tool_successes=tools["successes"],
+                    quality_overall=report["quality"]["overall"],
                 )
 
             return CommandResult(
