@@ -1201,7 +1201,7 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
   `.\tools\run_tests.ps1` (Windows). Su Windows: 892 superati, 2 skip
   (symlink non disponibili senza Developer Mode). Su Debian Linux
-  (2026-11-06): tutti i test verdi, inclusi i symlink (894 superati, 0
+  (2026-11-12): tutti i test verdi, inclusi i symlink (894 superati, 0
   skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
