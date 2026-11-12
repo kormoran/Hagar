@@ -112,6 +112,44 @@ registry.find("lmstudio", "qwen2.5-coder-7b-instruct")
 Ogni voce espone la scheda misurata in `entry.card` e
 `entry.measured_at`.
 
+## TaskProfile
+
+I profili descrivono il task, non il modello:
+
+```yaml
+version: 1
+
+profiles:
+  coding:
+    description: Scrittura e revisione di codice con tool.
+    required_capabilities:
+      - chat
+      - tool_calling
+    min_context: 16000
+    privacy: any
+    max_latency_ms: 30000
+    quality_floor: 0.70
+    prefer: quality
+```
+
+Campi:
+
+```text
+name                     univoco
+required_capabilities    chat, structured_json, tool_calling,
+                         native_tools, vision, reasoning
+min_context              token minimi
+privacy                  any, local_only, remote_only
+max_latency_ms           latenza massima
+max_cost_per_1k_input    costo massimo input
+max_cost_per_1k_output   costo massimo output
+quality_floor            qualità minima dichiarata
+prefer                   quality, latency, cost, context, balanced
+enabled                  booleano
+```
+
+Un profilo non nomina provider o modelli. La scelta spetta al broker.
+
 ## Cosa manca
 
 ```text
