@@ -1,13 +1,13 @@
-# Document tool — especificação de arquitetura
+# document tool — especificação de arquitetura
 
-**Estado:** accepted
-**Data:** 2026-11-07
-**Âmbito:** ferramenta de análise de documentos, plugins de formato, host nativo
+**Estado:** accepted  
+**Data:** 2026-11-07  
+**Âmbito:** tool de análise de documentos, plugin de formato, host nativo  
 **MVP:** CSV
 
 ## 1. Decisão
 
-A document tool separa três níveis:
+O document tool separa três níveis:
 
 ```text
 modelo
@@ -25,24 +25,24 @@ A decisão principal é:
 
 > os plugins de formato nativos **não são carregados no processo do Hagar**.
 
-São executados por um host nativo separado, que carrega a DLL e fala
-com o Hagar através de um protocolo JSON. Um crash ou uma corrupção de
+Eles são executados por um host nativo separado, que carrega a DLL e fala
+com o Hagar por meio de um protocolo JSON. Um crash ou uma corrupção de
 memória da DLL mata o host, não o Hagar.
 
 O contrato lógico `FormatPlugin` é único; muda apenas o runtime.
 
-## 2. Porquê esta escolha
+## 2. Por que esta escolha
 
-### 2.1 In-process DLL: porquê não
+### 2.1 DLL in-process: por que não
 
 Carregar uma DLL com `ctypes` no processo Python significa:
 
-- um segmentation fault pode terminar o Hagar;
+- um segmentation fault pode encerrar o Hagar;
 - uma DLL pode corromper a memória do processo;
-- uma `try/except` Python não interceta um crash nativo;
+- um `try/except` Python não intercepta um crash nativo;
 - uma DLL pode bloquear o processo sem timeout;
-- a ABI depende de compilador, runtime C, arquitetura e sistema operativo;
-- a sandbox aplicacional do Hagar não confina o código nativo.
+- a ABI depende de compilador, runtime C, arquitetura e sistema operacional;
+- a sandbox de aplicação do Hagar não confina o código nativo.
 
 Para um formato como PDF, EXE ou DWG o risco não é aceitável.
 
@@ -51,19 +51,19 @@ Para um formato como PDF, EXE ou DWG o risco não é aceitável.
 O host separado resolve:
 
 - **crash isolation**: a DLL morre com o seu processo;
-- **ABI isolation**: o Hagar não liga a DLL;
-- **timeout**: o host pode ser terminado;
+- **ABI isolation**: o Hagar não faz link com a DLL;
+- **timeout**: o host pode ser encerrado;
 - **atribuição**: um host por plugin nativo;
 - **atualização**: a DLL pode ser substituída sem reiniciar o Hagar;
-- **testes**: o host pode ser testado com um protocolo estável.
+- **teste**: o host pode ser testado com um protocolo estável.
 
 ### 2.3 O que não resolve
 
 Um processo separado **não é uma sandbox de segurança**. Uma DLL
-maliciosa pode, ainda assim:
+maliciosa ainda pode:
 
-- ler ficheiros acessíveis ao utilizador;
-- abrir ligações de rede;
+- ler arquivos acessíveis ao usuário;
+- abrir conexões de rede;
 - consumir CPU e memória;
 - apagar dados.
 
@@ -71,47 +71,47 @@ Portanto:
 
 - DLL **trusted**: host separado por estabilidade;
 - DLL **não trusted**: host separado **mais** sandbox do sistema
-  operativo, ou nenhuma DLL.
+  operacional, ou nenhuma DLL.
 
 O Hagar não deve apresentar o host como garantia de segurança contra código
 hostil.
 
-### 2.4 Porquê não usar LibreOffice ou outros converters
+### 2.4 Por que não usar LibreOffice ou outros converters
 
 Não são invocados `libreoffice`, `poppler`, `7zip`, `ffmpeg` ou
-semelhantes. São converters complexos, com superfícies de ataque amplas,
+similares. São converters complexos, com superfícies de ataque amplas,
 dependências de sistema e comportamentos difíceis de confinar.
 
-A document tool pode usar uma biblioteca Python ou uma DLL, mas não uma
-aplicação externa que abre e converte o documento.
+O document tool pode usar uma biblioteca Python ou uma DLL, mas não um
+aplicativo externo que abre e converte o documento.
 
-## 3. Objetivos e não-objetivos
+## 3. Objetivos e não objetivos
 
 ### Objetivos
 
-- reconhecer o formato de um ficheiro na sandbox;
+- reconhecer o formato de um arquivo na sandbox;
 - construir um grafo navegável de estrutura e semântica;
-- extrair conteúdos a pedido, de forma bounded;
-- isolar os parser nativos;
-- manter o grafo efémero;
-- permitir o acrescento de formatos sem modificar a ferramenta;
+- extrair conteúdos sob demanda, de forma bounded;
+- isolar os parsers nativos;
+- manter o grafo efêmero;
+- permitir a adição de formatos sem modificar o tool;
 - não reconstruir o documento.
 
-### Não-objetivos
+### Não objetivos
 
-- converter um documento noutro formato;
-- recriar o ficheiro original;
+- converter um documento em outro formato;
+- recriar o arquivo original;
 - conservar o grafo como memória permanente;
 - executar macro, JavaScript ou código contido no documento;
-- garantir o reconhecimento de "qualquer" formato;
-- expor percursos host ao modelo.
+- garantir o reconhecimento de “qualquer” formato;
+- expor paths do host ao modelo.
 
-## 4. Interface modelo-ferramenta
+## 4. Interface modelo-tool
 
 ### 4.1 Operações
 
 `path` é um path da sandbox Hagar, na forma
-`/home/ai/<alias>/...`; o modelo nunca recebe um path host.
+`/home/ai/<alias>/...`; o modelo nunca recebe um path do host.
 
 ```text
 document.analyze(path, options?) -> handle + summary
@@ -138,8 +138,8 @@ document.close(handle) -> ok
 }
 ```
 
-`document.structure` devolve apenas os filhos pedidos; não a árvore
-inteira. `document.semantics` devolve os nós semânticos associados a um
+`document.structure` retorna apenas os filhos solicitados; não a árvore
+inteira. `document.semantics` retorna os nós semânticos associados a um
 nó estrutural.
 
 `document.read` é o único modo de obter conteúdo:
@@ -169,9 +169,9 @@ Para dados binários:
 
 Regras:
 
-- o offset de `read` é relativo ao locator do nó, não ao ficheiro;
+- o offset de `read` é relativo ao locator do nó, não ao arquivo;
 - `length` é obrigatório ou limitado por um default;
-- a resposta não pode ultrapassar o limite configurado;
+- a resposta não pode exceder o limite configurado;
 - `truncated` é explícito;
 - nenhuma escrita, nenhum `save`, nenhum `rebuild`.
 
@@ -180,17 +180,17 @@ Regras:
 Um handle:
 
 - é criado por `analyze`;
-- é válido apenas na sessão corrente;
+- é válido apenas na sessão atual;
 - está ligado a `sha256 + size + mtime + plugin + plugin_version +
   schema_version`;
-- é invalidado se o ficheiro mudar;
-- morre com `close`, com o fecho da sessão ou com o timeout.
+- é invalidado se o arquivo mudar;
+- morre com `close`, com o fechamento da sessão ou com o timeout.
 
 Não é um identificador persistente e não é uma memória.
 
 ### 4.3 Limites
 
-Também em desenvolvimento os limites são finitos e configuráveis:
+Mesmo em desenvolvimento os limites são finitos e configuráveis:
 
 ```text
 max_file_bytes
@@ -208,7 +208,7 @@ max_decompressed_bytes
 max_pack_depth
 ```
 
-Os valores iniciais podem ser muito largos; "infinito" não é um
+Os valores iniciais podem ser muito amplos; “infinito” não é um
 valor de configuração.
 
 ## 5. Format plugin
@@ -249,11 +249,11 @@ class FormatPlugin(Protocol):
 ```
 
 `expand` é obrigatório para os nós lazy (`array`, `record`). `read` pode
-ser uma implementação de default para os formatos não comprimidos.
+ser uma implementação default para os formatos não comprimidos.
 
 ### 5.2 DocumentSource
 
-O plugin não recebe um path host arbitrário. Recebe:
+O plugin não recebe um path do host arbitrário. Recebe:
 
 ```text
 size
@@ -263,10 +263,10 @@ open_pack(codec, offset, length) -> DocumentSource
 ```
 
 Para o runtime nativo, o host nativo recebe uma **cópia read-only
-temporária** do documento; o path original não é passado à
+temporária** do documento; o path original não é passado para a
 DLL.
 
-### 5.3 Deteção
+### 5.3 Detecção
 
 Ordem:
 
@@ -278,21 +278,21 @@ Ordem:
 Se magic e extensão estiverem em conflito:
 
 - vence o magic number;
-- é acrescentado um warning;
+- é adicionado um warning;
 - o plugin escolhido é o do magic.
 
-Se nenhum plugin ultrapassar o limiar:
+Se nenhum plugin superar o limiar:
 
 - grafo `opaque`;
 - um único nó;
-- `reason`, `sha256`, extensão e dimensão nas propriedades.
+- `reason`, `sha256`, extensão e tamanho nas propriedades.
 
 O CSV não tem magic: usa a extensão `.csv`/`.tsv` mais uma heurística sobre
 texto e delimitador.
 
-### 5.4 Registo
+### 5.4 Registro
 
-A document tool é um plugin Hagar no grupo `hagar.tools`.
+O document tool é um plugin Hagar no grupo `hagar.tools`.
 
 Os plugins de formato usam o grupo:
 
@@ -300,7 +300,7 @@ Os plugins de formato usam o grupo:
 hagar.document_formats
 ```
 
-Um entry point devolve um descritor:
+Um entry point retorna um descritor:
 
 ```python
 @dataclass(frozen=True)
@@ -313,10 +313,10 @@ class FormatPluginSpec:
 
 Para `runtime: "python"` o Hagar importa e usa o plugin in-process. Para
 `runtime: "native"` o Hagar lê o manifest, valida ABI/platform/hash
-da DLL e arranca o host nativo. A DLL nunca é carregada pelo
-processo Hagar.
+da DLL e inicia o host nativo. A DLL nunca é carregada pelo
+processo do Hagar.
 
-### 5.5 Container aninhados
+### 5.5 Containers aninhados
 
 Um `pack` pode conter outro documento. Regras:
 
@@ -324,7 +324,7 @@ Um `pack` pode conter outro documento. Regras:
 - bytes descomprimidos máximos;
 - nenhuma recursão ilimitada;
 - cada novo espaço tem um `pack_id`;
-- um pack que ultrapassa os limites torna-se `opaque`, não bloqueia o resto.
+- um pack que excede os limites torna-se `opaque`, não bloqueia o resto.
 
 ## 6. Grafo
 
@@ -387,7 +387,7 @@ ter `anchors` múltiplos se o conteúdo não for contíguo.
   pode ser `0`;
 - para conteúdos não contíguos usa-se `anchors`.
 
-Um único offset não é suficiente: sem `length` a ferramenta não conhece o
+Um único offset não é suficiente: sem `length` o tool não conhece o
 limite do dado; sem `space` um offset dentro de um pack é ambíguo.
 
 ### 6.4 Tipos estruturais
@@ -404,12 +404,12 @@ opaque
 ```
 
 - `header`: header oficial do formato;
-- `section`: secção oficial ou área declarada pelo formato;
+- `section`: seção oficial ou área declarada pelo formato;
 - `container`: agrupamento não codificado e não oficial;
 - `pack`: zona comprimida/codificada, com `codec` e `logical_root`;
-- `array`: sequência homogénea lazy, com `count`, `element_type`,
+- `array`: sequência homogênea lazy, com `count`, `element_type`,
   `materialized: false`;
-- `record`: estrutura simples, expandida a pedido;
+- `record`: estrutura simples, expandida sob demanda;
 - `opaque`: objeto desconhecido.
 
 ### 6.5 Tipos semânticos
@@ -460,7 +460,7 @@ anchored_to
 ```
 
 `contains` forma uma árvore. As outras arestas podem formar um grafo,
-também com ciclos.
+inclusive com ciclos.
 
 ### 6.7 Array lazy
 
@@ -484,7 +484,7 @@ O modelo expande:
 document.structure(handle, "n-rows", cursor=0, limit=100)
 ```
 
-O plugin implementa `expand` e devolve apenas a página pedida.
+O plugin implementa `expand` e retorna apenas a página solicitada.
 
 ### 6.8 Pack
 
@@ -506,14 +506,14 @@ Os filhos têm `space: "pack:n-pack-1"`.
 
 ## 7. CSV MVP
 
-### 7.1 Deteção
+### 7.1 Detecção
 
 - extensão `.csv` ou `.tsv`;
 - conteúdo textual;
 - delimitador coerente;
 - confiança mínima.
 
-Se o ficheiro for `.csv` mas não for textual ou não tiver uma estrutura tabular
+Se o arquivo for `.csv` mas não for textual ou não tiver uma estrutura tabular
 coerente, o resultado é `opaque` com warning.
 
 ### 7.2 Grafo
@@ -535,7 +535,7 @@ A raiz `document` tem locator `{file, 0, size}`.
 O array `rows` tem `count`, `element_type: record`,
 `materialized: false`.
 
-Cada `record` é expandido a pedido. Cada célula é um nó `text` com
+Cada `record` é expandido sob demanda. Cada célula é um nó `text` com
 `encoding`, `role: cell` e locator preciso.
 
 A tabela semântica contém:
@@ -553,10 +553,10 @@ A tabela semântica contém:
 document.read(handle, "n-cell-2-1")
 ```
 
-devolve o valor descodificado da célula, não o ficheiro inteiro.
+retorna o valor decodificado da célula, não o arquivo inteiro.
 
-Para um campo entre aspas com newline, o locator cobre os bytes em bruto; a
-descodificação e o unescaping ocorrem no plugin.
+Para um campo entre aspas com newline, o locator cobre os bytes brutos; a
+decodificação e o unescaping ocorrem no plugin.
 
 ### 7.4 Limites CSV
 
@@ -582,13 +582,13 @@ Hagar
         └── uma DLL de formato
 ```
 
-Um host por plugin nativo. O host é arrancado no primeiro uso, faz
+Um host por plugin nativo. O host é iniciado no primeiro uso, faz
 handshake, carrega a DLL e permanece ativo enquanto o plugin estiver em uso.
 
 ### 8.2 Transporte
 
 - JSON Lines UTF-8 em stdin/stdout;
-- um pedido ou resposta por linha;
+- uma requisição ou resposta por linha;
 - stdout reservado ao protocolo;
 - log em stderr;
 - um único comando em voo por host;
@@ -620,7 +620,7 @@ Host:
 }
 ```
 
-Se `protocol` ou `abi` não corresponderem, o host é recusado.
+Se `protocol` ou `abi` não corresponderem, o host é rejeitado.
 
 ### 8.4 Comandos
 
@@ -706,7 +706,7 @@ Para dados binários `data` é base64 e `encoding` é `base64`.
 {"id": "6", "op": "shutdown"}
 ```
 
-`close` destrói o estado do documento; `shutdown` termina o host.
+`close` destrói o estado do documento; `shutdown` encerra o host.
 
 ### 8.5 Erros
 
@@ -736,12 +736,12 @@ internal_error
 abi_mismatch
 ```
 
-Um erro de parsing não deve terminar o host: o documento torna-se
+Um erro de parsing não deve encerrar o host: o documento torna-se
 `opaque` com warning, se possível.
 
 ### 8.6 ABI C
 
-A DLL expõe uma ABI C versionada, não a API Python. Funções concetuais:
+A DLL expõe uma ABI C versionada, não a API Python. Funções conceituais:
 
 ```c
 typedef struct {
@@ -791,8 +791,8 @@ Regras ABI:
 
 - apenas tipos C e buffer com comprimento;
 - nenhum tipo Python, C++ STL ou exceções através da fronteira;
-- ownership dos buffer explícita;
-- `hagar_document_free` para libertar a resposta;
+- ownership dos buffers explícita;
+- `hagar_document_free` para liberar a resposta;
 - a DLL não escreve em stdout;
 - versão ABI obrigatória;
 - platform/arch declarados no manifest.
@@ -812,22 +812,22 @@ Regras ABI:
 }
 ```
 
-Um manifest nativo é registado no mesmo registry dos plugins de
-formato; o runtime adapter arranca o host.
+Um manifest nativo é registrado no mesmo registry dos plugins de
+formato; o runtime adapter inicia o host.
 
 ## 9. Segurança
 
-- a ferramenta resolve o path através da sandbox Hagar;
-- o modelo nunca recebe um path host;
-- o ficheiro é aberto em só de leitura;
+- o tool resolve o path através da sandbox Hagar;
+- o modelo nunca recebe um path do host;
+- o arquivo é aberto em somente leitura;
 - o documento não é executado;
 - macro, JavaScript e anexos não são executados;
-- os container têm limites de profundidade e de bytes descomprimidos;
-- o host nativo tem timeout e é terminado se não responder;
-- o host nativo não é uma fronteira de segurança contra DLL maliciosas;
+- os containers têm limites de profundidade e de bytes descomprimidos;
+- o host nativo tem timeout e é encerrado se não responder;
+- o host nativo não é uma fronteira de segurança contra DLLs maliciosas;
 - para DLL não trusted é necessária uma sandbox de SO ou a recusa;
 - o grafo está em memória e não é escrito no Vault;
-- a auditoria registra formato, plugin, hash, dimensão e warning, não o
+- o audit registra formato, plugin, hash, tamanho e warning, não o
   conteúdo.
 
 ## 10. Alternativas descartadas
@@ -835,26 +835,26 @@ formato; o runtime adapter arranca o host.
 ### DLL in-process
 
 Descartada: um crash nativo mata o Hagar; a ABI é frágil; a sandbox
-aplicacional não protege a memória.
+de aplicação não protege a memória.
 
-### Converter externos
+### Converters externos
 
 Descartada: LibreOffice/poppler/7zip têm dependências e superfícies de
-ataque demasiado grandes, e não são confináveis de forma simples.
+ataque grandes demais, e não são confináveis de forma simples.
 
 ### Grafo persistente
 
 Descartada: o documento é a fonte de verdade; o grafo é derivado e
 grande. A persistência introduz invalidação, privacidade e storage.
 
-### Uma ferramenta por formato
+### Um tool por formato
 
-Descartada: o modelo teria de conhecer os formatos. A ferramenta única
+Descartada: o modelo precisaria conhecer os formatos. O tool único
 `document` mantém a interface estável.
 
 ### Offset sem length
 
-Descartada: não permite ler um intervalo, gerir pack ou
+Descartada: não permite ler um intervalo, gerenciar pack ou
 conteúdos não contíguos.
 
 ## 11. Testes
@@ -865,11 +865,11 @@ conteúdos não contíguos.
 - estrutura, semântica, read;
 - array lazy e paginação;
 - handle fechado/invalidado;
-- ficheiro modificado;
+- arquivo modificado;
 - formato desconhecido → opaque;
-- ficheiro corrompido → opaque com warning;
-- limite ultrapassado;
-- path fora da sandbox recusado.
+- arquivo corrompido → opaque com warning;
+- limite excedido;
+- path fora da sandbox rejeitado.
 
 ### Plugin
 
@@ -879,8 +879,8 @@ conteúdos não contíguos.
 - handshake ABI errado;
 - host que crasha;
 - host que não responde (timeout);
-- output grafo inválido;
-- `read` acima dos limites.
+- output de grafo inválido;
+- `read` além dos limites.
 
 ### CSV
 
@@ -889,16 +889,16 @@ conteúdos não contíguos.
 - BOM e UTF-8;
 - header sim/não;
 - linhas com colunas diferentes;
-- ficheiro muito grande com array lazy.
+- arquivo muito grande com array lazy.
 
 ## 12. Pontos abertos
 
 1. Valores iniciais dos limites.
-2. Gestão de encoding não UTF-8 (fallback, warning ou erro).
+2. Tratamento de encoding não UTF-8 (fallback, warning ou erro).
 3. Definição exata do tipo `table` para CSV: header opcional,
-   colunas duplicadas, tipos deduzidos.
-4. Política de fecho automático dos handle.
+   colunas duplicadas, tipos inferidos.
+4. Policy de fechamento automático dos handles.
 5. Host nativo: sandbox de SO para DLL não trusted.
-6. Cache dos grafos: nenhuma no MVP; avaliar no futuro.
+6. Cache dos grafos: nenhum no MVP; avaliar no futuro.
 7. Eventual suporte a vários documentos abertos no mesmo turno.
 8. Formatos seguintes: PDF, DOCX, XLSX, PE, DXF.

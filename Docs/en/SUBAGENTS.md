@@ -1,7 +1,7 @@
 # Subagents — asynchronous phase
 
 **Status:** implemented
-**Date:** 2026-11-07
+**Date:** 2026-11-07  
 **Tools:** `agent.spawn`, `agent.status`, `agent.wait`, `agent.result`,
 `agent.cancel`, `agent.run` (synchronous compatibility), `artifact.*`,
 `mailbox.*`
@@ -22,8 +22,8 @@ agent.cancel(agent_id) -> ok
 the results when needed. `agent.run` remains as a `spawn + wait`
 shortcut for compatibility.
 
-`reason` is mandatory: it is recorded in the audit and is the motivation
-for which the parent delegates the work. The tool requires the `AGENT_SPAWN`
+`reason` is mandatory: it is recorded in the audit and is the reason
+why the parent delegates the work. The tool requires the `AGENT_SPAWN`
 capability; the child does not receive it, so it cannot create others.
 `permissions.agents: true` is the necessary system ceiling.
 
@@ -41,20 +41,20 @@ If the parent has no evaluator, the spawn is refused.
 
 Every agent has a **5-minute** (`300` seconds) wall timeout. The
 limit is cooperative: it is checked at the checkpoints of the agent loop;
-it does not interrupt an HTTP call already in progress. On expiry the state of the
-child is `timed_out` and the audit records `agent.timed_out`.
+it does not interrupt an HTTP call already in progress. On expiry the
+child's state is `timed_out` and the audit records `agent.timed_out`.
 
 Every child:
 
 - uses the same local model as the parent, but a separate LLM client;
 - has a separate registry;
-- sees only the tools with `FILESYSTEM_READ`,
-  `MEMORY_READ` and `COMPUTE` capability, plus `AGENT_DATA`;
+- sees only the tools with the `FILESYSTEM_READ`,
+  `MEMORY_READ` and `COMPUTE` capabilities, plus `AGENT_DATA`;
 - can use `vision.open` on its own workspace, but not
   `agent.*` or `filesystem.chdir`;
 - reads only its own workspace;
-- does not write to the memory;
-- forwards the ASK requests to the user through a bridge, with a 180-second
+- does not write to memory;
+- forwards ASK requests to the user through a bridge, with a 180-second
   timeout and DENY on expiry.
 
 The parent LLM cannot approve an ASK: the request always goes to the human
@@ -157,7 +157,7 @@ At the end of the turn the store and the mailbox are emptied.
 - no token budget beyond `max_tool_calls`;
 - no dedicated GUI;
 - no memory writes;
-- child ASKs forwarded to the user with 180-second timeout; on
+- child ASKs forwarded to the user with a 180-second timeout; on
   expiry DENY;
 - artifacts and mailbox are ephemeral: they disappear at the end of the turn;
 - the child's internal events (`turn.*`, `tool.*`) have `agent_id` in

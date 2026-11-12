@@ -1,6 +1,6 @@
 # HAGAR — Manual de usuario
 
-Versión: **0.5.2**
+Versión: **0.7.0**
 
 Este manual describe el comportamiento observable de Hagar: comandos,
 opciones, configuración, policy y casos de error. Para el proyecto interno
@@ -65,6 +65,7 @@ modelo**: Hagar responde `Comando sconosciuto` y sugiere `/help`.
 | `/usage` | muestra los tokens consumidos en la sesión |
 | `/models ...` | fichas, benchmarks y hardware para el broker |
 | `/models hardware` | detecta CPU, RAM y GPU de la máquina |
+| `/undo` | anula las modificaciones del último turno |
 | `/mcp` | enumera servidores MCP, endpoints y tool importados |
 | `/audit [n]` | muestra los últimos `n` eventos; default 10, máximo 50 |
 | `exit` | sale |
@@ -153,6 +154,7 @@ hagar web [opciones]
 | `--free` | inicia en actividad libre |
 | `--no-memory` | desactiva memoria y proyectos para la sesión |
 | `--no-native-tools` | fuerza el protocolo JSON textual |
+| `--hifi` | activa el pre-paso de interpretación y aclaración |
 | `--host HOST` | host de la GUI web (default `127.0.0.1`) |
 | `--port PORT` | puerto de la GUI web (default `8765`) |
 | `--version` | imprime la versión |
@@ -548,6 +550,90 @@ Si un servidor MCP falla:
 - los demás servidores y el resto del harness continúan;
 - `/mcp` muestra cero tool para ese namespace.
 
+## 4.10 `hifi`
+
+```yaml
+hifi:
+  enabled: true
+  margin: 0.20
+  interpretations: 3
+```
+
+`margin` es la distancia mínima, en puntos porcentuales, entre la primera y la
+segunda interpretación. Por debajo de ese umbral Hagar pide aclaración.
+`interpretations` es el número de interpretaciones solicitadas al modelo.
+La modalidad añade una llamada LLM por cada turno.
+
+## 4.11 `tools`
+
+```yaml
+tools:
+  timeout: 120
+  repeat_limit: 3
+```
+
+`timeout` es el límite en segundos para una sola tool call; `0` lo
+deshabilita. `repeat_limit` bloquea la tercera llamada idéntica en el mismo
+turno; `0` deshabilita el bloqueo. El timeout de un handler Python ya en
+ejecución es best effort: el worker puede terminar después del límite.
+
+## 4.12 `dev`
+
+```yaml
+dev:
+  enabled: false
+  recipes: recipes.yaml
+  copy_workspace: true
+  max_output_chars: 100000
+```
+
+Habilita `dev.list` y `dev.run`, que ejecutan recetas fiables para tests,
+debug y build. `recipes.yaml` debe estar fuera de la sandbox y se lee solo
+al inicio. También hace falta la capability `DEV_EXEC` en policy.
+Detalles en `DEV_RUN.md`.
+
+## 4.13 `boxes`
+
+```yaml
+boxes:
+  enabled: false
+  max_input_chars: 200000
+  max_output_chars: 20000
+  chunk_chars: 8000
+  max_calls: 20
+```
+
+Habilita `box.list` y `box.run`, transformaciones LLM bounded sobre archivos
+de la sandbox. No tienen memoria, tool ni prompt libre. Hace falta `BOX_EXEC`
+en policy. Detalles en `BOXES.md`.
+
+## 4.14 `flow`
+
+```yaml
+flow:
+  enabled: false
+  max_source_chars: 20000
+  max_steps: 10000
+  max_tool_calls: 50
+  max_loop_iterations: 1000
+  timeout: 120
+  max_output_chars: 20000
+  repair_attempts: 2
+```
+
+Habilita `flow.reference`, `flow.validate` y `flow.run`, el DSL lineal
+`Hagar Flow`. No es Python completo: nada de import, class, def, lambda,
+try, comprensión de dict/set ni acceso a objetos Python; se admiten
+list comprehension con un solo `for`. Hace falta `FLOW_EXEC` en policy; las
+primitivas `fs.*` usan las capability de filesystem.
+
+`repair_attempts` es el número máximo de intentos de `flow.repair`;
+`0` deshabilita la reparación. `flow.run` nunca repara el código por sí
+solo: devuelve el error y el llamador decide si usar `flow.repair`.
+Con la memoria activa están disponibles `memory.search`, `memory.context`
+y `memory.skill`; con un proyecto activo `project.context`.
+Detalles en `FLOW.md`.
+
 ---
 
 # 5. `policy.yaml`
@@ -614,6 +700,10 @@ muestra `lo faccio? (y/N)` y el default es `N`.
 | `NETWORK` | acceso de red |
 | `MCP_CALL` | llamada a tool MCP |
 | `COMPUTE` | cálculo local sin red/sistema de archivos |
+| `AISH` | ejecución del lenguaje AIsh |
+| `DEV_EXEC` | ejecución de recetas dev.run |
+| `BOX_EXEC` | ejecución de boxed transform |
+| `FLOW_EXEC` | ejecución del DSL Hagar Flow |
 
 ## 5.3 Reglas y especificidad
 
@@ -626,6 +716,10 @@ Una regla puede filtrar con:
 Vence la regla más específica: primero el número de filtros, después la
 longitud del prefijo. En caso de empate vence el efecto más restrictivo.
 Sin reglas vale el `default` del sujeto; el default seguro es `deny`.
+
+`AISH` está denegada por la regla predefinida `aish.*`. Para habilitar AIsh
+el usuario debe cambiar esa regla a `allow`; los comandos internos
+siguen sujetos a las reglas de sus respectivos tool.
 
 El scope `paths` compara la ruta **escrita por el modelo**, no la
 resuelta tras `chdir`: una ruta absoluta o un cambio de directorio puede no
@@ -662,6 +756,10 @@ existe:
 | Tool en `ASK` sin confirmación | rechazo |
 | Límite de escritura superado | error del tool, ninguna escritura |
 | Archivo de más de 4096 bytes con `read_file` | error, usar `read_chunk` |
+| `write_file`/`edit_file`/`delete_file`/`rename` sobre un archivo no leído | error: leer primero el archivo |
+| Archivo cambiado después de la lectura | error: releer antes de modificarlo |
+| `edit_file` con `old_string` ambiguo | error: usar `replace_all` o una cadena más específica |
+| `edit_file` con `old_string` ausente | error, ninguna modificación |
 | Página por encima del límite | `has_more`/`next_offset` |
 | Symlink | invisible; operación como ruta inexistente |
 | Hard link/mount/junction | no detectados; responsabilidad del usuario |

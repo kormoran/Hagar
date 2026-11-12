@@ -5,6 +5,120 @@ reference to the commit when useful.
 
 ---
 
+# 0.7.0 — 2026-11-12
+
+## Summary
+
+Local orchestration release: `dev.run` recipes, boxed transform,
+Hagar Flow DSL and list comprehensions. Container mode remains out of
+this release.
+
+## dev.run recipes
+
+- New `dev.list` and `dev.run` for trusted test, debug and
+  build recipes; `DEV_EXEC` is DENY by default.
+- `recipes.yaml` outside the sandbox, loaded once at start-up,
+  without hot reload; every change requires a restart.
+- Typed parameters, `cwd`, timeout, explicit environment, exit code,
+  limited output and audit.
+- Host execution on a temporary copy of the project, without shell and
+  without container.
+
+## Boxed transform
+
+- New `box.list` and `box.run` for `summarize`, `translate` and
+  `extract_json`; `BOX_EXEC` is DENY by default.
+- Input/output in the sandbox, fixed prompt, no memory or tool,
+  chunking for long documents and JSON validation.
+- Output written with the read-before-write gate.
+
+## Hagar Flow
+
+- New `flow.reference`, `flow.validate` and `flow.run`; `FLOW_EXEC` is
+  DENY by default.
+- Restricted Python DSL with AST validator and interpreter without
+  `eval`/`exec`; no import, class, def, lambda, try, dict/set
+  comprehension or access to Python objects.
+- List comprehension with a single `for` and optional `if`, with local
+  scope and iteration budget.
+- `fs.*`, `box.*`, `memory.search`, `memory.context`,
+  `memory.skill` and `project.context` primitives, with step, tool call,
+  iteration and timeout budgets; errors with line and column.
+
+## Explicit repair
+
+- New `flow.repair`: proposes a valid correction without executing it.
+- `flow.run` never modifies the code and never calls the model to
+  repair it.
+- `flow.repair` does not repair runtime, policy, confirmation or
+  timeout errors.
+- Every attempt is recorded in the audit and in the result.
+
+# 0.6.0 — 2026-11-09
+
+## Summary
+
+Runtime security and controlled interaction release: Hi-Fi, atomic
+edit, read-before-write, checkpoints, timeout, repeat guard, spill,
+compaction, AIsh and text.transform.
+
+## Breaking changes
+
+- `write_file`, `edit_file`, `delete_file` and `rename` require a
+  previous read in the same sandbox and refuse changed files.
+- `filesystem.write_file`, `write_bytes`, `create_file` and `edit_file`
+  use atomic writing.
+- `tools.timeout` is 120 seconds by default; `tools.repeat_limit`
+  blocks the third identical call of the same turn.
+- AIsh is present but `AISH` is denied by the default policy.
+
+## Hi-Fi mode
+
+- New `core/hifi.py` pre-pass: the model proposes interpretations
+  with probabilities, Hagar chooses the most probable one if the margin
+  exceeds the threshold or asks for clarification.
+- Activation with `--hifi` or `hifi.enabled: true`; `hifi.margin` and
+  `hifi.interpretations` configurable.
+- Audit events `hifi.interpretations`, `hifi.resolved`,
+  `hifi.clarification` and `hifi.failed`.
+
+## Filesystem edit and observation
+
+- New `filesystem.edit_file`: literal replacement with a unique match
+  (or `replace_all`), atomic writing through a temporary file and
+  `os.replace`.
+- `read_file`, `read_chunk` and `read_bytes` record the observed
+  version; `write_file`, `edit_file`, `delete_file` and `rename`
+  require a previous read and refuse changed files.
+- `write_file`, `write_bytes`, `create_file` and `edit_file` use
+  atomic writing.
+
+## Checkpoint, timeout, spill and compaction
+
+- Per-turn checkpoint of the modified files, with `/undo` and
+  `workspace.undo`.
+- `tools.timeout` per single tool call and `tool.timeout`; the timeout
+  is best effort.
+- Repeat guard `tools.repeat_limit` on the `tool + arguments` hash,
+  with `tool.repeat` audit.
+- Output spill to the `ArtifactStore` beyond 12,000 characters, with
+  `tool.spilled`.
+- Deterministic context compaction beyond 24,000 characters, with
+  `context.compacted`.
+
+## AIsh
+
+- New `aish.exec`: whitelisted language (`pwd`, `ls`, `cat`,
+  `grep`, text pipelines, single-file mutations) that compiles every
+  command into Hagar tools; no subprocess and no host path.
+- `AISH` capability with a default `DENY` rule; the user must
+  enable it explicitly in `policy.yaml`.
+- `aish.command` audit; internal commands keep policy, checkpoint
+  and audit of the underlying tools.
+- New read-only `text.transform` with `grep`, `sort`,
+  `uniq`, `cut`, `tr`, `wc`, `head`, `tail`, `sed_replace` operations;
+  AIsh uses the tool for the text commands and adds a restricted `sed`.
+
 # 0.5.2 — 2026-11-08
 
 ## Summary

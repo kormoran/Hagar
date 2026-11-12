@@ -1,6 +1,6 @@
 # HAGAR — Manual do utilizador
 
-Versão: **0.5.2**
+Versão: **0.7.0**
 
 Este manual descreve o comportamento observável do Hagar: comandos,
 opções, configuração, políticas e casos de erro. Para o projeto interno,
@@ -34,17 +34,19 @@ New-Item -ItemType Directory -Force vault, logs
 hagar --config hagar.yaml
 ```
 
-`hagar.yaml`, `testvault/` e `logs/` são locais e não devem ser versionados.
+`hagar.yaml`, `testvault/` e `logs/` são locais e não devem ser
+colocados no controlo de versões.
 
 ## 1.1 Ordem de arranque
 
 1. O Hagar lê a configuração.
 2. Carrega `policy.yaml`; se não for válido, aplica `DENY` a tudo.
 3. Constrói o cliente LLM.
-4. Inicializa o Vault e a memória, se configurados.
-5. Constrói a sandbox do file system.
+4. Inicializa o Vault e a memória, se estiverem configurados.
+5. Constrói a sandbox do sistema de ficheiros.
 6. Regista as ferramentas locais.
-7. Tenta carregar os servidores MCP; um servidor com falha não para os outros.
+7. Tenta carregar os servidores MCP; um servidor com falha não impede os
+   restantes.
 8. Mostra a escolha do projeto.
 9. Entra no ciclo de chat.
 
@@ -60,11 +62,12 @@ modelo**: o Hagar responde `Comando sconosciuto` e sugere `/help`.
 | Comando | Comportamento |
 |---|---|
 | `/help` ou `/?` | lista os comandos disponíveis |
-| `/tools [categoria]` | lista as ferramentas e as capability; o filtro é opcional |
-| `/status` | mostra modelo, projeto, memória, auditoria e sandbox |
+| `/tools [categoria]` | lista as ferramentas e as capabilities; o filtro é opcional |
+| `/status` | mostra o modelo, o projeto, a memória, a auditoria e a sandbox |
 | `/usage` | mostra os tokens consumidos na sessão |
 | `/models ...` | fichas, benchmarks e hardware para o broker |
-| `/models hardware` | deteta CPU, RAM e GPU da máquina |
+| `/models hardware` | deteta a CPU, a RAM e a GPU da máquina |
+| `/undo` | anula as alterações do último turno |
 | `/mcp` | lista servidores MCP, endpoints e ferramentas importadas |
 | `/audit [n]` | mostra os últimos `n` eventos; predefinição 10, máximo 50 |
 | `exit` | sai |
@@ -73,7 +76,7 @@ modelo**: o Hagar responde `Comando sconosciuto` e sugere `/help`.
 | `Ctrl-C` | interrompe; durante OAuth sai com código 130 |
 
 `/status` e `/audit` são comandos humanos: não passam pelo modelo e não
-consomem tool calls.
+consomem chamadas de ferramentas.
 
 ## 2.2 Projeto
 
@@ -90,8 +93,8 @@ consomem tool calls.
 
 `select` e `archive` usam o **id** do projeto, não o título.
 
-Em atividade livre não é lida nem escrita memória de projeto; chat,
-summary e skill continuam disponíveis.
+Em atividade livre não é lida nem escrita memória de projeto; o chat, o
+summary e as skills continuam disponíveis.
 
 ## 2.3 Memória
 
@@ -100,7 +103,7 @@ summary e skill continuam disponíveis.
 | `/memory` ou `/memory help` ou `/memory ?` | ajuda |
 | `/memory list [candidate\|confirmed\|archived]` | lista as skills e as contagens |
 | `/memory show <slug>` | mostra uma skill |
-| `/memory search <texto>` | procura nas memórias SQLite |
+| `/memory search <texto>` | pesquisa nas memórias SQLite |
 | `/memory sessions` | lista os chats registados |
 | `/memory chat <session>` | mostra os turnos de um chat |
 | `/memory reindex` | otimiza/reconstrói os índices SQLite |
@@ -111,11 +114,11 @@ summary e skill continuam disponíveis.
 | `/memory review` | revisão interativa das candidatas |
 | `/memory confirm <slug>` | confirma uma skill |
 | `/memory archive <slug>` | arquiva uma skill |
-| `/memory archive search <texto>` | procura nos transcripts arquivados |
+| `/memory archive search <texto>` | pesquisa nos transcripts arquivados |
 | `/memory archive read <session> [offset] [limit]` | lê um transcript arquivado |
 
 As palavras `search` e `read` são reservadas: um slug de skill chamado
-exatamente `search` ou `read` não é arquivável com este comando.
+exatamente `search` ou `read` não pode ser arquivado com este comando.
 
 Não existe um comando de eliminação: apenas se arquiva.
 
@@ -151,8 +154,9 @@ hagar web [opções]
 | `--model NAME` | substitui `model.name` |
 | `--project NAME` | seleciona um projeto ativo no arranque |
 | `--free` | arranca em atividade livre |
-| `--no-memory` | desativa memória e projetos para a sessão |
+| `--no-memory` | desativa a memória e os projetos para a sessão |
 | `--no-native-tools` | força o protocolo JSON textual |
+| `--hifi` | ativa o pré-passo de interpretação e esclarecimento |
 | `--host HOST` | host da GUI web (predefinição `127.0.0.1`) |
 | `--port PORT` | porta da GUI web (predefinição `8765`) |
 | `--version` | imprime a versão |
@@ -168,20 +172,20 @@ hagar --config hagar.yaml web --port 8765
 
 Abre uma GUI local em `http://127.0.0.1:8765/`.
 
-- O servidor foi pensado para um único utilizador local: predefinição `127.0.0.1`.
+- O servidor destina-se a um único utilizador local: predefinição `127.0.0.1`.
 - O browser recebe um token aleatório na página; as API exigem-no
   no cabeçalho `X-Hagar-Token`.
-- O chat mostra turnos, tool call, resultados e confirmações ASK.
+- A chat mostra turnos, chamadas de ferramentas, resultados e confirmações ASK.
 - No topo estão os separadores **Chat**, **Chat history**, **Tool output**,
   **Audit** e **Thinking**.
 - **Chat history** lista os chats anteriores, uma linha por chat; um clique
-  retoma o chat: o transcript é recarregado da base de dados e os novos
+  retoma a chat: o transcript é recarregado da base de dados e os novos
   turnos são acrescentados à mesma sessão.
 - O botão **+ Novo chat** abre uma nova sessão e limpa o
-  contexto; o chat anterior permanece no histórico.
-- **Memories** é um browser só de leitura das notas indexadas
-  (skill, projetos, decisões); permite pesquisa e abertura do texto.
-- **Tool output** mostra os tool call e os resultados da sessão.
+  contexto; a chat anterior permanece no histórico.
+- **Memories** é um navegador só de leitura das notas indexadas
+  (skills, projetos, decisões); permite pesquisar e abrir o texto.
+- **Tool output** mostra as chamadas de ferramentas e os resultados da sessão.
 - **Audit** mostra os eventos do log; se a auditoria estiver desativada o separador fica
   desativado e mostra `audit off`.
 - **Thinking** mostra o reasoning exposto pelo provider, se existir; em
@@ -192,17 +196,17 @@ Abre uma GUI local em `http://127.0.0.1:8765/`.
   para os modelos vision. O WebP é convertido em PNG na GUI porque o LM
   Studio não o aceita diretamente. As imagens não são guardadas
   na memória nem na auditoria: ao modelo chega o data URL, não o
-  caminho host.
+  caminho no host.
 - A barra lateral em baixo mostra os tokens acumulados da sessão: input,
   output e total.
 - O modelo pode carregar imagens da sandbox com `vision.open`;
   a imagem é anexada ao turno, não devolvida como base64 no
   contexto.
 - As confirmações ASK são modais: o turno fica à espera e o servidor
-  continua a responder. Um timeout equivale a recusa. Os pedidos dos
+  continua a responder. Um timeout equivale a uma recusa. Os pedidos dos
   subagentes mostram `agent_id` e `parent_id`; o pai LLM não as pode
   aprovar. O timeout do subagente é de 180 segundos.
-- Na CLI só uma thread possui o input. Quando está ativa uma confirmação,
+- Na CLI, apenas uma thread detém o input. Quando está ativa uma confirmação,
   o título do terminal pede atenção e são aceites `F5` =
   allow, `F8` = deny, além de `y/N`. Se o terminal não suportar as teclas
   de função, restam `y/N` e a GUI.
@@ -223,8 +227,8 @@ Ordem:
 3. `./hagar.yaml` na diretoria atual
 
 Os caminhos relativos dentro de `hagar.yaml` — auditoria, política, Vault — são
-resolvidos relativamente à diretoria do ficheiro de configuração, não à
-diretoria a partir da qual lanças o Hagar.
+resolvidos em relação à diretoria do ficheiro de configuração, não à
+diretoria a partir da qual o Hagar é iniciado.
 
 ## 3.2 Códigos de saída
 
@@ -267,7 +271,7 @@ filesystem:
 | `host` | default do provider | base URL da API |
 | `native_tools` | `true` | se `false`, usa o protocolo JSON textual |
 | `max_tokens` | `1024` | usado apenas pelo Claude |
-| `timeout` | `120` | timeout HTTP em segundos para cada chamada |
+| `timeout` | `120` | timeout HTTP em segundos por chamada |
 | `api_key_env` | nome padrão | variável de ambiente da chave |
 
 Providers e chaves:
@@ -283,19 +287,19 @@ Providers e chaves:
 
 As chaves nunca devem ser escritas no YAML. Se faltar uma chave, o cliente
 não é construído e o arranque falha com um erro explícito. O LM Studio
-não exige chave, a menos que o servidor local esteja configurado para
+não exige chave, exceto se o servidor local estiver configurado para
 a exigir. `chatgpt` é um alias de `openai`: a subscrição ChatGPT não
-dá acesso à API, são necessários uma chave OpenAI e crédito API.
+dá acesso à API; são necessários uma chave OpenAI e crédito API.
 
-Com o LM Studio, a chamada nativa de ferramentas depende do modelo e do seu
+Com o LM Studio, o tool calling nativo depende do modelo e do seu
 template. Se o modelo aceitar o pedido mas responder em texto em vez
 de emitir `tool_calls`, o Hagar não consegue executar a ferramenta: usar
 `model.native_tools: false` ou um modelo tool-capable.
 
-Com a chamada nativa ativa, o Hagar usa as ferramentas estruturadas do
+Com o calling nativo ativo, o Hagar usa as ferramentas estruturadas do
 provider. Se o provider recusar o esquema (HTTP 400/404/422), no primeiro
-passo passa ao protocolo JSON textual para essa sessão. O fallback
-cobre o erro técnico, não garante que o modelo escolha bem a ferramenta.
+passo passa para o protocolo JSON textual para essa sessão. O fallback
+cobre o erro técnico, mas não garante que o modelo escolha bem a ferramenta.
 
 ## 4.2 `audit`
 
@@ -318,9 +322,9 @@ audit:
 | `max_files` | `100` | ficheiros rodados a conservar |
 | `include_outputs` | `true` | se `false`, redige o output das ferramentas |
 
-A auditoria contém dados sensíveis: output de ficheiros, respostas e textos. Tem de
-ser protegida como o workspace. `/audit` mostra apenas os eventos do ficheiro
-atual, não os rodados.
+A auditoria contém dados sensíveis: output de ficheiros, respostas e textos.
+Tem de ser protegida como o workspace. `/audit` mostra apenas os eventos do
+ficheiro atual, não os que já foram rodados.
 
 Eventos principais: `harness.start`, `turn.start`, `llm.tool_choice`,
 `tool.call`, `tool.result`, `turn.answer`, `permission.decision`,
@@ -350,7 +354,7 @@ vault:
   path: ./vault
 ```
 
-Com o backend SQLite só é usado pelo backend Markdown legacy e pelos
+Com o backend SQLite, é usado apenas pelo backend Markdown legacy e pelos
 projetos legacy. Com `memory.backend: sqlite` pode até não existir.
 
 ## 4.5 `memory`
@@ -379,7 +383,7 @@ memory:
 | `context_turns` | `10` | turnos recentes injetados; `0` desativa |
 | `context_skills` | `3` | skills confirmadas injetadas |
 | `context_project_memories` | `10` | títulos de decisões ativas |
-| `max_context_chars` | `6000` | budget do bloco de memória |
+| `max_context_chars` | `6000` | orçamento do bloco de memória |
 | `project_max_active` | `200` | limiar de manutenção do projeto |
 | `summary_max_chars` | `4000` | comprimento máximo do summary |
 | `max_skill_chars` | `4000` | comprimento máximo de uma skill |
@@ -396,8 +400,8 @@ Com `backend: sqlite` a base de dados predefinida é:
 ou `HAGAR_MEMORY_DB`. O SQLite usa WAL, transações e `VACUUM INTO` para o
 backup; o Vault não é atualizado.
 
-O budget é em **caracteres**, não em tokens. Quando o bloco é
-cortado, a auditoria registra `memory.context_trimmed`.
+O orçamento é em **caracteres**, não em tokens. Quando o bloco é
+cortado, a auditoria regista `memory.context_trimmed`.
 
 ## 4.6 `filesystem`
 
@@ -426,7 +430,7 @@ Permissões:
 
 | Letra | Cobre |
 |---|---|
-| `R` | ler, listar, procurar, `stat` |
+| `R` | ler, listar, pesquisar, `stat` |
 | `W` | escrever, criar, renomear, copiar, apagar |
 | `X` | `chdir` na diretoria |
 
@@ -463,12 +467,12 @@ permissions:
   agents: false
 ```
 
-São o **teto de sistema**. Default: `read=true`, os outros `false`.
+São o **teto de sistema**. Predefinição: `read=true`, os restantes `false`.
 
 | Campo | Concede |
 |---|---|
-| `read` | file system read, memory read |
-| `write` | file system write/create/delete, memory write |
+| `read` | leitura do sistema de ficheiros, leitura de memória |
+| `write` | escrita/criação/eliminação no sistema de ficheiros, escrita de memória |
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
 | `agents` | `AGENT_SPAWN` e `AGENT_DATA`, para `agent.*`/`artifact.*`/`mailbox.*` |
@@ -548,6 +552,90 @@ Se um servidor MCP falhar:
 - os outros servidores e o resto do harness continuam;
 - `/mcp` mostra zero ferramentas para esse namespace.
 
+## 4.10 `hifi`
+
+```yaml
+hifi:
+  enabled: true
+  margin: 0.20
+  interpretations: 3
+```
+
+`margin` é a distância mínima, em pontos percentuais, entre a primeira e a
+segunda interpretação. Abaixo desse limiar, o Hagar pede esclarecimento.
+`interpretations` é o número de interpretações pedidas ao modelo.
+O modo acrescenta uma chamada LLM por turno.
+
+## 4.11 `tools`
+
+```yaml
+tools:
+  timeout: 120
+  repeat_limit: 3
+```
+
+`timeout` é o limite em segundos para uma única chamada de ferramenta; `0`
+desativa-o. `repeat_limit` bloqueia a terceira chamada idêntica no mesmo
+turno; `0` desativa o bloqueio. O timeout de um handler Python já em
+execução é best effort: o worker pode terminar depois do limite.
+
+## 4.12 `dev`
+
+```yaml
+dev:
+  enabled: false
+  recipes: recipes.yaml
+  copy_workspace: true
+  max_output_chars: 100000
+```
+
+Ativa `dev.list` e `dev.run`, que executam receitas fidedignas para testes,
+depuração e builds. `recipes.yaml` tem de estar fora da sandbox e é
+lido apenas no arranque. Também é necessária a capability `DEV_EXEC` na
+política. Detalhes em `DEV_RUN.md`.
+
+## 4.13 `boxes`
+
+```yaml
+boxes:
+  enabled: false
+  max_input_chars: 200000
+  max_output_chars: 20000
+  chunk_chars: 8000
+  max_calls: 20
+```
+
+Ativa `box.list` e `box.run`, transformações LLM limitadas sobre ficheiros
+da sandbox. Não têm memória, ferramentas nem prompt livre. É necessária
+`BOX_EXEC` na política. Detalhes em `BOXES.md`.
+
+## 4.14 `flow`
+
+```yaml
+flow:
+  enabled: false
+  max_source_chars: 20000
+  max_steps: 10000
+  max_tool_calls: 50
+  max_loop_iterations: 1000
+  timeout: 120
+  max_output_chars: 20000
+  repair_attempts: 2
+```
+
+Ativa `flow.reference`, `flow.validate` e `flow.run`, a DSL linear
+`Hagar Flow`. Não é Python completo: sem import, class, def, lambda,
+try, compreensões de dict/set ou acesso a objetos Python; são permitidas
+list comprehensions com um único `for`. É necessária `FLOW_EXEC` na
+política; as primitivas `fs.*` usam as capabilities do sistema de ficheiros.
+
+`repair_attempts` é o número máximo de tentativas de `flow.repair`;
+`0` desativa a reparação. `flow.run` nunca repara o código sozinho:
+devolve o erro e o chamador decide se usa `flow.repair`.
+Com a memória ativa estão disponíveis `memory.search`, `memory.context`
+e `memory.skill`; com um projeto ativo, `project.context`.
+Detalhes em `FLOW.md`.
+
 ---
 
 # 5. `policy.yaml`
@@ -594,11 +682,11 @@ subjects:
 | `ask` | é necessária uma confirmação humana |
 | `deny` | a ferramenta não é executada |
 
-Ordem de gravidade: `DENY > ASK > ALLOW`. Com várias capability pedidas
+Ordem de gravidade: `DENY > ASK > ALLOW`. Com várias capabilities pedidas
 vale o AND: vence o efeito pior.
 
-`ASK` sem canal de confirmação equivale a `DENY`. A confirmação da consola
-mostra `lo faccio? (y/N)` e o default é `N`.
+`ASK` sem canal de confirmação equivale a `DENY`. A confirmação pela consola
+mostra `lo faccio? (y/N)` e a predefinição é `N`.
 
 ## 5.2 Capability
 
@@ -613,7 +701,11 @@ mostra `lo faccio? (y/N)` e o default é `N`.
 | `MEMORY_WRITE` | escrita de memória |
 | `NETWORK` | acesso de rede |
 | `MCP_CALL` | chamada a ferramenta MCP |
-| `COMPUTE` | cálculo local sem rede/file system |
+| `COMPUTE` | cálculo local sem rede/sistema de ficheiros |
+| `AISH` | execução da linguagem AIsh |
+| `DEV_EXEC` | execução de receitas dev.run |
+| `BOX_EXEC` | execução de boxed transform |
+| `FLOW_EXEC` | execução da DSL Hagar Flow |
 
 ## 5.3 Regras e especificidade
 
@@ -623,13 +715,17 @@ Uma regra pode filtrar com:
 - `paths`: prefixos sobre o caminho escrito pelo modelo;
 - `namespaces`: prefixos sobre o namespace.
 
-Vence a regra mais específica: primeiro o número de filtros, depois a
-longitude do prefixo. Em caso de empate vence o efeito mais restritivo.
-Sem regras vale o `default` do sujeito; o default seguro é `deny`.
+Vence a regra mais específica: primeiro o número de filtros, depois o
+comprimento do prefixo. Em caso de empate vence o efeito mais restritivo.
+Sem regras vale o `default` do sujeito; a predefinição segura é `deny`.
+
+`AISH` é negada pela regra predefinida `aish.*`. Para ativar AIsh,
+o utilizador tem de mudar essa regra para `allow`; os comandos internos
+continuam sujeitos às regras das respetivas ferramentas.
 
 O scope `paths` compara o caminho **escrito pelo modelo**, não o
-resolvido após `chdir`: um caminho absoluto ou uma mudança de diretoria pode não
-corresponder e produz `DENY` (fail closed).
+resolvido após `chdir`: um caminho absoluto ou uma mudança de diretoria pode
+não corresponder e produz `DENY` (fail closed).
 
 ## 5.4 Erros
 
@@ -637,7 +733,7 @@ Se `policy.yaml` for inválido, faltar uma capability ou o sujeito não
 existir:
 
 - o Hagar aplica `DENY` a todas as políticas;
-- registra `policy.failed`;
+- regista `policy.failed`;
 - mostra um aviso;
 - não executa nenhuma ferramenta.
 
@@ -662,6 +758,10 @@ existir:
 | Ferramenta em `ASK` sem confirmação | recusa |
 | Limite de escrita ultrapassado | erro da ferramenta, nenhuma escrita |
 | Ficheiro acima de 4096 bytes com `read_file` | erro, usar `read_chunk` |
+| `write_file`/`edit_file`/`delete_file`/`rename` num ficheiro não lido | erro: ler primeiro o ficheiro |
+| Ficheiro alterado após a leitura | erro: reler antes de o modificar |
+| `edit_file` com `old_string` ambíguo | erro: usar `replace_all` ou uma string mais específica |
+| `edit_file` com `old_string` ausente | erro, nenhuma modificação |
 | Página acima do limite | `has_more`/`next_offset` |
 | Symlink | invisível; operação como caminho inexistente |
 | Hard link/mount/junction | não detetados; responsabilidade do utilizador |
@@ -683,7 +783,7 @@ Na saída, se a memória estiver ativa e houver turnos:
 4. se houver um projeto, o LLM propõe decisões candidatas;
 5. o utilizador pode revê-las; se recusar, ficam candidatas.
 
-Se não houver turnos não é criado nenhum summary.
+Se não houver turnos, não é criado nenhum summary.
 
 ## 6.2 O que o Hagar não faz
 
@@ -691,7 +791,7 @@ Se não houver turnos não é criado nenhum summary.
 - não dá ao modelo caminhos físicos;
 - não garante isolamento de SO: a sandbox é path-based;
 - não controla hard link, mount, junction ou TOCTOU;
-- não apaga chats ou skills por antiguidade;
+- não elimina chats ou skills por antiguidade;
 - não cifra o Vault;
 - não promove automaticamente uma skill ou uma decisão a verdade.
 
@@ -699,20 +799,20 @@ Se não houver turnos não é criado nenhum summary.
 
 # 7. Segurança operacional
 
-- O modelo não é fidedigno: políticas e confirmações são os controlos.
+- O modelo não é fidedigno: a política e as confirmações são os controlos.
 - A base de dados SQLite contém conversas e decisões: tem de ser protegida.
 - A auditoria pode conter output de ficheiros: tem de ser protegida.
 - As chaves API ficam apenas no ambiente.
 - Os tokens MCP/OAuth ficam em caches locais com permissões restritas.
 - Não expor o Ollama ou o LM Studio na rede sem necessidade.
-- Um hard link ou um mount dentro de uma diretoria allowed pode expor
+- Um hard link ou um mount dentro de uma diretoria permitida pode expor
   conteúdos externos: o Hagar não os deteta.
 
 ---
 
 # 8. Troubleshooting
 
-| Sintoma | Controlo |
+| Sintoma | Verificação |
 |---|---|
 | `Policy: DENY ALL` | validar `policy.yaml` e `policy.path` |
 | `Memory: disabled` | verifica `memory.database` e as permissões |

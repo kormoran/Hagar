@@ -1,18 +1,18 @@
-# Fichas técnicas de los modelos
+# Tarjetas de modelo
 
 **Estado:** implementado
 **Comandos:** `/models list`, `/models show`, `/models test`, `/models hardware`
 
 ## Propósito
 
-Las fichas alimentan el futuro broker LLM con datos medidos, no con
-suposiciones. Una ficha por proveedor/modelo se guarda como JSON en:
+Las tarjetas alimentan el futuro broker LLM con datos medidos, no con
+suposiciones. Se guarda una tarjeta por proveedor/modelo como JSON en:
 
 ```text
 %LOCALAPPDATA%/Hagar/models/<provider>/<provider>-<model>.json
 ```
 
-o bien `HAGAR_MODEL_CARDS`, o `$XDG_STATE_HOME/hagar/models`.
+o bien en `HAGAR_MODEL_CARDS`, o en `$XDG_STATE_HOME/hagar/models`.
 
 ## Formato
 
@@ -88,22 +88,22 @@ o bien `HAGAR_MODEL_CARDS`, o `$XDG_STATE_HOME/hagar/models`.
 }
 ```
 
-`last_tested_at` está siempre presente y se actualiza en cada `/models test`.
+`last_tested_at` siempre está presente y se actualiza en cada `/models test`.
 
 ## Qué mide
 
 - latencia de chat: min, media, p50, p95, max;
-- tokens de output por segundo;
-- validez JSON;
-- elección válida en el conjunto de las label;
+- tokens de salida por segundo;
+- validez del JSON;
+- elección válida dentro del conjunto de etiquetas;
 - tool calling con un tool de benchmark;
 - hardware en el momento de la prueba.
 
-Aún no mide:
+Todavía no mide:
 
 - calidad semántica de las respuestas;
 - calibración de las probabilidades;
-- precisión sobre un dataset específico;
+- exactitud sobre un dataset específico;
 - TTFT en streaming;
 - carga concurrente;
 - consumo energético.
@@ -117,7 +117,7 @@ Aún no mide:
 /models hardware
 ```
 
-`/models test` prueba el modelo LLM actual y guarda la ficha.
+`/models test` prueba el modelo LLM actual y guarda la tarjeta.
 
 ## Hardware
 
@@ -127,22 +127,22 @@ Aún no mide:
 - Linux: `/proc/cpuinfo`, `/proc/meminfo`, `/sys/class/drm`, `nvidia-smi`;
 - macOS: `sysctl`, `system_profiler`.
 
-Los campos no detectables quedan `null`, no cero. La ausencia de un dato no
-significa que el hardware no exista.
+Los campos que no se pueden detectar quedan en `null`, no en cero. La
+ausencia de un dato no significa que el hardware no exista.
 
 ## Uso futuro en el broker
 
-El broker usará la ficha para filtrar y ordenar:
+El broker usará la tarjeta para filtrar y ordenar:
 
 ```text
 capabilities solicitadas
 hardware disponible
 RAM/VRAM suficientes
 latencia p50/p95
-coste
+costo
 localidad
 última prueba
 ```
 
-Una ficha antigua no debe borrarse: debe marcarse como caducada o
+Una tarjeta antigua no debe borrarse: debe marcarse como caducada o
 volverse a probar.

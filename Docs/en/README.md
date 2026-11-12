@@ -236,6 +236,44 @@ local linear classifier. Details in [DECISIONS.md](DECISIONS.md).
 a JSON card with the hardware and the date of the last test. Details in
 [MODEL_CARDS.md](MODEL_CARDS.md).
 
+## 3.8 Hi-Fi mode
+
+With `--hifi` Hagar asks the model for three interpretations of the request
+and, if the two most likely ones are too close, asks for clarification
+instead of answering. Details in [HIFI.md](HIFI.md).
+
+## 3.9 Checkpoints, timeouts and context
+
+Hagar saves a checkpoint of the files modified during the turn, limits
+tool calls, spills large outputs and prunes old context.
+Details in [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
+
+## 3.10 AIsh
+
+`aish.exec` is a restricted semantic shell: commands are translated
+into Hagar tools, not executed as programs. It is **DENY by default** and must be
+explicitly enabled in `policy.yaml`. Details in [AISH.md](AISH.md).
+Textual transformations use [text.transform](TEXT_TRANSFORM.md).
+
+## 3.11 Development recipes
+
+`dev.run` runs trusted recipes for tests, debug and build, without a shell and
+without arbitrary commands. It is **DENY by default** and requires `DEV_EXEC`.
+Details in [DEV_RUN.md](DEV_RUN.md).
+
+## 3.12 Boxed transform
+
+`box.run` runs bounded LLM transformations (`summarize`, `translate`,
+`extract_json`) without memory, tools or free prompt. It is **DENY by default**
+and requires `BOX_EXEC`. Details in [BOXES.md](BOXES.md).
+
+## 3.13 Hagar Flow
+
+`flow.run` runs a validated linear subset of Python interpreted by Hagar,
+without imports, functions, try or access to Python objects. It is **DENY by
+default** and requires `FLOW_EXEC`. Details in
+[FLOW.md](FLOW.md).
+
 ---
 
 # 4. Documentation
@@ -250,6 +288,15 @@ are: Italian, English, Spanish, Portuguese, Chinese, Russian. Each language has 
 - [ROADMAP.md](ROADMAP.md) — Features planned for implementation, decisions already made
   and still open questions.
 - [PLUGINS.md](PLUGINS.md) — contracts for tool and LLM provider plugins.
+- [HIFI.md](HIFI.md) — interpretation and clarification pre-pass.
+- [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoints, timeouts, spill and compaction.
+- [AISH.md](AISH.md) — restricted semantic shell and DENY policy.
+- [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — bounded textual transformations.
+- [DEV_RUN.md](DEV_RUN.md) — recipes for tests, debug and build.
+- [BOXES.md](BOXES.md) — bounded LLM transformations.
+- [FLOW.md](FLOW.md) — restricted DSL and interpreter.
+- [DECISIONS.md](DECISIONS.md) — decision tools and providers.
+- [MODEL_CARDS.md](MODEL_CARDS.md) — cards, benchmarks and hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — document tool specification,
   semantic graph, format plugins and native host.
 - [SUBAGENTS.md](SUBAGENTS.md) — subagent MVP, isolation and limits.

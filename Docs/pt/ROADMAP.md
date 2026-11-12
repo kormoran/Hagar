@@ -1,130 +1,40 @@
 # HAGAR — Roadmap
 
-Versão corrente: 0.5.2 (em preparação)
-Última atualização: 2026-11-07
+Versão corrente: 0.7.0 (em desenvolvimento)
+Última atualização: 2026-11-09
 
 As decisões tomadas são indicadas como tal; os pontos ainda em aberto são
-listados no fim de cada área. As secções 1–9 são o histórico até
-à 0.5.2; o plano operativo corrente é a secção 0.
+elencados no fim de cada área. As secções 1–9 são o histórico até
+à 0.6.0; o plano operativo corrente é a secção 0.
 
 ---
 
-# 0. Plano corrente (post-0.5.2)
+# 0. Plano corrente (post-0.6.0)
 
-## 0.1 Estado
-
-Publicado:
-
-- release GitHub `v0.3.0`;
-- CI Linux/macOS/Windows com Python 3.11, 3.12 e 3.13;
-- actions atualizadas para Node 24;
-- documentação italiana mais traduções em inglês, espanhol, chinês,
-  russo, português e árabe;
-- backend `lmstudio`, `openai`/`chatgpt` e `model.timeout`.
-
-Concluído depois da release, ainda não lançado:
-
-- `HarnessService`: turnos, estado, projetos, eventos e fim de sessão sem
-  `input()`/`stdout`;
-- `CommandService`: `/help`, `/tools`, `/status`, `/mcp`, `/audit`,
-  `/project`, `/memory` com `CommandResult` estruturado;
-- event bridge `Agent`/`ToolRegistry` → `tool.call`, `tool.result`,
-  `permission.*`;
-- GUI web local `hagar web` com SSE, chat, projetos, estado e confirmações
-  ASK modais;
-- `QueueConfirmationProvider` com timeout e resolução pela GUI;
-- `core/usage.py`: parsing de tokens para OpenAI/LM Studio/DeepSeek, Claude,
-  Gemini e Ollama; `UsageLedger` por sessão;
-- barra lateral da GUI com tokens input/output/total atualizados via
-  `usage.updated`;
-- `MemoryIndex`: índice SQLite/FTS5 incremental e reconstruível;
-- memória SQLite como fonte primária: sessões, turnos, skills e summary;
-- comandos `/memory sessions`, `/memory chat`, `/memory backup`;
-- ferramenta `memory.search`, `/memory search`, `/memory reindex`,
-  `/memory stats`;
-- assets da GUI separados em `web/index.html`, `web/style.css`, `web/app.js`.
-
-## 0.2 Ordem das próximas releases
+## 0.1 Ordem das próximas releases
 
 | Release | Objetivo | Estado |
 |---|---|---|
-| **0.4.0** | Índice SQLite das memórias | integrado na 0.5.2 |
-| **0.4.x** | GUI: stop do turno, histórico, vision | integrado na 0.5.2 |
-| **0.5.0** | Subagentes | integrado na 0.5.2 |
-| **0.5.2** | Release corrente | em preparação |
-| **0.6.0** | Broker LLM | próximo |
-| **0.7.0** | Ferramenta SQL read-only | congelado |
+| **0.6.0** | Runtime safety + AIsh | lançada |
+| **0.7.0** | dev.run + box + Hagar Flow | em desenvolvimento |
+| **0.8.0** | Broker LLM | próximo |
+| **0.9.0** | Ferramenta SQL read-only | congelado |
 
 A ordem pode mudar, mas a restrição é: **nada de subagentes sem usage e
 limites; nada de broker sem subagentes e model registry.**
 
-## 0.3 0.4.0 — Índice SQLite das memórias
+## 0.1.1 0.7.0 — Orquestração local
 
-Estado: implementado; falta a verificação no Vault real e a eventual
-medição das prestações.
+- `dev.run` com receitas fidedignas fora da sandbox;
+- `box.list` e `box.run` para transformações LLM bounded;
+- `flow.run`, `flow.validate` e `flow.reference`;
+- list comprehension com um único `for`;
+- primitivas de memória read-only: `memory.search`, `memory.context`,
+  `memory.skill` e `project.context`;
+- repair explícito com `flow.repair`;
+- nada de container mode nesta release.
 
-- posição: dados locais da aplicação, não dentro do Vault sincronizado;
-- esquema: notas, skills, decisões, sessões, tags, FTS5;
-- sync incremental por path/hash/mtime;
-- `rebuild()` atómico, índice apagável e reconstruível;
-- fallback à pesquisa lexical se o FTS5 não estiver disponível;
-- ferramenta `memory.search` com filtros projeto/kind/status;
-- `/memory reindex` e `/memory stats`;
-- nenhum caminho real exposto ao modelo.
-
-Critério de saída: apagar a BD não perde memória; reconstruí-la
-devolve os mesmos resultados.
-
-## 0.4 0.4.x — GUI
-
-- botão **Stop** do turno — implementado;
-- vision: upload de imagem no composer, com adapter por provider —
-  implementado (OpenAI/LM Studio, Claude, Gemini);
-- histórico de chat visível depois de um refresh — implementado como lista
-  dos chats anteriores com recarga do Vault, retoma da sessão e
-  **+ Novo chat**;
-- separadores Chat, Chat history, Tool output, Audit, Thinking e Memories —
-  implementados; Audit desativa-se se o log estiver desligado, Thinking usa o
-  reasoning se disponível e, caso contrário, a timeline;
-- browser de memórias em só de leitura — implementado;
-- comando `/usage` do lado da CLI — implementado;
-- ferramentas e providers LLM como plugins com entry point — implementado;
-  audit sink adiado.
-
-A vision não deve entrar na memória como base64: apenas hash e
-descrição.
-
-## 0.5 0.5.x — Subagentes e consolidação
-
-- [x] MVP síncrono: `AgentSpec`, `agent.run`, ferramentas read-only, memória
-  read-only, confirmações negadas, auditoria `agent.*`, usage separado;
-- [x] `agent.spawn/status/wait/result/cancel` com threads e até dois
-  subagentes concorrentes;
-- [x] registry e workspace privado por child, input copiados e cleanup;
-- [x] auditoria serializada com lock;
-- [x] `reason` obrigatório e capability `AGENT_SPAWN` separada;
-- [x] artifact store, mailbox e outbox `artifact.put`/`mailbox.send`,
-  com capability `AGENT_DATA` e cleanup;
-- [x] auditoria `artifact.discarded` para artifact não exportados;
-- [ ] persistência/orphan retention (apenas se necessária);
-- [x] projetos e decisões na mesma base de dados SQLite;
-- [x] export Markdown da base de dados (`/memory export`);
-- [x] import Markdown para a base de dados (`/memory import`);
-- [x] FTS5 na base de dados primária com ranking e snippet;
-- [x] timeout de parede de 5 minutos por subagente;
-- [x] política do child estritamente mais restritiva que a do pai;
-- [x] `agent_id` nos eventos de pai, filhos e registry;
-- [x] ASK dos filhos encaminhadas ao utilizador com timeout 180 segundos e DENY;
-- [x] ferramenta `decision.choose` com provider LLM e classificador linear;
-- [ ] adapter Jev/Kev e treino automático de classificadores;
-- [ ] budget de tokens/custo;
-- [ ] `parent_id` em cada evento interno do child;
-- [ ] `audio.open`/`AudioInput`: o canal de anexos é partilhado com as
-  imagens, mas são necessários providers audio-native, formatos e semântica ASR
-  diferentes; sem timeline;
-- [x] confirmações ASK da consola com input broker, F5/F8 e fallback GUI;
-
-## 0.6 0.6.0 — Broker LLM
+## 0.2 0.8.0 — Broker LLM
 
 - fichas técnicas JSON e benchmarks dos modelos (`/models test`);
 - deteção de hardware CPU/RAM/GPU (`/models hardware`);
@@ -136,7 +46,7 @@ descrição.
 - o broker nunca concede permissões: só pode propor um subconjunto;
 - override humano e auditoria `broker.decision`.
 
-## 0.7 0.7.0 — Ferramenta SQL
+## 0.3 0.8.0 — Ferramenta SQL
 
 - apenas leitura na primeira versão;
 - SQLite `mode=ro`, `PRAGMA query_only`, uma única instrução;
@@ -147,21 +57,73 @@ descrição.
 - escrita e base de dados de rede apenas numa fase posterior, com
   `DATABASE_WRITE` e `NETWORK`.
 
-## 0.8 Pontos abertos
+## 0.4 Pontos em aberto
 
 - workflow de release idempotente se a release já existir;
-- PyPI: adiado, não bloqueia a 0.4;
-- MCP OAuth Atlassian: Basic funciona, o fluxo OAuth falta
-  validar;
+- PyPI: adiado;
+- MCP OAuth Atlassian: Basic funciona, o fluxo OAuth falta validar;
 - testes live MCP/OAuth e providers remotos;
 - manutenção das traduções: regeneram-se apenas na release, não a
   cada commit;
-- concorrência e escritas atómicas do Vault: a avaliar antes de
-  subagentes com memória partilhada;
 - document tool: contrato e protocolo definidos em `DOCUMENT_TOOL.md`;
   MVP CSV ainda por implementar.
 
-## 0.9 Documentação
+## 0.4.1 Versão completa filesystem — congelada
+
+Implementado agora:
+
+- `edit_file` com escrita atómica;
+- checkpoint do turno e `/undo`;
+- timeout por ferramenta e repeat guard;
+- output spill e compaction do contexto.
+
+O MVP implementado cobre `edit_file`, escrita atómica,
+read-before-overwrite/delete/rename e versão `mtime_ns+size`.
+A versão completa está congelada; não entra na próxima release:
+
+- `edit_file` com patch de vários hunks e diff;
+- hash do conteúdo além de `mtime_ns`/`size`;
+- escrita atómica com controlo CAS ao nível do filesystem;
+- observação por agente individual com isolamento explícito entre pai e
+  subagentes;
+- auditoria `fs.observed`, `fs.guard_denied`, `fs.stale`;
+- cobertura de rename/delete de diretorias;
+- integração GUI e mensagens de recuperação guiada.
+
+## 0.4.2 AIsh — implementada na 0.6.0
+
+`aish.exec` é uma shell semântica sobre as ferramentas Hagar, com política
+`DENY` predefinida. Comandos implementados: navegação, leitura, texto puro,
+pipeline e mutações de ficheiros individuais. Não executa programas host,
+redirecionamentos, variáveis ou command substitution.
+`text.transform` fornece as operações textuais bounded usadas pela AIsh.
+
+## 0.4.3 dev.run — implementado
+
+`dev.list` e `dev.run` executam receitas fidedignas para testes, debug e build.
+O `recipes.yaml` está fora da sandbox, é lido no arranque e não tem
+hot reload. `DEV_EXEC` é DENY por predefinição; o backend é apenas host.
+
+O container continua congelado para um futuro acesso direto a
+filesystem/programas reais, nunca dentro da sandbox.
+
+## 0.4.4 Boxed transform — implementadas
+
+`box.list` e `box.run` executam `summarize`, `translate` e
+`extract_json` com prompt fixo, input/output em ficheiro e nenhuma memória
+ou ferramenta. `BOX_EXEC` é DENY por predefinição.
+
+São as primitivas do futuro DSL.
+
+## 0.4.5 Hagar Flow — MVP
+
+`flow.run` executa um subconjunto linear de Python com validador AST e
+interpretador Hagar, sem `eval`/`exec`. Primitivas `fs.*` e `box.*`, limites
+de step e tool call. `FLOW_EXEC` é DENY por predefinição.
+
+HIR, paralelismo e subagentes ficam fora do MVP.
+
+## 0.5 Documentação
 
 `Docs/it` é a única fonte mantida durante o desenvolvimento. As diretorias
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` e `Docs/ar` são
@@ -169,25 +131,7 @@ regeneradas apenas quando se prepara uma release.
 
 ---
 
-# 1. Direção
-
-O Hagar passou de "ideia" a "sistema funcional" (v0.1) e depois a um
-harness com auditoria, backend múltiplos e suite de testes (v0.2 em curso). O
-próximo salto não é acrescentar ferramentas: é dar ao sistema uma **memória** e
-uma forma de chamar as ferramentas menos frágil do que o JSON textual.
-
-Ordem decidida:
-
-1. memória no Vault;
-2. chamada nativa para os providers que a suportam;
-3. PermissionEvaluator — **v1 feita** (policy.yaml, ASK, auditoria);
-4. higiene (auditoria, MCP, packaging, testes live).
-
----
-
-# 2. Prioridade 1 — Memória no Vault
-
-## 2.0 Estado: v2 implementada (2026-11-04)
+## 1.0 Estado: v2 implementada (2026-11-04)
 
 Realizado:
 
@@ -220,7 +164,7 @@ Realizado:
 
 Faltam: retention dos chats, pesquisa semântica, GUI.
 
-## 2.1 Decisões tomadas
+## 1.1 Decisões tomadas
 
 - **Episódica escrita pelo harness.** Os turnos de chat são registados
   pelo harness por predefinição: é um registo mecânico, não um juízo do
@@ -247,7 +191,7 @@ Faltam: retention dos chats, pesquisa semântica, GUI.
 - **Arquivo, não eliminação.** Transcripts e decisões arquivadas
   permanecem no Vault; o arquivo de um projeto é reversível.
 
-## 2.2 Ferramentas previstas
+## 1.2 Ferramentas previstas
 
 Nomes implementados no namespace `memory.*`:
 
@@ -282,7 +226,7 @@ Comportamentos:
   procura por palavras-chave nos turnos passados; `limit` é limitado a
   1..50 para não despejar todo o Vault no contexto.
 
-## 2.3 Estrutura no Vault
+## 1.3 Estrutura no Vault
 
 ```text
 <Vault>/Hagar/
@@ -325,7 +269,7 @@ created_at: 2026-11-03T00:15:02+01:00
 Passos / conteúdo proposto pelo modelo.
 ```
 
-## 2.4 Configuração
+## 1.4 Configuração
 
 ```yaml
 vault:
@@ -339,7 +283,7 @@ memory:
   max_skill_chars: 4000
 ```
 
-## 2.5 Comportamento do harness
+## 1.5 Comportamento do harness
 
 - No fim do turno: acrescenta pergunta e resposta à nota de sessão (apenas
   conversa, **não** output das ferramentas: esses ficam na auditoria).
@@ -353,7 +297,7 @@ memory:
 - A memória episódica é separada da auditoria: a auditoria permanece forense e
   contém também os dados das ferramentas.
 
-## 2.6 Pontos abertos
+## 1.6 Pontos em aberto
 
 - **Retention chat**: quantas sessões conservar, se resumir as
   antigas; a 0.2.0 não apaga nada.
@@ -368,7 +312,7 @@ memory:
   `project_max_active`; hoje o Hagar propõe o arquivo, não o
   merge das decisões duplicadas.
 
-## 2.7 Não objetivos (para já)
+## 1.7 Não objetivos (para já)
 
 - escrita de memórias no filesystem real;
 - modificação de notas existentes do utilizador;
@@ -378,23 +322,12 @@ memory:
 
 ---
 
-# 3. Prioridade 2 — Chamada nativa (v1, feita)
+## 2 Objetivo
 
-**Estado:** implementado em 2026-11-03. `native_step()` para os quatro
-providers, esquema dos parâmetros de `ToolDefinition`, mensagens canónicas
-`tool`, várias chamadas por turno, fallback automático em HTTP 400/404/422
-e `--no-native-tools`. Verificado live em Ollama e DeepSeek; Claude e
-Gemini faltam testar. Medido com `tools/bench_native.py`: nenhum
-protocolo vence em todos os modelos (nativo mais rápido, texto por vezes mais
-preciso). Falta afinar para os modelos locais que ignoram as ferramentas.
+Eliminar a fragilidade do protocolo JSON textual: fim das reparações,
+argumentos validados pelo esquema do provider, resultados estruturados.
 
-## 3.1 Objetivo
-
-Eliminar a fragilidade do protocolo JSON textual: fim das
-reparações, argumentos validados pelo esquema do provider, resultados
-estruturados.
-
-## 3.2 Abordagem
+## 2.1 Abordagem
 
 - Manter o protocolo textual como **fallback** para os modelos que
   não suportam a chamada nativa ou que o fazem mal.
@@ -405,7 +338,7 @@ estruturados.
 - O benchmark mede a melhoria (reparações por turno,
   correção dos argumentos).
 
-## 3.3 Transporte por provider
+## 2.2 Transporte por provider
 
 | provider | pedido | resultado da ferramenta |
 |---|---|---|
@@ -414,7 +347,7 @@ estruturados.
 | `claude` | `tools` + blocos `tool_use` | bloco `tool_result` |
 | `gemini` | `tools.functionDeclarations` | `functionResponse` |
 
-## 3.4 Riscos
+## 2.3 Riscos
 
 - Os modelos locais pequenos muitas vezes não usam bem a chamada nativa:
   é necessário o fallback automático.
@@ -425,26 +358,11 @@ estruturados.
 
 ---
 
-# 4. Prioridade 3 — PermissionEvaluator
+# 3. Prioridade 3 — PermissionEvaluator
 
-## 4.1 Estado: v1 implementada
+Estado: v1 implementada
 
-Realizado:
-
-- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` e
-  `PermissionEvaluator` em `core/permissions.py`;
-- `policy.yaml` lido **antes** do LLM, com fallback a `DENY` total e
-  warning na auditoria e no chat;
-- teto de sistema derivado de `permissions.read/write/shell`;
-- scope para `tools` (glob), `paths` e `namespaces` (prefixos);
-- `ASK` com `ConsoleConfirmation` (`lo faccio? (y/N)`, default N);
-- aplicação em `ToolRegistry.execute` e auditoria de
-  `permission.decision` / `permission.confirmation`;
-- `ToolDefinition.capabilities` para todas as ferramentas (filesystem e MCP);
-- `requires_confirmation` aplicado como piso de ASK;
-- 347 testes recolhidos, 1 skip.
-
-## 4.2 Faltam fazer
+## 3.1 Restam por fazer
 
 - `ConfirmationProvider` para a GUI (diálogo modal) e para a execução
   não interativa (deny por predefinição);
@@ -475,10 +393,6 @@ cat workspace://project/readme.md
 find *.py
 ```
 
-Os percursos virtuais resolveriam também a exposição dos percursos
-absolutos da sandbox.
-
----
 
 # 6. Higiene e robustez
 
@@ -496,18 +410,12 @@ Feita (2026-11-03):
   `include_outputs: false`.
 - **Audit retention**: backups com timestamp e `audit.max_files` (predefinição
   100, inclui o ficheiro ativo) com pruning dos mais antigos.
-- **Testes live**: marker `live`, excluídos por predefinição, `--live` para Ollama
-  e providers remotos (estes últimos skipped sem chave).
-- **Packaging**: metadados completos, entry point `hagar`, `--config`,
-  `--model`, `--no-memory`, `--version`, versão única.
 - **URL base**: `model.host` vale para todos os providers.
-- **Legacy**: removidos `tools/filesystem.py` e `llm/tool_result.py`.
 
 Faltam:
 
 - device flow / DPoP para MCP OAuth;
 - compactação das sessões de auditoria;
-- confirmações GUI para `ASK`;
 - alinhamento contínuo da documentação.
 
 ---
@@ -521,20 +429,6 @@ Faltam:
 - agente pessoal permanente;
 - providers adicionais (OpenAI é quase gratuito: mesmo cliente do DeepSeek
   com um base URL diferente).
-
----
-
-# 8. Ordem de trabalho
-
-1. Memória v2: feita (ciclo de vida, review CLI, injeção de confirmadas);
-   faltam retention de chat, pesquisa semântica e GUI.
-2. PermissionEvaluator: v1 feita; faltam confirmações GUI e políticas
-   dinâmicas.
-3. Higiene: feita (packaging, testes live, MCP auth/OAuth, auditoria com
-   retention, base URL, legacy).
-4. Chamada nativa: v1 feita; falta a medição com o benchmark.
-5. Release 0.3.0: preparada para GitHub, com CI multiplataforma e
-   workflow de release.
 
 ---
 
@@ -556,7 +450,7 @@ Estado a 2026-11-05:
   permissões por mount (`R`/`W`/`X`);
 - runner POSIX `tools/run_tests.sh` ao lado do do Windows.
 
-Pontos abertos:
+Pontos em aberto:
 
 - DNS rebinding: a resolução é validada, mas `requests` resolve
   de novo o nome no momento da ligação; é necessário um resolver

@@ -1,6 +1,6 @@
 # HAGAR — 架构
 
-版本：0.5.2
+版本：0.7.0
 最后更新：2026-11-03
 
 ---
@@ -293,6 +293,7 @@ filesystem:
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -330,6 +331,19 @@ filesystem.stat
 `write_file` 只覆盖已存在的文件；创建要通过
 `create_file`，它需要 `create` 权限。无法通过写入
 一个新路径来绕过创建禁令。
+
+`read_file`、`read_chunk` 和 `read_bytes` 会记录文件的一个已观测
+版本。`write_file`、`edit_file`、`delete_file` 和 `rename` 要求
+该文件已在同一 sandbox 中被读取，且版本在此期间没有
+变化。版本是 `(st_mtime_ns, st_size)`：它是对盲目覆盖的
+协作式保护，而不是针对 TOCTOU 竞态的 CAS。
+
+`edit_file` 把 `old_string` 字面替换为 `new_string`。默认
+该字符串只能出现一次；`replace_all` 允许
+多次替换。写入使用同一目录中的临时文件和
+`os.replace`，因此内容永远不会被看到处于半写状态。
+同样的原子机制也用于 `write_file`、`write_bytes` 和
+`create_file`。
 
 ### 写入限制
 
@@ -867,11 +881,152 @@ capability `DECISION` 与 `COMPUTE`、`NETWORK` 和
 `FILESYSTEM_*` 分开；细节和模型格式见
 `DECISIONS.md`。Jev/Kev 尚不是原生 adapter。
 
+## 3.11.8 Hi-Fi（`core/hifi.py`）
+
+`HiFiResolver` 在智能体循环之前执行一次预检：
+
+1. 向模型询问各种解释及其概率；
+2. 规范化并排序概率；
+3. 如果第一与第二之间的差距超过 `hifi.margin`，就用所选
+   解释加上原始文本替换请求；
+4. 否则向模型提出一个澄清问题。
+
+事件 `hifi.interpretations` 记录概率和可能的
+澄清。无效 JSON 会产生 `hifi.failed`，轮次
+在没有预检的情况下继续。
+
+## 3.11.9 Checkpoint（`core/checkpoints.py`）
+
+`HarnessService.ask` 在 sandbox 上打开一个 `WorkspaceCheckpoint`。
+checkpoint 不复制 workspace：它只记录某个变更
+即将改动的文件。`delete_file`、`rename` 和 `copy_file` 还会记录
+目标。`/undo` 恢复最后一个已完成的 checkpoint。
+
+限制：32 MB 快照，仅普通文件，仅最后一个轮次。
+如果 checkpoint 不完整，undo 会被拒绝。
+
+## 3.11.10 运行时防护与上下文（`core/tool_registry.py`、`core/context.py`）
+
+`ToolRegistry` 应用：
+
+- `tools.timeout` 对单次调用，通过守护 worker；
+- `tools.repeat_limit` 针对每轮 `tool + 参数` 的 hash。
+
+超时是尽力而为：已经启动的 Python handler 不会被
+杀死。repeat guard 在每次 `Agent.ask` 时清零计数。
+
+`OutputSpiller` 把超过 12,000 字符的输出移到
+`ArtifactStore`，并返回带 `artifact_id` 的摘要。
+`ContextCompactor` 在上下文超过 24,000 字符时替换较旧的消息，
+保留最后 8 条和 system 消息。
+
+## 3.11.11 AIsh（`core/aish.py`、`local_tools/aish_tool.py`）
+
+`aish.exec` 实现一种命令语言，而不是宿主 shell。
+`AishExecutor` 用 `shlex` 解析，拒绝重定向、运算符、
+变量和命令替换，并把每条命令转换为对
+`ToolRegistry` 的调用。capability `AISH` 被默认 policy 拒绝；
+启用它需要显式修改：
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+内部命令保留底层工具的规则：启用
+`aish.exec` 不会启用 `filesystem.delete_file`。
+
+## 3.11.12 `text.transform`（`local_tools/text_transform_tool.py`）
+
+只读工具，操作可枚举：`grep`、`sort`、`uniq`、`cut`、
+`tr`、`wc`、`head`、`tail`、`sed_replace`。接受 sandbox 路径
+或内联文本；对输入、输出、pattern 和 match 施加限制。
+
+Capability：
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+不写文件。AIsh 用它处理文本命令；结果的
+保存走 `filesystem.write_file`/`create_file`，并带
+read-before-write gate。
+
+## 3.11.13 `dev.run`（`core/dev_recipes.py`、`core/dev_runner.py`）
+
+`DevRecipeLoader` 在启动时只读取一次 `recipes.yaml`，
+并保留带 hash 的不可变快照。该文件必须位于
+可写 sandbox 之外。
+
+`DevRunner` 执行一个 recipe：
+
+- 校验类型化参数和 `cwd`；
+- 把项目复制到临时目录；
+- 以 `shell=False` 执行单个 argv；
+- 使用最小环境；
+- 应用超时并 kill 进程组；
+- 分离 stdout/stderr；
+- 限制输出；
+- 记录审计。
+
+capability `DEV_EXEC` 默认 DENY。`dev.run` 不接受任意
+命令，也不使用容器：recipe 是受信的；sandbox 不
+隔离宿主进程。容器仍为将来直接访问真实
+文件系统/程序而保留（冻结）。
+
+## 3.11.14 Boxed transform（`core/boxes.py`）
+
+box 是带固定 prompt、输入/输出走文件、
+没有记忆、工具或自主性的有界 LLM 函数。
+
+工具：
+
+```text
+box.list
+box.run
+```
+
+初始 box：
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` 从 sandbox 读取输入，在需要处应用分块，
+调用 LLM 客户端，校验输出 JSON，并在
+read-before-write gate 下写入结果。`BOX_EXEC` 默认 DENY。
+
+## 3.11.15 Hagar Flow（`core/flow/`）
+
+`validate()` 用 `ast.parse` 解析代码，拒绝 import、类、
+函数、lambda、try、dict/set comprehension、多于
+一个 `for` 的 comprehension、dunder 和动态调用，并校验
+可用的原语。带单个 `for` 和可选 `if` 的 list comprehension
+受支持。
+
+`FlowRunner` 在没有 `eval`/`exec` 的情况下解释已验证的 AST：
+
+- 线性作用域；
+- step、迭代、工具调用和超时的预算；
+- `fs.*`、`box.*`、`memory.*` 和 `project.context` 原语由
+  内部 registry 传入；
+- 每个原语的 policy 和确认；
+- 带行和列的错误。
+
+`FLOW_EXEC` 默认 DENY。`flow.run` 从不修复代码：
+`flow.repair` 提出一个有效候选而不执行它，最多
+`flow.repair_attempts` 次尝试。运行时、policy、
+确认和超时错误不会被修复。HIR 尚未出现：
+已验证的 AST 就是 MVP 的 IR。
+
 ## 3.12 启动与打包
 
 项目用 `pip install -e .` 安装，并在
 `pyproject.toml` 中声明包。entry point 是 `hagar = "hagar:main"`。当前
-版本是 `0.5.2`。
+版本是 `0.7.0`。
 
 示例配置是 `hagar.example.yaml`；`hagar.yaml` 是一个
 被 git 忽略的本地文件。示例的默认 Vault 是
@@ -1030,9 +1185,9 @@ Python 插件是受信的，并在进程内运行；对于不受信的
 # 5. 开发
 
 - 套件：`./tools/run_tests.sh`（Linux/macOS）或
-  `.\tools\run_tests.ps1`（Windows）。在 Windows 上：832 通过，2 跳过
+  `.\tools\run_tests.ps1`（Windows）。在 Windows 上：892 通过，2 跳过
   （没有 Developer Mode 时 symlink 不可用）。在 Debian Linux
-  上（2026-11-06）：所有测试为绿，包括 symlink（743 通过，0
+  上（2026-11-12）：所有测试为绿，包括 symlink（894 通过，0
   跳过）。shim 的细节与理由见 README §3.1。
 - live 测试：`./tools/run_tests.sh --live`（Linux/macOS）或
   `.\tools\run_tests.ps1 --live`（Windows）——多 9 个测试（Ollama；

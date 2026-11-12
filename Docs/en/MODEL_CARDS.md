@@ -99,7 +99,7 @@ or `HAGAR_MODEL_CARDS`, or `$XDG_STATE_HOME/hagar/models`.
 - tool calling with a benchmark tool;
 - hardware at the time of the test.
 
-It does not yet measure:
+It does not measure yet:
 
 - semantic quality of the answers;
 - calibration of the probabilities;
@@ -127,8 +127,8 @@ It does not yet measure:
 - Linux: `/proc/cpuinfo`, `/proc/meminfo`, `/sys/class/drm`, `nvidia-smi`;
 - macOS: `sysctl`, `system_profiler`.
 
-The fields that cannot be detected remain `null`, not zero. The absence of a datum does not
-mean that the hardware does not exist.
+Fields that cannot be detected remain `null`, not zero. The absence of a
+data point does not mean that the hardware does not exist.
 
 ## Future use in the broker
 

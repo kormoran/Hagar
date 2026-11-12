@@ -1,8 +1,8 @@
 # Document tool — especificación de arquitectura
 
-**Estado:** accepted
-**Data:** 2026-11-07
-**Ámbito:** tool de análisis de documentos, plugin de formato, host nativo
+**Estado:** accepted  
+**Fecha:** 2026-11-07  
+**Ámbito:** tool de análisis de documentos, plugin de formato, host nativo  
 **MVP:** CSV
 
 ## 1. Decisión
@@ -10,15 +10,15 @@
 El document tool separa tres niveles:
 
 ```text
-modello
+modelo
   │ document.analyze / structure / semantics / read / close
   ▼
 document tool
   │ FormatPlugin
   ▼
-plugin di formato
+plugin de formato
   ├── runtime Python (in-process)
-  └── runtime nativo (host separato + DLL)
+  └── runtime nativo (host separado + DLL)
 ```
 
 La decisión principal es:
@@ -60,7 +60,7 @@ El host separado resuelve:
 ### 2.3 Qué no resuelve
 
 Un proceso separado **no es una sandbox de seguridad**. Una DLL
-malévola puede de todos modos:
+maliciosa puede de todos modos:
 
 - leer archivos accesibles al usuario;
 - abrir conexiones de red;
@@ -115,9 +115,9 @@ aplicación externa que abra y convierta el documento.
 
 ```text
 document.analyze(path, options?) -> handle + summary
-document.structure(handle, node_id?, cursor?, limit?) -> nodi strutturali
-document.semantics(handle, node_id?, cursor?, limit?) -> nodi semantici
-document.read(handle, node_id, anchor?, offset?, length?) -> contenuto
+document.structure(handle, node_id?, cursor?, limit?) -> nodos estructurales
+document.semantics(handle, node_id?, cursor?, limit?) -> nodos semánticos
+document.read(handle, node_id, anchor?, offset?, length?) -> contenido
 document.close(handle) -> ok
 ```
 
@@ -131,7 +131,7 @@ document.close(handle) -> ok
   "plugin": "csv",
   "plugin_version": "1.0",
   "root": "n-root",
-  "summary": "CSV UTF-8, delimitatore ',', 120 righe, 5 colonne",
+  "summary": "CSV UTF-8, delimitador ',', 120 filas, 5 columnas",
   "counts": {"nodes": 12, "semantic_nodes": 4},
   "warnings": [],
   "truncated": false
@@ -151,7 +151,7 @@ nodo estructural.
   "offset": 0,
   "length": 56,
   "encoding": "utf-8",
-  "text": "valore",
+  "text": "valor",
   "truncated": false
 }
 ```
@@ -308,13 +308,13 @@ class FormatPluginSpec:
     name: str
     version: str
     runtime: str          # "python" | "native"
-    manifest: str | None  # obbligatorio per native
+    manifest: str | None  # obligatorio para native
 ```
 
 Para `runtime: "python"` Hagar importa y usa el plugin in-process. Para
 `runtime: "native"` Hagar lee el manifest, valida ABI/platform/hash
-de la DLL e inicia el host nativo. La DLL nunca la carga el
-proceso Hagar.
+de la DLL e inicia el host nativo. Hagar nunca carga la DLL en su
+propio proceso.
 
 ### 5.5 Contenedores anidados
 
@@ -352,7 +352,7 @@ Un `pack` puede contener otro documento. Reglas:
   "id": "n-...",
   "kind": "structural",
   "type": "section",
-  "label": "Pagina 1",
+  "label": "Página 1",
   "locator": {
     "space": "file",
     "offset": 0,
@@ -525,9 +525,9 @@ document
       record "row 2"
         text "campo 1"
         text "campo 2"
-    semantic table "tabella"
-      semantic column "colonna A"
-      semantic column "colonna B"
+    semantic table "tabla"
+      semantic column "columna A"
+      semantic column "columna B"
 ```
 
 La raíz `document` tiene locator `{file, 0, size}`.
@@ -578,8 +578,8 @@ permitir la expansión lazy sin materializar todas las filas.
 
 ```text
 Hagar
-  └── NativeHost (processo Hagar)
-        └── una DLL di formato
+  └── NativeHost (proceso Hagar)
+        └── una DLL de formato
 ```
 
 Un host por plugin nativo. El host se inicia en el primer uso, hace
@@ -824,7 +824,7 @@ formato; el runtime adapter inicia el host.
 - macro, JavaScript y adjuntos no se ejecutan;
 - los contenedores tienen límites de profundidad y de bytes descomprimidos;
 - el host nativo tiene timeout y se termina si no responde;
-- el host nativo no es un límite de seguridad contra DLL malévolas;
+- el host nativo no es un límite de seguridad contra DLL maliciosas;
 - para DLL no trusted hace falta una sandbox de SO o el rechazo;
 - el grafo está en memoria y no se escribe en el Vault;
 - la auditoría registra formato, plugin, hash, dimensión y warning, no el

@@ -10,9 +10,9 @@ Harness Agéntico General para IA Resiliente (General Resilient Agentic Harness 
 
 # 0. Cómo empezó todo: la seguridad
 
-Creé HAGAR porque ningún otro harness para IA aislaba mis archivos de forma predeterminada. Ya fuera DeepSeek, Claude Code, AutoGen u otro, si se dejan libres, todos acaban exponiendo tu sistema de archivos a los LLM. Eres TÚ quien debe imponer límites, y debes hacerlo bien, porque si no el problema es tuyo. Ninguna de estas herramientas garantiza que tus datos no se lean con fines indeterminados, por error o por ambos motivos. Y si no lo hace el propio harness, podría hacerlo ese plugin tan chulo, esa skill tan útil o cualquier otra incorporación que acabas de instalar...
+He creado HAGAR porque ningún otro harness para IA aislaba mis archivos de forma predeterminada. Ya fuera DeepSeek, Claude Code, AutoGen u otro, si se dejan libres, todos acaban exponiendo tu sistema de archivos a los LLM. Eres TÚ quien debe imponer límites, y debes hacerlo bien, porque si no el problema es tuyo. Ninguna de estas herramientas garantiza que tus datos no se lean con fines no especificados, por error o por ambos motivos. Y si no lo hace el propio harness, podría hacerlo ese plugin tan genial, esa skill tan útil o cualquier otra incorporación que acabas de instalar...
 
-**HAGAR invierte este planteamiento: eres TÚ quien establece qué pueden ver, escribir o buscar los LLM, y dónde.** Ningún LLM puede leer ni escribir nada fuera de los directorios que hayas indicado explícitamente como legibles o escribibles en el archivo de configuración. Si un directorio no está en la sección `[filesystem]` de la configuración, no existe: para los LLM es como si no estuviera.
+**HAGAR invierte este enfoque: eres TÚ quien establece qué pueden ver, escribir o buscar los LLM, y dónde.** Ningún LLM puede leer ni escribir nada fuera de los directorios que hayas indicado explícitamente como legibles o escribibles en el archivo de configuración. Si un directorio no está en la sección `[filesystem]` de la configuración, no existe: para los LLM es como si no estuviera.
 
 Durante el desarrollo de HAGAR me surgió otra pregunta: ¿por qué un LLM debería necesitar interactuar con el sistema operativo? En el mundo de la inteligencia artificial, el verdadero cuello de botella de rendimiento son las llamadas al modelo, que pueden tardar segundos (a veces MUCHOS segundos). El acceso directo al sistema operativo solo permite ahorrar unos pocos milisegundos: ¿vale la pena correr el riesgo? Mi respuesta es no.
 
@@ -37,9 +37,9 @@ HAGAR es un harness para LLM, desarrollado en Python, diseñado para la ejecuci�
 
 El objetivo no es solo proporcionar una interfaz de chat para un LLM, sino crear un entorno operativo ***seguro y protegido*** en el que el LLM pueda utilizar herramientas, consultar una memoria persistente e interactuar con sistemas externos — todo ello sin tener acceso directo a los recursos reales de la máquina anfitriona — previniendo o al menos mitigando los errores más comunes.
 
-Por eso he adoptado principios y metodologías procedentes tanto de la seguridad informática (principio de mínimo privilegio, triada CIA) como del ámbito HMI/HCI (interacción/interfaz hombre-máquina, típica de la maquinaria industrial) y de la ergonomía cognitiva, aplicándolos al diseño del entorno en el que opera el LLM: como se hace con el trabajo de las personas, el propósito adicional de HAGAR es crear un entorno para LLM donde hacerlo bien sea fácil y equivocarse sea difícil.
+Por eso he adoptado principios y metodologías procedentes tanto de la seguridad informática (principio de mínimo privilegio, tríada CIA) como del ámbito HMI/HCI (interacción/interfaz hombre-máquina, típica de la maquinaria industrial) y de la ergonomía cognitiva, aplicándolos al diseño del entorno en el que opera el LLM: como se hace con el trabajo de las personas, el propósito adicional de HAGAR es crear un entorno para LLM donde hacerlo bien sea fácil y equivocarse sea difícil.
 
-Sobre la base de lo expuesto y con el fin de establecer una regla de conducta general para todo futuro desarrollo de este software, enuncio aquí **las Cuatro Leyes de HAGAR**:
+Sobre la base de lo expuesto y con el fin de establecer una regla general de conducta para todo futuro desarrollo de este software, enuncio aquí **las Cuatro Leyes de HAGAR**:
 
 ## 1.1 Primera Ley de HAGAR
 **Un LLM es, por definición, poco fiable.** Esto no significa que sea malévolo o inútil, sino que su funcionamiento es de naturaleza probabilística. En consecuencia, toda afirmación suya debe verificarse y toda acción suya debe estar sujeta a restricciones.
@@ -48,7 +48,7 @@ Sobre la base de lo expuesto y con el fin de establecer una regla de conducta ge
 **Las herramientas son más fiables que el LLM.** Si el sistema de archivos indica que un archivo existe, entonces existe de verdad. Si una herramienta devuelve el tamaño de un archivo, ese tamaño es real. El LLM interpreta, pero las herramientas miden.
 
 ## 1.3 Tercera Ley de HAGAR
-**El estado debe existir fuera de la "mente" del LLM.** Implementando componentes como `ToolRegistry`, `MCP`, `FilesystemSandbox`, `Memory` y `PermissionEvaluator`, trasladamos el conocimiento y el control al exterior del propio modelo. Esto está en línea con las prácticas estándar para los sistemas en los que la seguridad es un requisito crítico.
+**El estado debe existir fuera de la "mente" del LLM.** Implementando componentes como `ToolRegistry`, `MCP`, `FilesystemSandbox`, `Memory` y `PermissionEvaluator`, trasladamos el conocimiento y el control fuera del propio modelo. Esto está en línea con las prácticas estándar para los sistemas en los que la seguridad es un requisito crítico.
 
 ## 1.4 Cuarta Ley de HAGAR
 **Toda acción debe poder explicarse a posteriori.** Por este motivo HAGAR implementa un *registro de auditoría*: cuando algo vaya mal — y tarde o temprano ocurrirá — la pregunta no debe ser "¿Por qué se volvió loco el LLM?", sino "¿Qué supuestos adoptó?", "¿Qué herramienta utilizó?", "¿Qué dato era erróneo?". En otras palabras, debe ser posible realizar un análisis de incidentes, exactamente como en aviación. HAGAR reconoce esta necesidad y siempre dará las herramientas para hacerlo.
@@ -103,7 +103,7 @@ hagar --config hagar.yaml web --port 8765
 ```
 
 La GUI web usa `http://127.0.0.1:8765/`, un token aleatorio para las API,
-confirmaciones ASK modales, detención del turno, subida de imágenes, pestañas para chat,
+confirmaciones ASK modales, detención del turno, carga de imágenes, pestañas de chat,
 historial, tool output, auditoría, thinking y memorias, y tokens acumulados
 de la sesión en la barra lateral. Para los detalles, véase `MANUAL.md` §3.0.
 
@@ -116,14 +116,14 @@ También es posible utilizar `python -m hagar` trabajando directamente sobre el 
 ```
 hagar.py            Script de lanzamiento del harness
 hagar.yaml          Script de configuración predeterminado
-policy.yaml			Configuración de los permisos para los tool (integrados y MCP)
-core/               config, agent, registro de auditoría, registry, sandbox, service y servidor web
+policy.yaml			Configuración de los permisos para las herramientas (integradas y MCP)
+core/               config, agent, registro de auditoría, registry, sandbox, servicio y servidor web
 llm/                backends LLM (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), cliente MCP
 memory/             memoria SQLite (sqlite_store.py) y backend markdown heredado
 web/                HTML, CSS y JavaScript de la GUI local
 tests/              suite de pytest
 tools/              helpers de desarrollo (test runner, shim de sandbox, benchmark de modelos)
-local_tools/        tool integrados; los built-in pasan por local_tools/plugins.py
+local_tools/        herramientas integradas; las built-in pasan por local_tools/plugins.py
 core/plugins.py     contratos y descubrimiento de los plugins (hagar.tools, hagar.llm)
 core/subagents.py   gestor del subagente MVP síncrono y de solo lectura
 llm/plugins.py      proveedores LLM built-in registrados como plugins
@@ -144,13 +144,13 @@ El native tool calling es la configuración predeterminada para todos los backen
 | `claude`   | Anthropic Messages API       | `ANTHROPIC_API_KEY`    |
 | `gemini`   | Generative Language API      | `GEMINI_API_KEY`       |
 
-`chatgpt` es un alias de `openai`. La suscripción de ChatGPT no da acceso a la API: se necesitan una clave de OpenAI y crédito de API. LM Studio debe tener el servidor local activo y un modelo cargado; el endpoint predeterminado es `http://localhost:1234/v1`. Si el servidor LM Studio requiere una clave, se puede establecer `LMSTUDIO_API_KEY` o `model.api_key_env`; de lo contrario no hace falta.
+`chatgpt` es un alias de `openai`. La suscripción de ChatGPT no da acceso a la API: se necesitan una clave de OpenAI y crédito de API. LM Studio debe tener el servidor local activo y un modelo cargado; el endpoint predeterminado es `http://localhost:1234/v1`. Si el servidor de LM Studio requiere una clave, se puede establecer `LMSTUDIO_API_KEY` o `model.api_key_env`; de lo contrario, no es necesario.
 
-Con LM Studio el tool calling nativo depende del modelo y de su plantilla: algunos modelos aceptan la petición pero responden en texto en lugar de emitir `tool_calls`. En ese caso hay que usar `model.native_tools: false` (protocolo JSON textual) o un modelo tool-capable.
+Con LM Studio, el tool calling nativo depende del modelo y de su plantilla: algunos modelos aceptan la petición pero responden en texto en lugar de emitir `tool_calls`. En ese caso, usar `model.native_tools: false` (protocolo JSON textual) o un modelo tool-capable.
 
-Los nombres de los modelos actualmente compatibles con DeepSeek son `deepseek-flash` (predeterminado) y `deepseek-v4-pro`; el antiguo `deepseek-chat` ya no se acepta. El live test usa `deepseek-flash`, a menos que lo sobrescriba la variable `HAGAR_LIVE_DEEPSEEK_MODEL`. El script `tools/diagnose_deepseek.py` permite verificar el DNS, el formato de la clave y el endpoint, sin mostrar la propia clave.
+Los nombres de los modelos actualmente soportados por DeepSeek son `deepseek-flash` (predeterminado) y `deepseek-v4-pro`; el antiguo `deepseek-chat` ya no se acepta. La prueba en vivo usa `deepseek-flash`, a menos que la variable `HAGAR_LIVE_DEEPSEEK_MODEL` lo sobrescriba. El script `tools/diagnose_deepseek.py` permite verificar el DNS, el formato de la clave y el endpoint, sin mostrar la clave en sí.
 
-Las claves se leen solo de variables de entorno y nunca del archivo YAML. Si el nombre predeterminado de la variable no se adapta a las propias necesidades, se puede especificar otro con `model.api_key_env`. El parámetro `model.host` indica la URL base del proveedor (con un valor predeterminado específico para cada uno; por ejemplo, Ollama usa `http://localhost:11434` y LM Studio `http://localhost:1234/v1`), `model.timeout` es el timeout HTTP en segundos (default 120) y `model.max_tokens` se aplica solo a Claude (con un valor predeterminado de 1024).
+Las claves se leen solo de variables de entorno y nunca del archivo YAML. Si el nombre predeterminado de la variable no se adapta a tus necesidades, puedes especificar otro con `model.api_key_env`. El parámetro `model.host` indica la URL base del proveedor (con un valor predeterminado específico para cada uno; por ejemplo, Ollama usa `http://localhost:11434` y LM Studio `http://localhost:1234/v1`), `model.timeout` es el timeout HTTP en segundos (predeterminado 120) y `model.max_tokens` se aplica solo a Claude (con un valor predeterminado de 1024).
 
 ```yaml
 model:
@@ -162,7 +162,7 @@ Cada backend normaliza el diálogo según su propio formato: Claude recibe los m
 
 ## 3.3 Registro de auditoría
 
-Cada sesión añade entradas en formato JSON Lines a la ruta especificada en `audit.path` (valor predeterminado: `logs/audit.jsonl`, resuelto relativamente al archivo de configuración):
+Cada sesión añade entradas en formato JSON Lines a la ruta especificada en `audit.path` (valor predeterminado: `logs/audit.jsonl`, resuelto de forma relativa al archivo de configuración):
 
 ```yaml
 audit:
@@ -171,11 +171,11 @@ path: logs/audit.jsonl
 max_field_chars: 2000
 ```
 
-Eventos registrados: `harness.start`, `turn.start`, `llm.tool_choice`, `llm.protocol_error`, `llm.repaired`, `llm.repair_failed`, `tool.call`, `tool.result`, `turn.answer`, `turn.error`, `turn.stop`, `mcp.loaded`, `mcp.failed`, `llm.failed`, `harness.stop`. La ausencia de un evento `harness.stop` en la última sesión indica que el proceso se ha terminado forzosamente o se ha bloqueado.
+Eventos registrados: `harness.start`, `turn.start`, `llm.tool_choice`, `llm.protocol_error`, `llm.repaired`, `llm.repair_failed`, `tool.call`, `tool.result`, `turn.answer`, `turn.error`, `turn.stop`, `mcp.loaded`, `mcp.failed`, `llm.failed`, `harness.stop`. La ausencia de un evento `harness.stop` en la última sesión indica que el proceso se terminó forzosamente o se produjo un fallo.
 
-Cada registro incluye una marca de tiempo UTC, el ID de la sesión y, cuando corresponde, un ID del turno compartido por todos los eventos relativos a una única petición. El truncamiento de los datos está regulado por el parámetro `audit.max_field_chars`; las claves API nunca se escriben en el registro.
+Cada registro incluye una marca de tiempo UTC, el ID de la sesión y, cuando corresponde, un ID de turno compartido por todos los eventos relativos a una única petición. El truncamiento de los datos está regulado por el parámetro `audit.max_field_chars`; las claves API nunca se escriben en el registro.
 
-El registro está concebido para consultarse tras un incidente, no para que lo lea el modelo. Puesto que puede contener el contenido de archivos leídos mediante las herramientas de acceso al sistema de archivos, debe tratarse con la misma cautela que se reserva al propio espacio de trabajo (workspace).
+El registro está concebido para consultarse tras un incidente, no para que lo lea el modelo. Puesto que puede contener el contenido de archivos leídos mediante las herramientas de acceso al sistema de archivos, debe tratarse con la misma cautela que el propio espacio de trabajo (workspace).
 
 ## 3.4 Autorizaciones y `policy.yaml`
 
@@ -184,7 +184,7 @@ Cada llamada a una herramienta se autoriza antes de su ejecución. Una herramien
 `FILESYSTEM_CREATE`, `FILESYSTEM_DELETE`, `MEMORY_READ`,
 `MEMORY_WRITE`, `MCP_CALL`, ...); un **sujeto** (el agente) define
 reglas que asocian dichas funcionalidades a `allow` (permitir), `ask` (preguntar) o `deny` (denegar),
-eventualmente acotadas en función del nombre de la herramienta, del prefijo de la ruta o del espacio de nombres.
+opcionalmente limitadas según el nombre de la herramienta, el prefijo de la ruta o el espacio de nombres.
 
 ```yaml
 version: 1
@@ -200,9 +200,9 @@ effect: ask
 paths: ["note"]
 ```
 
-La opción `ask` genera una petición en la consola del tipo `lo faccio? (y/N)` (con valor predeterminado `N`); el protocolo `ConfirmationProvider` permite además implementar una ventana de diálogo modal en una interfaz gráfica (GUI).
-El archivo de las policy se lee antes de la creación del LLM: si falta o
-no es válido, cada policy se establece en `DENY`, el error se registra en el registro de control (`policy.failed`) y se muestra en el chat, mientras el harness sigue funcionando.
+La opción `ask` genera una petición en la consola del tipo `¿lo hago? (y/N)` (con valor predeterminado `N`); el protocolo `ConfirmationProvider` permite además implementar una ventana de diálogo modal en una interfaz gráfica (GUI).
+El archivo de policy se lee antes de la creación del LLM: si falta o
+no es válido, cada policy se establece en `DENY`, el error se registra en el registro de auditoría (`policy.failed`) y se muestra en el chat, mientras que el harness sigue funcionando.
 
 ## 3.5 Memoria
 
@@ -221,35 +221,82 @@ memory:
 
 La base de datos predeterminada es `%LOCALAPPDATA%/Hagar/memory.db` (o
 `HAGAR_MEMORY_DB`). El backend `markdown` se mantiene solo por compatibilidad.
-Las escrituras pasan por el motor de las policy. Los comandos `/memory` de la CLI
+Las escrituras pasan por el motor de policy. Los comandos `/memory` de la CLI
 permiten inspeccionar chat, skills y estadísticas.
 
-## 3.6 Decision tool
+## 3.6 Herramienta de decisión
 
 `decision.choose` plantea una pregunta de opción fija y devuelve la etiqueta,
 la probabilidad y el proveedor. Admite un LLM decisor (local o remoto) y un
 clasificador lineal local. Detalles en [DECISIONS.md](DECISIONS.md).
 
-## 3.7 Fichas y benchmarks de los modelos
+## 3.7 Fichas y benchmarks de modelos
 
-`/models test` mide la latencia, el JSON estructurado y el tool calling y guarda
+`/models test` mide la latencia, el JSON estructurado y el tool calling, y guarda
 una ficha JSON con el hardware y la fecha de la última prueba. Detalles en
 [MODEL_CARDS.md](MODEL_CARDS.md).
+
+## 3.8 Modo Hi-Fi
+
+Con `--hifi` Hagar pide al modelo tres interpretaciones de la solicitud
+y, si las dos más probables están demasiado cerca, pide una aclaración
+en lugar de responder. Detalles en [HIFI.md](HIFI.md).
+
+## 3.9 Checkpoint, timeout y contexto
+
+Hagar guarda un checkpoint de los archivos modificados en el turno, limita las
+llamadas a herramientas, desvía las salidas grandes y poda el contexto antiguo.
+Detalles en [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
+
+## 3.10 AIsh
+
+`aish.exec` es un shell semántico restringido: los comandos se traducen
+a herramientas de Hagar, no se ejecutan como programas. Es **DENY por defecto** y debe
+habilitarse explícitamente en `policy.yaml`. Detalles en [AISH.md](AISH.md).
+Las transformaciones textuales usan [text.transform](TEXT_TRANSFORM.md).
+
+## 3.11 Recetas de desarrollo
+
+`dev.run` ejecuta recetas de confianza para test, depuración y compilación, sin shell y
+sin comandos arbitrarios. Es **DENY por defecto** y requiere `DEV_EXEC`.
+Detalles en [DEV_RUN.md](DEV_RUN.md).
+
+## 3.12 Boxed transform
+
+`box.run` ejecuta transformaciones LLM acotadas (`summarize`, `translate`,
+`extract_json`) sin memoria, herramientas ni prompt libre. Es **DENY por defecto**
+y requiere `BOX_EXEC`. Detalles en [BOXES.md](BOXES.md).
+
+## 3.13 Hagar Flow
+
+`flow.run` ejecuta un subconjunto lineal de Python validado e
+interpretado por Hagar, sin importaciones, funciones, try ni acceso a objetos
+de Python. Es **DENY por defecto** y requiere `FLOW_EXEC`. Detalles en
+[FLOW.md](FLOW.md).
 
 ---
 
 # 4. Documentación
 
-HAGAR tiene una documentación en varios idiomas. Por el momento las lenguas compatibles
-son: italiano, inglés, español, portugués, chino y ruso. Cada lengua tiene su subdirectorio dedicado en Docs.
+HAGAR tiene documentación en varios idiomas. Actualmente los idiomas soportados
+son: italiano, inglés, español, portugués, chino y ruso. Cada idioma tiene su propio subdirectorio dedicado en Docs.
 
 - [MANUAL.md](MANUAL.md) — formato de la configuración, comandos de consola,
   opciones de línea de comandos, supuestos básicos.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — La arquitectura del software de esta
   versión del harness: componentes, modelo de seguridad, límites conocidos.
-- [ROADMAP.md](ROADMAP.md) — Funciones diseñadas por implementar, decisiones ya tomadas
+- [ROADMAP.md](ROADMAP.md) — Funciones diseñadas pendientes de implementar, decisiones ya tomadas
   y cuestiones aún abiertas.
-- [PLUGINS.md](PLUGINS.md) — contratos para tool y proveedores LLM plugin.
+- [PLUGINS.md](PLUGINS.md) — contratos para herramientas y proveedores LLM plugin.
+- [HIFI.md](HIFI.md) — pre-paso de interpretación y aclaración.
+- [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill y compactación.
+- [AISH.md](AISH.md) — shell semántico restringido y policy DENY.
+- [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — transformaciones textuales acotadas.
+- [DEV_RUN.md](DEV_RUN.md) — recetas para test, depuración y compilación.
+- [BOXES.md](BOXES.md) — transformaciones LLM acotadas.
+- [FLOW.md](FLOW.md) — DSL restringido e intérprete.
+- [DECISIONS.md](DECISIONS.md) — herramientas de decisión y proveedores.
+- [MODEL_CARDS.md](MODEL_CARDS.md) — fichas, benchmarks y hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — especificación del document tool,
   grafo semántico, plugins de formato y host nativo.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP de subagentes, aislamiento y límites.
