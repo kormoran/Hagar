@@ -61,13 +61,31 @@ class FakeVisionLLM:
         if "left or to the right" in prompt:
             return "left"
 
+        if "Read the text" in prompt:
+            return "HAGAR 42"
+
+        if "small text" in prompt:
+            return "HAGAR-7B"
+
         if "Which bar" in prompt:
             return "B"
+
+        if "Which month" in prompt:
+            return "MAR"
 
         if "PORT" in prompt:
             return "8080"
 
-        return "HAGAR 42"
+        if "Which field" in prompt:
+            return "PORT"
+
+        if "Describe the image" in prompt:
+            return (
+                "A red circle is on the left, a blue square in the "
+                "center, a green triangle on the right."
+            )
+
+        return "unknown"
 
 
 def test_hardware_has_expected_shape():

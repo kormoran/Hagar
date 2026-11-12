@@ -100,6 +100,36 @@ images:
   tags:
   - vision
   - ui
+- id: ocr_small_7b
+  path: vision/ocr_small_7b.png
+  sha256: 27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e
+  license: project
+  tags:
+  - vision
+  - ocr
+  - small
+- id: chart_months_01
+  path: vision/chart_months_01.png
+  sha256: 5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710
+  license: project
+  tags:
+  - vision
+  - chart
+- id: ui_multi_01
+  path: vision/ui_multi_01.png
+  sha256: 3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5
+  license: project
+  tags:
+  - vision
+  - ui
+- id: scene_mixed_01
+  path: vision/scene_mixed_01.png
+  sha256: e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9
+  license: project
+  tags:
+  - vision
+  - scene
+  - description
 quality:
 - name: summary_technical
   task: summary
@@ -156,6 +186,14 @@ quality:
   - capability
   - policy
   - audit
+  forbidden:
+  - brokering
+  - missione
+  - carte misurate
+  - ritardo
+  - politica
+  - agenti secondari
+  - capacità
 - name: extraction
   task: extraction
   sample: it_extraction
@@ -231,3 +269,32 @@ vision:
   prompt: What value is shown next to PORT? Answer only with the number.
   scorer: exact
   expected: '8080'
+- name: vision_ocr_small
+  image: ocr_small_7b
+  prompt: Read the small text in this image. It contains letters, a dash and digits. Answer only with the text.
+  scorer: exact
+  expected: HAGAR-7B
+- name: vision_chart_months
+  image: chart_months_01
+  prompt: Which month has the highest bar? Answer only with JAN, FEB, MAR or APR.
+  scorer: exact
+  expected: MAR
+- name: vision_ui_multi
+  image: ui_multi_01
+  prompt: Which field contains the value 8080? Answer only with the field name.
+  scorer: exact
+  expected: PORT
+- name: vision_scene_description
+  image: scene_mixed_01
+  prompt: Describe the image in one sentence. Mention the shapes, their colors and their positions.
+  scorer: keypoints
+  expected:
+  - red
+  - circle
+  - left
+  - blue
+  - square
+  - center
+  - green
+  - triangle
+  - right

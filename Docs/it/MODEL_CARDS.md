@@ -120,8 +120,10 @@ ripetibile per dare al broker un segnale migliore della qualità
 dichiarata.
 
 La traduzione combina chrF con la conservazione di path, comandi e
-termini richiesti. Il riassunto misura la presenza dei punti chiave e il
-rispetto della lunghezza.
+termini richiesti. I termini obbligatori pesano molto più di chrF; una
+traduzione tecnica sbagliata viene penalizzata esplicitamente. Il
+riassunto misura la presenza dei punti chiave e il rispetto della
+lunghezza.
 
 La scheda contiene:
 
@@ -147,7 +149,7 @@ Il corpus è in `benchmarks/corpus/`:
 ```text
 7 testi
 2 reference di traduzione
-6 immagini sintetiche
+10 immagini sintetiche
 manifest.yaml con SHA-256
 ```
 
@@ -174,6 +176,10 @@ relazione spaziale
 OCR
 grafico a barre
 campo UI
+OCR con testo piccolo
+grafico con etichette
+UI a più campi
+descrizione di una scena
 ```
 
 Ogni immagine ha un id e uno SHA-256 nel run. Il punteggio è la media

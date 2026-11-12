@@ -21,9 +21,9 @@ def test_default_corpus_is_complete():
 
     assert len(corpus.texts) == 7
     assert len(corpus.references) == 2
-    assert len(corpus.images) == 6
+    assert len(corpus.images) == 10
     assert len(quality_cases(corpus)) == 8
-    assert len(vision_cases(corpus)) == 6
+    assert len(vision_cases(corpus)) == 10
     assert corpus.text("it_technical").strip()
     assert corpus.reference("it_broker_en").strip()
     assert corpus.image("chart_bars_01").startswith(
@@ -37,7 +37,7 @@ def test_suite_manifest_contains_hashes():
     assert manifest["version"] == 3
     assert manifest["suite"]
     assert len(manifest["corpus"]["texts"]) == 7
-    assert len(manifest["corpus"]["images"]) == 6
+    assert len(manifest["corpus"]["images"]) == 10
 
 
 def test_corpus_rejects_unknown_samples():

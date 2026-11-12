@@ -156,6 +156,7 @@ def _score_translation(
     text: str,
     reference: str,
     required: tuple[str, ...],
+    forbidden: tuple[str, ...] = (),
 ) -> float:
 
     chrf = _chrf(text, reference)
@@ -169,8 +170,19 @@ def _score_translation(
         if required
         else 1.0
     )
+    forbidden_hits = sum(
+        1
+        for term in forbidden
+        if _normal_text(term) in _normal_text(text)
+    )
 
-    return 0.7 * chrf + 0.3 * required_score
+    score = 0.25 * chrf + 0.75 * required_score
+    score -= min(0.45, 0.15 * forbidden_hits)
+
+    if required_score < 1.0:
+        score *= 0.75
+
+    return max(0.0, min(1.0, score))
 
 
 def _score_summary(
@@ -252,12 +264,21 @@ def _make_scorer(
                 "translation required terms must be a list"
             )
 
+        forbidden = case.get("forbidden", [])
+
+        if not isinstance(forbidden, list):
+            raise QualityBenchError(
+                "translation forbidden terms must be a list"
+            )
+
         reference = corpus.reference(reference_id)
         terms = tuple(str(item) for item in required)
+        bad_terms = tuple(str(item) for item in forbidden)
         return lambda text: _score_translation(
             text,
             reference,
             terms,
+            bad_terms,
         )
 
     raise QualityBenchError(

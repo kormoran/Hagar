@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from core.benchmark_corpus import BenchmarkCorpus
-from core.quality_bench import QualityBenchError, benchmark_quality
+from core.quality_bench import (
+    QualityBenchError,
+    _score_translation,
+    benchmark_quality,
+)
 
 
 class FakeLLM:
@@ -118,6 +122,31 @@ def test_quality_benchmark_errors_are_reported():
         len(item["errors"]) == 2 * item["cases"]
         for item in report["tasks"].values()
     )
+
+
+def test_translation_scoring_penalizes_wrong_terms():
+    corpus = BenchmarkCorpus.load()
+    reference = corpus.reference("en_broker_it")
+    required = ("broker", "capability", "policy", "audit")
+    forbidden = ("brokering", "missione", "carte misurate", "ritardo")
+
+    perfect = _score_translation(
+        reference,
+        reference,
+        required,
+        forbidden,
+    )
+    broken = _score_translation(
+        "Il brokering seleziona un modello per una missione. "
+        "Le carte misurate registrano il ritardo. "
+        "La politica non concede capacità.",
+        reference,
+        required,
+        forbidden,
+    )
+
+    assert perfect == 1.0
+    assert broken < 0.4
 
 
 def test_quality_benchmark_rejects_bad_attempts():

@@ -190,6 +190,87 @@ _GLYPHS = {
         "10001",
         "01110",
     ),
+    "J": (
+        "00111",
+        "00010",
+        "00010",
+        "00010",
+        "10010",
+        "10010",
+        "01100",
+    ),
+    "E": (
+        "11111",
+        "10000",
+        "10000",
+        "11110",
+        "10000",
+        "10000",
+        "11111",
+    ),
+    "F": (
+        "11111",
+        "10000",
+        "10000",
+        "11110",
+        "10000",
+        "10000",
+        "10000",
+    ),
+    "M": (
+        "10001",
+        "11011",
+        "10101",
+        "10101",
+        "10001",
+        "10001",
+        "10001",
+    ),
+    "N": (
+        "10001",
+        "11001",
+        "10101",
+        "10011",
+        "10001",
+        "10001",
+        "10001",
+    ),
+    "S": (
+        "01111",
+        "10000",
+        "10000",
+        "01110",
+        "00001",
+        "00001",
+        "11110",
+    ),
+    "L": (
+        "10000",
+        "10000",
+        "10000",
+        "10000",
+        "10000",
+        "10000",
+        "11111",
+    ),
+    "7": (
+        "11111",
+        "00001",
+        "00010",
+        "00100",
+        "01000",
+        "01000",
+        "01000",
+    ),
+    "-": (
+        "00000",
+        "00000",
+        "00000",
+        "11111",
+        "00000",
+        "00000",
+        "00000",
+    ),
     "4": (
         "00010",
         "00110",
@@ -299,6 +380,22 @@ def _score_number(expected: int) -> Callable[[str], float]:
     return score
 
 
+def _score_keypoints(
+    expected: list[str],
+) -> Callable[[str], float]:
+
+    def score(text: str) -> float:
+        normalized = _normal(text)
+        matches = sum(
+            1
+            for term in expected
+            if _normal(term) in normalized
+        )
+        return matches / len(expected)
+
+    return score
+
+
 def _color_image() -> bytes:
 
     canvas = _fill(96, 96, (220, 20, 20))
@@ -372,6 +469,108 @@ def _ui_image() -> bytes:
     return _png(240, 100, canvas)
 
 
+def _circle(
+    canvas: Canvas,
+    center_x: int,
+    center_y: int,
+    radius: int,
+    color: Color,
+) -> None:
+
+    for y in range(
+        max(0, center_y - radius),
+        min(len(canvas), center_y + radius + 1),
+    ):
+        for x in range(
+            max(0, center_x - radius),
+            min(len(canvas[y]), center_x + radius + 1),
+        ):
+            if (x - center_x) ** 2 + (y - center_y) ** 2 <= radius ** 2:
+                canvas[y][x] = color
+
+
+def _triangle(
+    canvas: Canvas,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+    color: Color,
+) -> None:
+
+    for row in range(height):
+        half = int((row + 1) * (width / 2) / height)
+        start = left + width // 2 - half
+        end = left + width // 2 + half
+
+        for x in range(
+            max(0, start),
+            min(len(canvas[0]), end + 1),
+        ):
+            y = top + row
+
+            if 0 <= y < len(canvas):
+                canvas[y][x] = color
+
+
+def _ocr_small_image() -> bytes:
+
+    canvas = _fill(320, 100, (225, 225, 225))
+    _text(canvas, 10, 36, "HAGAR-7B", scale=2, color=(80, 80, 80))
+
+    for x, y in (
+        (5, 5), (48, 12), (96, 7), (140, 88),
+        (180, 20), (230, 75), (280, 15), (305, 60),
+    ):
+        canvas[y][x] = (150, 150, 150)
+
+    return _png(320, 100, canvas)
+
+
+def _chart_months_image() -> bytes:
+
+    canvas = _fill(320, 190, (255, 255, 255))
+    baseline = 150
+
+    for index, height in enumerate((35, 70, 115, 55)):
+        x = 28 + index * 72
+        _rect(
+            canvas,
+            x,
+            baseline - height,
+            44,
+            height,
+            (55, 115, 190),
+        )
+
+    for index, label in enumerate(("JAN", "FEB", "MAR", "APR")):
+        _text(canvas, 30 + index * 72, 160, label, scale=2)
+
+    return _png(320, 190, canvas)
+
+
+def _ui_multi_image() -> bytes:
+
+    canvas = _fill(300, 150, (235, 235, 235))
+    _rect(canvas, 12, 12, 276, 126, (255, 255, 255))
+    _text(canvas, 24, 24, "HOST", scale=2)
+    _text(canvas, 24, 54, "LOCALHOST", scale=2)
+    _text(canvas, 24, 90, "PORT", scale=2)
+    _text(canvas, 24, 116, "8080", scale=2)
+
+    return _png(300, 150, canvas)
+
+
+def _scene_image() -> bytes:
+
+    canvas = _fill(320, 160, (255, 255, 255))
+    _circle(canvas, 65, 80, 28, (210, 30, 30))
+    _rect(canvas, 135, 52, 56, 56, (30, 80, 210))
+    _triangle(canvas, 225, 48, 56, 64, (30, 160, 70))
+
+    return _png(320, 160, canvas)
+
+
 def cases(
     corpus: BenchmarkCorpus | None = None,
 ) -> tuple[VisionCase, ...]:
@@ -396,6 +595,12 @@ def cases(
             scorer = _score_exact(expected)
         elif scorer_name == "number":
             scorer = _score_number(int(expected))
+        elif scorer_name == "keypoints":
+            if not isinstance(expected, list):
+                raise VisionBenchError(
+                    "keypoints case requires a list"
+                )
+            scorer = _score_keypoints(expected)
         else:
             raise VisionBenchError(
                 f"unknown vision scorer: {scorer_name!r}"

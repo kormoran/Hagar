@@ -35,11 +35,27 @@ class FakeVisionLLM:
         if "Read the text" in prompt:
             return self.wrong.get("ocr", "HAGAR 42")
 
+        if "small text" in prompt:
+            return self.wrong.get("ocr_small", "HAGAR-7B")
+
         if "Which bar" in prompt:
             return self.wrong.get("chart", "B")
 
+        if "Which month" in prompt:
+            return self.wrong.get("chart_months", "MAR")
+
         if "PORT" in prompt:
             return self.wrong.get("ui", "8080")
+
+        if "Which field" in prompt:
+            return self.wrong.get("ui_multi", "PORT")
+
+        if "Describe the image" in prompt:
+            return self.wrong.get(
+                "scene",
+                "A red circle is on the left, a blue square in the "
+                "center, a green triangle on the right.",
+            )
 
         return "unknown"
 
@@ -47,7 +63,7 @@ class FakeVisionLLM:
 def test_manifest_has_fixed_images():
     entries = manifest()
 
-    assert len(entries) == 6
+    assert len(entries) == 10
     assert {item["case"] for item in entries} == {
         "vision_color",
         "vision_count",
@@ -55,8 +71,12 @@ def test_manifest_has_fixed_images():
         "vision_ocr",
         "vision_chart",
         "vision_ui",
+        "vision_ocr_small",
+        "vision_chart_months",
+        "vision_ui_multi",
+        "vision_scene_description",
     }
-    assert len({item["sha256"] for item in entries}) == 6
+    assert len({item["sha256"] for item in entries}) == 10
 
     for case in cases():
         image = ImageInput.from_bytes(case.image)
@@ -69,7 +89,7 @@ def test_vision_benchmark_perfect_answers():
     assert report["suite_version"] == 2
     assert report["overall"] == 1.0
     assert report["tasks"]["vision"]["mean"] == 1.0
-    assert len(report["images"]) == 6
+    assert len(report["images"]) == 10
 
 
 def test_vision_benchmark_partial_and_errors():
@@ -78,8 +98,8 @@ def test_vision_benchmark_partial_and_errors():
         attempts=1,
     )
 
-    assert report["overall"] == 0.8333
-    assert report["tasks"]["vision"]["mean"] == 0.8333
+    assert report["overall"] == 0.9
+    assert report["tasks"]["vision"]["mean"] == 0.9
 
     failing = benchmark_vision(
         FakeVisionLLM(error=RuntimeError("vision offline")),
