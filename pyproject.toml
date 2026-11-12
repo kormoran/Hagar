@@ -56,10 +56,16 @@ hagar = "hagar:main"
 
 [tool.setuptools]
 py-modules = ["hagar"]
-packages = ["core", "llm", "memory", "local_tools", "web"]
+packages = ["core", "llm", "memory", "local_tools", "web", "benchmarks"]
 
 [tool.setuptools.package-data]
 web = ["*.html", "*.css", "*.js"]
+benchmarks = [
+    "corpus/manifest.yaml",
+    "corpus/text/*.md",
+    "corpus/text/references/*.md",
+    "corpus/vision/*.png",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

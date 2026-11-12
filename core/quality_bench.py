@@ -1,4 +1,4 @@
-"""Benchmark qualità deterministico, senza dataset esterni."""
+"""Benchmark qualità deterministico basato sul corpus fisso."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from core.benchmark_corpus import BenchmarkCorpus
 from core.model_cards import utc_now
 
 
@@ -48,18 +49,16 @@ def _normal_text(value: Any) -> str:
     return text.strip(" \t\r\n.,;:!?\"'`")
 
 
-def _score_extraction(text: str) -> float:
+def _score_extraction(
+    text: str,
+    expected: dict[str, Any],
+) -> float:
 
     payload = _json_object(text)
 
     if payload is None:
         return 0.0
 
-    expected = {
-        "name": "Mario Rossi",
-        "age": 42,
-        "city": "Roma",
-    }
     matches = 0
 
     for key, value in expected.items():
@@ -79,19 +78,24 @@ def _score_extraction(text: str) -> float:
     return matches / len(expected)
 
 
-def _score_instruction(text: str) -> float:
+def _score_exact(text: str, expected: Any) -> float:
 
-    return 1.0 if _normal_text(text) == "hagar" else 0.0
+    return (
+        1.0
+        if _normal_text(text) == _normal_text(expected)
+        else 0.0
+    )
 
 
-def _score_reasoning(text: str) -> float:
+def _score_number(text: str, expected: int) -> float:
 
-    return 1.0 if re.search(r"\b7\b", text) else 0.0
+    match = re.search(r"\b(\d+)\b", text)
 
-
-def _score_coding(text: str) -> float:
-
-    return 1.0 if re.search(r"\b3\b", text) else 0.0
+    return (
+        1.0
+        if match is not None and int(match.group(1)) == expected
+        else 0.0
+    )
 
 
 def _char_ngrams(text: str, size: int) -> Counter:
@@ -148,176 +152,165 @@ def _chrf(
     )
 
 
-def _translation_scorer(
+def _score_translation(
+    text: str,
     reference: str,
     required: tuple[str, ...],
-) -> Callable[[str], float]:
+) -> float:
 
-    def score(text: str) -> float:
-
-        chrf = _chrf(text, reference)
-        matches = sum(
-            1
-            for term in required
-            if _normal_text(term) in _normal_text(text)
-        )
-        required_score = (
-            matches / len(required)
-            if required
-            else 1.0
-        )
-
-        return 0.7 * chrf + 0.3 * required_score
-
-    return score
-
-
-def _score_summary(text: str) -> float:
-
-    if not text.strip():
-        return 0.0
-
-    required = (
-        "broker",
-        "modelli locali",
-        "memoria",
-        "1.0",
-    )
+    chrf = _chrf(text, reference)
     matches = sum(
         1
         for term in required
         if _normal_text(term) in _normal_text(text)
     )
+    required_score = (
+        matches / len(required)
+        if required
+        else 1.0
+    )
+
+    return 0.7 * chrf + 0.3 * required_score
+
+
+def _score_summary(
+    text: str,
+    expected: list[str],
+) -> float:
+
+    if not text.strip():
+        return 0.0
+
+    matches = sum(
+        1
+        for term in expected
+        if _normal_text(term) in _normal_text(text)
+    )
     length_score = 1.0 if len(text.strip()) <= 500 else 0.5
 
     return (
-        0.8 * (matches / len(required))
+        0.8 * (matches / len(expected))
         + 0.2 * length_score
     )
 
 
-def cases() -> tuple[QualityCase, ...]:
+def _make_scorer(
+    case: dict[str, Any],
+    corpus: BenchmarkCorpus,
+) -> Callable[[str], float]:
 
-    return (
-        QualityCase(
-            name="extraction",
-            prompt=(
-                "Estrai nome, eta e citta da questo testo. "
-                "Rispondi solo con un oggetto JSON con le chiavi "
-                "name, age, city.\n\n"
-                "Mario Rossi, 42 anni, Roma."
-            ),
-            expected={
-                "name": "Mario Rossi",
-                "age": 42,
-                "city": "Roma",
-            },
-            scorer=_score_extraction,
-        ),
-        QualityCase(
-            name="instruction",
-            prompt=(
-                "Rispondi esattamente con la parola HAGAR, "
-                "senza altro testo."
-            ),
-            expected="HAGAR",
-            scorer=_score_instruction,
-        ),
-        QualityCase(
-            name="reasoning",
-            prompt=(
-                "Quanto fa 3 + 4? Rispondi solo con il numero."
-            ),
-            expected="7",
-            scorer=_score_reasoning,
-        ),
-        QualityCase(
-            name="coding",
-            prompt=(
-                "Cosa stampa questo codice Python?\n"
-                "print(len([1, 2, 3]))\n"
-                "Rispondi solo con il numero."
-            ),
-            expected="3",
-            scorer=_score_coding,
-        ),
-        QualityCase(
-            name="summary",
-            prompt=(
-                "Riassumi in al massimo due frasi, in italiano:\n\n"
-                "Hagar 0.8 introduce il broker LLM e la scelta del "
-                "modello per task. La 0.9 si occupera' del ciclo di "
-                "vita delle memorie. I modelli locali restano gestiti "
-                "da LM Studio e Ollama. Il runtime locale integrato "
-                "arrivera' dopo la 1.0."
-            ),
-            expected=(
-                "broker, modelli locali, memoria, 1.0"
-            ),
-            scorer=_score_summary,
-            task="summary",
-        ),
-        QualityCase(
-            name="translation_it_en",
-            prompt=(
-                "Traduci in inglese. Rispondi solo con la traduzione:\n\n"
-                "Hagar esegue i tool nella sandbox. Il report e' in "
-                "/home/ai/workspace/report.txt e il comando e' "
-                "`hagar --config hagar.yaml`."
-            ),
-            expected=(
-                "Hagar runs tools in the sandbox. The report is in "
-                "/home/ai/workspace/report.txt and the command is "
-                "`hagar --config hagar.yaml`."
-            ),
-            scorer=_translation_scorer(
-                (
-                    "Hagar runs tools in the sandbox. The report is in "
-                    "/home/ai/workspace/report.txt and the command is "
-                    "`hagar --config hagar.yaml`."
-                ),
-                (
-                    "/home/ai/workspace/report.txt",
-                    "hagar --config hagar.yaml",
-                ),
-            ),
-            task="translation",
-        ),
-        QualityCase(
-            name="translation_en_it",
-            prompt=(
-                "Traduci in italiano. Rispondi solo con la traduzione:\n\n"
-                "The broker chooses a model, but it never grants "
-                "capabilities."
-            ),
-            expected=(
-                "Il broker sceglie un modello, ma non concede mai "
-                "capability."
-            ),
-            scorer=_translation_scorer(
-                (
-                    "Il broker sceglie un modello, ma non concede mai "
-                    "capability."
-                ),
-                ("broker", "modello", "capability"),
-            ),
-            task="translation",
-        ),
+    name = str(case.get("scorer") or "")
+    expected = case.get("expected")
+
+    if name == "extraction":
+
+        if not isinstance(expected, dict):
+            raise QualityBenchError(
+                "extraction case requires an expected object"
+            )
+
+        return lambda text: _score_extraction(text, expected)
+
+    if name == "exact":
+
+        return lambda text: _score_exact(text, expected)
+
+    if name == "number":
+
+        if isinstance(expected, bool) or not isinstance(
+            expected,
+            int,
+        ):
+            raise QualityBenchError(
+                "number case requires an integer expected value"
+            )
+
+        return lambda text: _score_number(text, expected)
+
+    if name == "summary":
+
+        if not isinstance(expected, list):
+            raise QualityBenchError(
+                "summary case requires a list of key points"
+            )
+
+        return lambda text: _score_summary(text, expected)
+
+    if name == "translation":
+
+        reference_id = case.get("reference")
+
+        if not isinstance(reference_id, str):
+            raise QualityBenchError(
+                "translation case requires a reference"
+            )
+
+        required = case.get("required", [])
+
+        if not isinstance(required, list):
+            raise QualityBenchError(
+                "translation required terms must be a list"
+            )
+
+        reference = corpus.reference(reference_id)
+        terms = tuple(str(item) for item in required)
+        return lambda text: _score_translation(
+            text,
+            reference,
+            terms,
+        )
+
+    raise QualityBenchError(
+        f"unknown quality scorer: {name!r}"
     )
+
+
+def cases(
+    corpus: BenchmarkCorpus | None = None,
+) -> tuple[QualityCase, ...]:
+
+    corpus = corpus or BenchmarkCorpus.load()
+    result = []
+
+    for raw in corpus.quality:
+
+        sample_id = str(raw.get("sample") or "")
+        sample = corpus.text(sample_id).strip()
+        prompt = str(raw.get("prompt") or "")
+        name = str(raw.get("name") or "")
+
+        if not name or not prompt:
+            raise QualityBenchError(
+                "quality case requires name and prompt"
+            )
+
+        result.append(
+            QualityCase(
+                name=name,
+                prompt=prompt.replace("{text}", sample),
+                expected=raw.get("expected"),
+                scorer=_make_scorer(raw, corpus),
+                task=str(raw.get("task") or name),
+            )
+        )
+
+    return tuple(result)
 
 
 def benchmark_quality(
     llm: Any,
     attempts: int = 2,
+    corpus: BenchmarkCorpus | None = None,
 ) -> dict[str, Any]:
 
     if attempts <= 0:
         raise QualityBenchError("attempts must be positive")
 
+    corpus = corpus or BenchmarkCorpus.load()
     cases_results = []
     grouped: dict[str, list[dict[str, Any]]] = {}
 
-    for case in cases():
+    for case in cases(corpus):
 
         scores = []
         errors = []
@@ -348,10 +341,7 @@ def benchmark_quality(
             "errors": errors,
         }
         cases_results.append(result)
-        grouped.setdefault(
-            case.task or case.name,
-            [],
-        ).append(result)
+        grouped.setdefault(case.task or case.name, []).append(result)
 
     tasks = {}
 
@@ -380,7 +370,8 @@ def benchmark_quality(
     ]
 
     return {
-        "suite_version": 2,
+        "suite_version": 3,
+        "corpus": corpus.suite_name,
         "tested_at": utc_now(),
         "attempts": attempts,
         "tasks": tasks,

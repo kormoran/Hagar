@@ -35,20 +35,28 @@ class FakeVisionLLM:
         if "Read the text" in prompt:
             return self.wrong.get("ocr", "HAGAR 42")
 
+        if "Which bar" in prompt:
+            return self.wrong.get("chart", "B")
+
+        if "PORT" in prompt:
+            return self.wrong.get("ui", "8080")
+
         return "unknown"
 
 
 def test_manifest_has_fixed_images():
     entries = manifest()
 
-    assert len(entries) == 4
+    assert len(entries) == 6
     assert {item["case"] for item in entries} == {
         "vision_color",
         "vision_count",
         "vision_spatial",
         "vision_ocr",
+        "vision_chart",
+        "vision_ui",
     }
-    assert len({item["sha256"] for item in entries}) == 4
+    assert len({item["sha256"] for item in entries}) == 6
 
     for case in cases():
         image = ImageInput.from_bytes(case.image)
@@ -58,10 +66,10 @@ def test_manifest_has_fixed_images():
 def test_vision_benchmark_perfect_answers():
     report = benchmark_vision(FakeVisionLLM(), attempts=1)
 
-    assert report["suite_version"] == 1
+    assert report["suite_version"] == 2
     assert report["overall"] == 1.0
     assert report["tasks"]["vision"]["mean"] == 1.0
-    assert len(report["images"]) == 4
+    assert len(report["images"]) == 6
 
 
 def test_vision_benchmark_partial_and_errors():
@@ -70,8 +78,8 @@ def test_vision_benchmark_partial_and_errors():
         attempts=1,
     )
 
-    assert report["overall"] == 0.75
-    assert report["tasks"]["vision"]["mean"] == 0.75
+    assert report["overall"] == 0.8333
+    assert report["tasks"]["vision"]["mean"] == 0.8333
 
     failing = benchmark_vision(
         FakeVisionLLM(error=RuntimeError("vision offline")),

@@ -30,7 +30,7 @@ def test_save_list_and_load(tmp_path):
 
     assert loaded is not None
     assert loaded["run_id"] == "run-1"
-    assert loaded["suite_version"] == 2
+    assert loaded["suite_version"] == 3
     assert loaded["provider"] == "fake"
     assert loaded["saved_at"]
 

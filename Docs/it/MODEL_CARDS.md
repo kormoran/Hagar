@@ -128,19 +128,30 @@ La scheda contiene:
 ```json
 {
   "quality": {
-    "suite_version": 2,
+    "suite_version": 3,
     "overall": 0.75,
     "tasks": {
       "extraction": {"attempts": 2, "mean": 0.83},
       "instruction": {"attempts": 2, "mean": 1.0},
       "reasoning": {"attempts": 2, "mean": 1.0},
       "coding": {"attempts": 2, "mean": 0.5},
-      "summary": {"attempts": 2, "mean": 0.8},
+      "summary": {"attempts": 2, "cases": 2, "mean": 0.8},
       "translation": {"attempts": 2, "cases": 2, "mean": 0.7}
     }
   }
 }
 ```
+
+Il corpus è in `benchmarks/corpus/`:
+
+```text
+7 testi
+2 reference di traduzione
+6 immagini sintetiche
+manifest.yaml con SHA-256
+```
+
+La suite testuale è `quality_v3`; la suite vision è `vision_v2`.
 
 Un `quality_task` nel TaskProfile seleziona il task da usare; se manca,
 il broker usa il nome del profilo. Se la scheda non ha qualità misurata,
@@ -161,6 +172,8 @@ colore dominante
 conteggio di oggetti
 relazione spaziale
 OCR
+grafico a barre
+campo UI
 ```
 
 Ogni immagine ha un id e uno SHA-256 nel run. Il punteggio è la media

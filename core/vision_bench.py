@@ -11,6 +11,7 @@ import zlib
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from core.benchmark_corpus import BenchmarkCorpus
 from core.model_cards import utc_now
 
 
@@ -125,6 +126,69 @@ _GLYPHS = {
         "10100",
         "10010",
         "10001",
+    ),
+    "B": (
+        "11110",
+        "10001",
+        "10001",
+        "11110",
+        "10001",
+        "10001",
+        "11110",
+    ),
+    "C": (
+        "01110",
+        "10001",
+        "10000",
+        "10000",
+        "10000",
+        "10001",
+        "01110",
+    ),
+    "P": (
+        "11110",
+        "10001",
+        "10001",
+        "11110",
+        "10000",
+        "10000",
+        "10000",
+    ),
+    "O": (
+        "01110",
+        "10001",
+        "10001",
+        "10001",
+        "10001",
+        "10001",
+        "01110",
+    ),
+    "T": (
+        "11111",
+        "00100",
+        "00100",
+        "00100",
+        "00100",
+        "00100",
+        "00100",
+    ),
+    "8": (
+        "01110",
+        "10001",
+        "10001",
+        "01110",
+        "10001",
+        "10001",
+        "01110",
+    ),
+    "0": (
+        "01110",
+        "10001",
+        "10001",
+        "10001",
+        "10001",
+        "10001",
+        "01110",
     ),
     "4": (
         "00010",
@@ -275,80 +339,116 @@ def _ocr_image() -> bytes:
     return _png(220, 56, canvas)
 
 
-def cases() -> tuple[VisionCase, ...]:
+def _chart_image() -> bytes:
 
-    return (
-        VisionCase(
-            name="vision_color",
-            prompt=(
-                "What is the dominant color of this image? "
-                "Answer with one word: red, blue or green."
-            ),
-            expected="red",
-            image_id="color_red_01",
-            image=_color_image(),
-            scorer=_score_exact("red"),
-        ),
-        VisionCase(
-            name="vision_count",
-            prompt=(
-                "How many blue squares are in this image? "
-                "Answer with only the number."
-            ),
-            expected=3,
-            image_id="count_three_01",
-            image=_count_image(),
-            scorer=_score_number(3),
-        ),
-        VisionCase(
-            name="vision_spatial",
-            prompt=(
-                "Is the red square to the left or to the right "
-                "of the blue square? Answer only left or right."
-            ),
-            expected="left",
-            image_id="spatial_left_01",
-            image=_spatial_image(),
-            scorer=_score_exact("left"),
-        ),
-        VisionCase(
-            name="vision_ocr",
-            prompt=(
-                "Read the text in this image. "
-                "Answer only with the text."
-            ),
-            expected="HAGAR 42",
-            image_id="ocr_hagar_42",
-            image=_ocr_image(),
-            scorer=_score_exact("hagar 42"),
-        ),
-    )
+    canvas = _fill(240, 160, (255, 255, 255))
+    baseline = 125
+
+    for index, height in enumerate((40, 90, 60)):
+        x = 30 + index * 66
+        _rect(
+            canvas,
+            x,
+            baseline - height,
+            34,
+            height,
+            (40, 120, 200),
+        )
+
+    _text(canvas, 42, 130, "A", scale=3)
+    _text(canvas, 108, 130, "B", scale=3)
+    _text(canvas, 174, 130, "C", scale=3)
+
+    return _png(240, 160, canvas)
 
 
-def manifest() -> list[dict[str, Any]]:
+def _ui_image() -> bytes:
+
+    canvas = _fill(240, 100, (245, 245, 245))
+    _rect(canvas, 12, 12, 216, 76, (255, 255, 255))
+    _text(canvas, 24, 24, "PORT", scale=4)
+    _text(canvas, 24, 58, "8080", scale=4)
+
+    return _png(240, 100, canvas)
+
+
+def cases(
+    corpus: BenchmarkCorpus | None = None,
+) -> tuple[VisionCase, ...]:
+
+    corpus = corpus or BenchmarkCorpus.load()
+    result = []
+
+    for raw in corpus.vision:
+
+        name = str(raw.get("name") or "")
+        image_id = str(raw.get("image") or "")
+        prompt = str(raw.get("prompt") or "")
+        scorer_name = str(raw.get("scorer") or "")
+        expected = raw.get("expected")
+
+        if not name or not prompt:
+            raise VisionBenchError(
+                "vision case requires name and prompt"
+            )
+
+        if scorer_name == "exact":
+            scorer = _score_exact(expected)
+        elif scorer_name == "number":
+            scorer = _score_number(int(expected))
+        else:
+            raise VisionBenchError(
+                f"unknown vision scorer: {scorer_name!r}"
+            )
+
+        result.append(
+            VisionCase(
+                name=name,
+                prompt=prompt,
+                expected=expected,
+                image_id=image_id,
+                image=corpus.image(image_id),
+                scorer=scorer,
+            )
+        )
+
+    return tuple(result)
+
+
+def manifest(
+    corpus: BenchmarkCorpus | None = None,
+) -> list[dict[str, Any]]:
+
+    corpus = corpus or BenchmarkCorpus.load()
+    case_names = {
+        str(case.get("image")): str(case.get("name"))
+        for case in corpus.vision
+    }
 
     return [
         {
-            "id": case.image_id,
-            "case": case.name,
-            "sha256": case.sha256,
-            "bytes": len(case.image),
+            "id": image_id,
+            "case": case_names.get(image_id, ""),
+            "path": entry.get("path"),
+            "sha256": entry.get("sha256"),
         }
-        for case in cases()
+        for image_id, entry in corpus.images.items()
     ]
 
 
 def benchmark_vision(
     llm: Any,
     attempts: int = 1,
+    corpus: BenchmarkCorpus | None = None,
 ) -> dict[str, Any]:
 
     if attempts <= 0:
         raise VisionBenchError("attempts must be positive")
 
+    corpus = corpus or BenchmarkCorpus.load()
     case_results = []
 
-    for case in cases():
+    for case in cases(corpus):
 
         scores = []
         errors = []
@@ -400,10 +500,11 @@ def benchmark_vision(
     ]
 
     return {
-        "suite_version": 1,
+        "suite_version": 2,
+        "corpus": corpus.suite_name,
         "tested_at": utc_now(),
         "attempts": attempts,
-        "images": manifest(),
+        "images": manifest(corpus),
         "tasks": {
             "vision": {
                 "attempts": attempts,

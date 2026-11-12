@@ -61,6 +61,12 @@ class FakeVisionLLM:
         if "left or to the right" in prompt:
             return "left"
 
+        if "Which bar" in prompt:
+            return "B"
+
+        if "PORT" in prompt:
+            return "8080"
+
         return "HAGAR 42"
 
 
@@ -143,7 +149,7 @@ def test_models_command_runs_benchmark(tmp_path, monkeypatch):
     assert result.ok is True
     assert cards.list()[0]["provider"] == "fake"
     assert result.data["last_tested_at"]
-    assert result.data["quality"]["suite_version"] == 2
+    assert result.data["quality"]["suite_version"] == 3
     assert "extraction" in result.data["quality"]["tasks"]
     assert "summary" in result.data["quality"]["tasks"]
     assert "translation" in result.data["quality"]["tasks"]
@@ -152,7 +158,7 @@ def test_models_command_runs_benchmark(tmp_path, monkeypatch):
     history = commands.handle("/models runs")
     assert history.ok is True
     assert len(history.data["runs"]) == 1
-    assert history.data["runs"][0]["suite_manifest"]["version"] == 2
+    assert history.data["runs"][0]["suite_manifest"]["version"] == 3
 
 
 def test_models_command_runs_vision_benchmark(tmp_path):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.benchmark_corpus import BenchmarkCorpus
 from core.quality_bench import QualityBenchError, benchmark_quality
 
 
@@ -13,6 +14,7 @@ class FakeLLM:
         self.responses = responses or {}
         self.error = error
         self.calls = []
+        self.corpus = BenchmarkCorpus.load()
 
     def chat(self, messages):
         prompt = messages[-1]["content"]
@@ -30,32 +32,37 @@ class FakeLLM:
         if "HAGAR" in prompt:
             return self.responses.get("instruction", "HAGAR")
 
-        if "3 + 4" in prompt:
-            return self.responses.get("reasoning", "7")
+        if "componenti" in prompt:
+            return self.responses.get("reasoning", "6")
 
         if "print(len" in prompt:
             return self.responses.get("coding", "3")
 
         if "Riassumi" in prompt:
+
+            if "sandbox" in prompt:
+                return self.responses.get(
+                    "summary",
+                    "Hagar usa una sandbox, una policy e dei tool; "
+                    "il broker sceglie il modello e resta fuori dalla 1.0.",
+                )
+
             return self.responses.get(
                 "summary",
-                "Hagar 0.8 introduce il broker e i modelli locali. "
-                "La memoria arriva nella 0.9, il runtime locale dopo la 1.0.",
+                "Il catalogo e le schede misurate alimentano i profili; "
+                "il broker registra la scelta nell'audit.",
             )
 
         if "Traduci in inglese" in prompt:
             return self.responses.get(
                 "translation_it_en",
-                "Hagar runs tools in the sandbox. The report is in "
-                "/home/ai/workspace/report.txt and the command is "
-                "`hagar --config hagar.yaml`.",
+                self.corpus.reference("it_broker_en"),
             )
 
         if "Traduci in italiano" in prompt:
             return self.responses.get(
                 "translation_en_it",
-                "Il broker sceglie un modello, ma non concede mai "
-                "capability.",
+                self.corpus.reference("en_broker_it"),
             )
 
         return "OK"
@@ -64,7 +71,7 @@ class FakeLLM:
 def test_quality_benchmark_perfect_answers():
     report = benchmark_quality(FakeLLM(), attempts=2)
 
-    assert report["suite_version"] == 2
+    assert report["suite_version"] == 3
     assert report["overall"] == 1.0
     assert set(report["tasks"]) == {
         "extraction",

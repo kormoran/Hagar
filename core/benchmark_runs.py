@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-BENCHMARK_SUITE_VERSION = 2
+BENCHMARK_SUITE_VERSION = 3
 
 
 class BenchmarkRunError(RuntimeError):
