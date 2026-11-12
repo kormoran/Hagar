@@ -219,6 +219,34 @@ excluded
 
 `excluded` contiene, per ogni modello scartato, il motivo.
 
+## Comandi
+
+Configurazione:
+
+```yaml
+broker:
+  enabled: true
+  catalog: models.yaml
+  profiles: profiles.yaml
+  default_profile: coding
+```
+
+I percorsi relativi sono risolti rispetto al file di configurazione.
+
+```text
+/models route
+/models route coding
+/models explain
+/models explain private_chat
+```
+
+`route` mostra il modello scelto e i motivi. `explain` mostra anche i
+modelli esclusi e il motivo.
+
+Se `broker.enabled` è false, o il catalogo non è valido, Hagar continua
+ad avviarsi e il comando restituisce un errore esplicito. L’errore viene
+registrato nell’audit come `broker.disabled`.
+
 ## Cosa manca
 
 ```text

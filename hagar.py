@@ -11,6 +11,7 @@ from typing import Callable
 
 from core.agent import Agent
 from core.audit import AuditLog
+from core.broker import Broker
 from core.config import ConfigError, ConfigLoader
 from core.command_service import CommandService
 from core.confirmations import QueueConfirmationProvider
@@ -34,6 +35,8 @@ from local_tools.flow_tool import FlowToolProvider
 from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
+from core.model_registry import ModelRegistry, ModelRegistryError
+from core.task_profile import TaskProfileStore, TaskProfileError
 from core.plugins import PluginContext
 from core.plugins import load_tool_plugins
 from core.service import HarnessService
@@ -214,6 +217,8 @@ class Harness:
     project_id: str | None = None
     project_state: dict[str, str | None] | None = None
     subagents: Any = None
+    broker: Any = None
+    broker_error: str | None = None
 
 
 def build_harness(
@@ -933,6 +938,38 @@ def build_harness(
         },
     )
 
+    broker_service = None
+    broker_error = None
+
+    if config.broker.enabled:
+
+        try:
+            broker_registry = ModelRegistry.load(
+                config.broker.catalog
+            )
+            broker_profiles = TaskProfileStore.load(
+                config.broker.profiles
+            )
+            broker_service = Broker(
+                broker_registry,
+                broker_profiles,
+            )
+        except (ModelRegistryError, TaskProfileError) as exc:
+
+            broker_error = str(exc)
+            audit.record(
+                "broker.disabled",
+                error=broker_error,
+            )
+        else:
+            audit.record(
+                "broker.enabled",
+                catalog=config.broker.catalog,
+                profiles=config.broker.profiles,
+                models=len(broker_registry.entries),
+                profiles_count=len(broker_profiles.profiles),
+            )
+
     return Harness(
         config=config,
         filesystem=filesystem,
@@ -949,6 +986,8 @@ def build_harness(
         project_id=None,
         project_state=project_state,
         subagents=subagents,
+        broker=broker_service,
+        broker_error=broker_error,
     )
 
 

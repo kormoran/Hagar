@@ -385,3 +385,97 @@ def test_usage_reports_session_tokens():
     assert result.data["total_tokens"] == 17
     assert result.data["calls"] == 1
     assert "17" in "\n".join(result.lines)
+
+
+class FakeBroker:
+    def __init__(self, error=None):
+        self.error = error
+        self.entry = SimpleNamespace(
+            id="lmstudio/coder",
+            provider="lmstudio",
+            model="coder",
+        )
+
+    def select(self, profile):
+        if self.error is not None:
+            raise self.error
+        return SimpleNamespace(
+            entry=self.entry,
+            score=0.8123,
+            reasons=("quality 0.90", "context 32768"),
+            as_dict=lambda: {
+                "profile": profile,
+                "model_id": self.entry.id,
+                "provider": self.entry.provider,
+                "model": self.entry.model,
+                "score": 0.8123,
+                "reasons": ["quality 0.90", "context 32768"],
+                "excluded": [],
+            },
+        )
+
+    def explain(self, profile):
+        return {
+            "profile": profile,
+            "selected": {
+                "model_id": self.entry.id,
+                "score": 0.8123,
+            },
+            "ranked": [
+                {
+                    "model_id": self.entry.id,
+                    "score": 0.8123,
+                }
+            ],
+            "excluded": [
+                {
+                    "model_id": "remote",
+                    "reasons": ["privacy local_only"],
+                }
+            ],
+        }
+
+
+def test_models_route_uses_broker():
+    harness, _ = make_service()
+    commands = CommandService(
+        harness,
+        HarnessService(harness),
+        broker=FakeBroker(),
+        default_profile="coding",
+    )
+
+    result = commands.handle("/models route")
+
+    assert result.ok is True
+    assert result.command == "/models route"
+    assert result.data["model_id"] == "lmstudio/coder"
+    assert "lmstudio/coder" in "\n".join(result.lines)
+    assert "0.8123" in "\n".join(result.lines)
+
+
+def test_models_explain_lists_excluded():
+    harness, _ = make_service()
+    commands = CommandService(
+        harness,
+        HarnessService(harness),
+        broker=FakeBroker(),
+        default_profile="coding",
+    )
+
+    result = commands.handle("/models explain private_chat")
+
+    assert result.ok is True
+    assert result.command == "/models explain"
+    assert result.data["profile"] == "private_chat"
+    assert "Esclusi: 1" in "\n".join(result.lines)
+    assert "privacy local_only" in "\n".join(result.lines)
+
+
+def test_models_route_without_broker_is_error():
+    _, commands = make_service()
+
+    result = commands.handle("/models route coding")
+
+    assert result.ok is False
+    assert "Broker non configurato" in "\n".join(result.lines)

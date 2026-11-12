@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.audit import read_entries
+from core.broker import BrokerError
 from core.hardware import detect_hardware
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardError
@@ -37,11 +38,28 @@ class CommandService:
         harness: Any,
         service: HarnessService,
         model_cards: ModelCardStore | None = None,
+        broker: Any = None,
+        default_profile: str | None = None,
     ) -> None:
 
         self.harness = harness
         self.service = service
         self.model_cards = model_cards or ModelCardStore()
+        self.broker = (
+            broker
+            if broker is not None
+            else getattr(harness, "broker", None)
+        )
+        configured_broker = getattr(
+            getattr(harness, "config", None),
+            "broker",
+            None,
+        )
+
+        if default_profile is None and configured_broker is not None:
+            default_profile = configured_broker.default_profile
+
+        self.default_profile = default_profile or "coding"
 
     def handle(
         self,
@@ -126,7 +144,7 @@ class CommandService:
             "  /audit [n]            ultimi n eventi",
             "  /project ...          gestione progetti",
             "  /memory ...           memoria, skill e archivio",
-            "  /models ...           schede e benchmark dei modelli",
+            "  /models ...           schede, benchmark e scelta modello",
             "  /undo                 annulla le modifiche dell'ultimo turno",
             "  exit | quit            esci",
             "",
@@ -356,12 +374,114 @@ class CommandService:
                 data=report,
             )
 
+        if action in {"route", "explain"}:
+
+            if self.broker is None:
+
+                detail = getattr(
+                    self.harness,
+                    "broker_error",
+                    None,
+                )
+                lines = [
+                    "Broker non configurato: "
+                    "abilita broker.enabled e crea "
+                    "models.yaml e profiles.yaml."
+                ]
+
+                if detail:
+                    lines.append(f"Dettaglio: {detail}")
+
+                return CommandResult(
+                    command=f"/models {action}",
+                    ok=False,
+                    error="broker not configured",
+                    lines=lines,
+                )
+
+            profile = (
+                arguments[1]
+                if len(arguments) > 1
+                else self.default_profile
+            )
+
+            try:
+
+                if action == "explain":
+
+                    report = self.broker.explain(profile)
+                    selected = report.get("selected")
+                    lines = [
+                        f"Profilo: {profile}",
+                    ]
+
+                    if selected is None:
+                        lines.append("Nessun modello eleggibile.")
+                    else:
+                        lines.append(
+                            f"Scelto: {selected['model_id']} "
+                            f"(score {selected['score']:.4f})"
+                        )
+
+                    lines.append(
+                        f"Esclusi: {len(report['excluded'])}"
+                    )
+
+                    for item in report["excluded"]:
+                        lines.append(
+                            f"  {item['model_id']}: "
+                            + "; ".join(item["reasons"])
+                        )
+
+                    return CommandResult(
+                        command="/models explain",
+                        lines=lines,
+                        data=report,
+                    )
+
+                selection = self.broker.select(profile)
+                lines = [
+                    f"Profilo: {profile}",
+                    f"Modello: {selection.entry.id}",
+                    f"Provider: {selection.entry.provider}",
+                    f"Modello provider: {selection.entry.model}",
+                    f"Score: {selection.score:.4f}",
+                    "Motivi:",
+                ]
+
+                for reason in selection.reasons:
+                    lines.append(f"  - {reason}")
+
+                return CommandResult(
+                    command="/models route",
+                    lines=lines,
+                    data=selection.as_dict(),
+                )
+
+            except BrokerError as exc:
+
+                return CommandResult(
+                    command=f"/models {action}",
+                    ok=False,
+                    error=str(exc),
+                    lines=[
+                        str(exc),
+                        *[
+                            f"  {item['model_id']}: "
+                            + "; ".join(item["reasons"])
+                            for item in exc.excluded
+                        ],
+                    ],
+                    data={"excluded": exc.excluded},
+                )
+
         return CommandResult(
             command="/models",
             ok=False,
             error="unknown models action",
             lines=[
-                "Uso: /models [list|show|test|hardware]",
+                "Uso: /models "
+                "[list|show|test|hardware|route|explain]",
             ],
         )
 
