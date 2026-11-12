@@ -84,6 +84,65 @@ class BrokerLLMClient(LLMClient):
 
         self._client.native_tools = config.native_tools
 
+    def switch_profile(self, profile: str) -> Any:
+        """Cambia profilo e client in modo atomico.
+
+        Se la selezione o la costruzione del nuovo client falliscono,
+        il client precedente resta attivo.
+        """
+
+        try:
+            selection = self.broker.select(profile)
+        except BrokerError as exc:
+
+            self._record(
+                "broker.switch_failed",
+                profile=profile,
+                error=str(exc),
+            )
+            raise
+
+        model_config = replace(
+            self.config,
+            provider=selection.entry.provider,
+            name=selection.entry.model,
+        )
+
+        try:
+            client = self._factory(
+                model_config,
+                audit=self.audit,
+            )
+        except Exception as exc:
+
+            self._record(
+                "broker.switch_failed",
+                profile=profile,
+                provider=selection.entry.provider,
+                model=selection.entry.model,
+                error=str(exc),
+            )
+            raise
+
+        client.native_tools = self.native_tools
+        client.usage_sink = self.usage_sink
+
+        self._client = client
+        self.profile = profile
+        self.selection = selection
+        self.fallback_reason = None
+        self._record(
+            "broker.decision",
+            profile=profile,
+            model_id=selection.entry.id,
+            provider=selection.entry.provider,
+            model=selection.entry.model,
+            score=round(selection.score, 4),
+            action="switch",
+        )
+
+        return selection
+
     def _create_client(
         self,
         model_config: ModelConfig,

@@ -165,3 +165,68 @@ def test_missing_audit_is_allowed():
     client = make_client(FakeBroker(), factory, audit=None)
 
     assert client.model == "coder"
+
+
+def test_switch_profile_replaces_client():
+    audit = FakeAudit()
+    broker = FakeBroker()
+    created = []
+
+    def factory(config, audit=None):
+        client = FakeLLM(config.name)
+        created.append(config.name)
+        return client
+
+    client = make_client(broker, factory, audit)
+    broker.entry = SimpleNamespace(
+        id="lmstudio/quality",
+        provider="lmstudio",
+        model="quality",
+    )
+
+    selection = client.switch_profile("quality_chat")
+
+    assert selection.entry.id == "lmstudio/quality"
+    assert client.profile == "quality_chat"
+    assert client.model == "quality"
+    assert created == ["coder", "quality"]
+    assert any(
+        event == "broker.decision"
+        and fields.get("action") == "switch"
+        for event, fields in audit.events
+    )
+
+
+def test_switch_profile_failure_keeps_old_client():
+    audit = FakeAudit()
+    broker = FakeBroker()
+    created = []
+
+    def factory(config, audit=None):
+        if config.name == "quality":
+            raise RuntimeError("quality unavailable")
+        client = FakeLLM(config.name)
+        created.append(config.name)
+        return client
+
+    client = make_client(broker, factory, audit)
+    broker.entry = SimpleNamespace(
+        id="lmstudio/quality",
+        provider="lmstudio",
+        model="quality",
+    )
+
+    try:
+        client.switch_profile("quality_chat")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("switch should fail")
+
+    assert client.profile == "coding"
+    assert client.model == "coder"
+    assert created == ["coder"]
+    assert any(
+        event == "broker.switch_failed"
+        for event, _ in audit.events
+    )

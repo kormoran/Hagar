@@ -479,3 +479,73 @@ def test_models_route_without_broker_is_error():
 
     assert result.ok is False
     assert "Broker non configurato" in "\n".join(result.lines)
+
+
+class FakeBrokerClient:
+    def __init__(self, error=None):
+        self.error = error
+        self.entry = SimpleNamespace(
+            id="lmstudio/quality",
+            provider="lmstudio",
+            model="quality",
+        )
+
+    def switch_profile(self, profile):
+        if self.error is not None:
+            raise self.error
+
+        return SimpleNamespace(
+            entry=self.entry,
+            score=0.91,
+            as_dict=lambda: {
+                "profile": profile,
+                "model_id": self.entry.id,
+                "score": 0.91,
+            },
+        )
+
+
+def test_models_use_switches_profile():
+    harness, _ = make_service()
+    harness.llm = FakeBrokerClient()
+    commands = CommandService(
+        harness,
+        HarnessService(harness),
+        broker=FakeBroker(),
+    )
+
+    result = commands.handle("/models use quick_chat")
+
+    assert result.ok is True
+    assert result.command == "/models use"
+    assert result.data["profile"] == "quick_chat"
+    assert result.data["model_id"] == "lmstudio/quality"
+    assert "Profilo attivo: quick_chat" in "\n".join(result.lines)
+
+
+def test_models_use_requires_broker_client():
+    _, commands = make_service()
+
+    result = commands.handle("/models use coding")
+
+    assert result.ok is False
+    assert "broker non è attivo" in "\n".join(result.lines)
+
+
+def test_models_use_reports_failure():
+    from core.broker import BrokerError
+
+    harness, _ = make_service()
+    harness.llm = FakeBrokerClient(
+        error=BrokerError("no eligible model")
+    )
+    commands = CommandService(
+        harness,
+        HarnessService(harness),
+        broker=FakeBroker(),
+    )
+
+    result = commands.handle("/models use missing")
+
+    assert result.ok is False
+    assert "no eligible model" in result.error

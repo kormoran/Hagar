@@ -374,6 +374,62 @@ class CommandService:
                 data=report,
             )
 
+        if action == "use":
+
+            if len(arguments) < 2:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error="missing profile",
+                    lines=["Uso: /models use <profilo>"],
+                )
+
+            llm = getattr(self.harness, "llm", None)
+            switch = getattr(llm, "switch_profile", None)
+
+            if switch is None:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error="broker client not configured",
+                    lines=[
+                        "Il broker non è attivo: "
+                        "abilita broker.enabled e riavvia Hagar."
+                    ],
+                )
+
+            profile = arguments[1]
+
+            try:
+                selection = switch(profile)
+            except BrokerError as exc:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Cambio profilo non riuscito: {exc}"],
+                    data={"excluded": exc.excluded},
+                )
+            except Exception as exc:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Cambio profilo non riuscito: {exc}"],
+                )
+
+            lines = [
+                f"Profilo attivo: {profile}",
+                f"Modello: {selection.entry.id}",
+                f"Score: {selection.score:.4f}",
+            ]
+
+            return CommandResult(
+                command="/models use",
+                lines=lines,
+                data=selection.as_dict(),
+            )
+
         if action in {"route", "explain"}:
 
             if self.broker is None:
@@ -481,7 +537,7 @@ class CommandService:
             error="unknown models action",
             lines=[
                 "Uso: /models "
-                "[list|show|test|hardware|route|explain]",
+                "[list|show|test|hardware|route|explain|use]",
             ],
         )
 

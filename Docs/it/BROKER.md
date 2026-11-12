@@ -239,10 +239,13 @@ I percorsi relativi sono risolti rispetto al file di configurazione.
 /models route coding
 /models explain
 /models explain private_chat
+/models use quick_chat
 ```
 
 `route` mostra il modello scelto e i motivi. `explain` mostra anche i
-modelli esclusi e il motivo.
+modelli esclusi e il motivo. `use` cambia il profilo attivo e il client
+LLM; se il nuovo modello non è disponibile, il client precedente resta
+attivo e l’errore viene restituito.
 
 Se `broker.enabled` è false, o il catalogo non è valido, Hagar continua
 ad avviarsi e il comando restituisce un errore esplicito. L’errore viene
@@ -257,12 +260,16 @@ config.model = fallback dichiarato
 broker.default_profile = profilo usato per la scelta
 ```
 
-La scelta avviene una volta, alla costruzione del client:
+La scelta avviene alla costruzione e può essere cambiata in modo
+esplicito con `/models use <profilo>`. Ogni cambio ricostruisce il
+client e registra `broker.decision` con `action: switch`. Se il nuovo
+client non si costruisce, resta attivo quello precedente.
 
 ```text
 broker.decision   modello scelto, profilo, score
 broker.fallback   nessun modello eleggibile, si usa config.model
 broker.fallback_client  il client scelto non si costruisce
+broker.switch_failed    cambio esplicito non riuscito
 ```
 
 L’adapter delega:
