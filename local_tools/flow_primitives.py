@@ -392,10 +392,31 @@ class FlowPrimitiveProvider:
             limit=_clamp(limit, 10, 50),
         )
 
+        # Il backend Markdown usa kind="skill"; SQLite usa fact/procedure.
+        # Normalizza i filtri delle skill solo per il backend legacy.
+        legacy_markdown = not hasattr(self.memory, "database")
+
+        if (
+            not results
+            and legacy_markdown
+            and kind in {"skill", "fact", "procedure"}
+        ):
+            results = self.memory.index.search(
+                query,
+                kind=None,
+                status=status or None,
+                limit=_clamp(limit, 10, 50),
+            )
+            results = [
+                item
+                for item in results
+                if "skills/" in str(item.get("path", ""))
+            ]
+
         for item in results:
             path = item.get("path")
 
-            if item.get("kind") == "skill" and isinstance(path, str):
+            if isinstance(path, str) and "skills/" in path:
                 item["id"] = Path(path).stem
 
         return results

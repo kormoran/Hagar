@@ -10,6 +10,7 @@ from core.flow import FlowRunner
 from core.models import FlowConfig
 from core.tool_registry import ToolRegistry
 from local_tools.flow_primitives import FlowPrimitiveProvider
+from memory.sqlite_store import SqliteMemoryStore
 from memory.store import MemoryStore
 from memory.vault import Vault
 
@@ -62,7 +63,7 @@ def test_memory_search_and_skill(sandbox, memory):
     runner, _ = make_runner(sandbox, memory)
 
     result = runner.run(
-        "items = memory.search('release')\n"
+        "items = memory.search('release', kind='fact')\n"
         "if len(items) == 0:\n"
         "    return None\n"
         "skill = memory.skill(items[0]['id'])\n"
@@ -83,6 +84,30 @@ def test_memory_context(sandbox, memory):
 
     assert result.ok is True
     assert "release" in result.result.lower()
+
+
+def test_sqlite_memory_search_and_skill(sandbox, tmp_path):
+    memory = SqliteMemoryStore(
+        session_id="s1",
+        path=tmp_path / "memory.db",
+    )
+    memory.ensure()
+    memory.create_skill(
+        "Release Hagar",
+        "Il tag deve puntare al commit di preparazione.",
+        kind="fact",
+        tags=["release"],
+    )
+
+    runner, _ = make_runner(sandbox, memory)
+    result = runner.run(
+        "items = memory.search('release', kind='fact')\n"
+        "skill = memory.skill(items[0]['id'])\n"
+        "return skill['content']\n"
+    )
+
+    assert result.ok is True
+    assert "commit di preparazione" in result.result
 
 
 def test_project_context(sandbox):
