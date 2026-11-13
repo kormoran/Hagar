@@ -922,6 +922,42 @@ def test_model_native_tools_must_be_boolean(tmp_path, value):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
+def test_tools_timeouts_and_adaptive_defaults(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.tools.timeouts == {}
+    assert cfg.timeouts.adaptive is True
+    assert cfg.timeouts.floor_seconds == 30.0
+
+
+def test_tools_timeouts_and_adaptive_values(tmp_path):
+    data = base_config(tmp_path)
+    data["tools"] = {
+        "timeout": 120,
+        "timeouts": {"ocr.pdf": 900},
+    }
+    data["timeouts"] = {
+        "adaptive": False,
+        "floor_seconds": 45,
+        "ceiling_seconds": 600,
+        "safety_factor": 2.0,
+        "cold_start_seconds": 0,
+        "turn_ceiling_seconds": 1200,
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.tools.timeouts == {"ocr.pdf": 900.0}
+    assert cfg.timeouts.adaptive is False
+    assert cfg.timeouts.floor_seconds == 45.0
+    assert cfg.timeouts.ceiling_seconds == 600.0
+    assert cfg.timeouts.safety_factor == 2.0
+    assert cfg.timeouts.cold_start_seconds == 0.0
+    assert cfg.timeouts.turn_ceiling_seconds == 1200.0
+
+
 def test_api_key_env_is_optional(tmp_path):
     cfg = ConfigLoader.load(
         write_yaml(tmp_path, base_config(tmp_path))

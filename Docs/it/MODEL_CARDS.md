@@ -240,6 +240,38 @@ Esempio:
 }
 ```
 
+## Timeout adattivi
+
+Il broker usa la latenza p95 della scheda per stimare il timeout della
+singola chiamata:
+
+```text
+timeout = clamp(p95 * safety * input_factor * output_factor, floor, ceiling)
+```
+
+Configurazione:
+
+```yaml
+timeouts:
+  adaptive: true
+  floor_seconds: 30
+  ceiling_seconds: 900
+  safety_factor: 1.5
+  cold_start_seconds: 120
+  turn_ceiling_seconds: 1800
+```
+
+I tool lenti si configurano separatamente:
+
+```yaml
+tools:
+  timeout: 120
+  timeouts:
+    document.ocr_pdf: 900
+```
+
+Il turno non scende sotto il timeout massimo dei tool configurati.
+
 ## Risposte e reasoning
 
 LM Studio può mettere il testo della risposta in:

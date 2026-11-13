@@ -59,6 +59,16 @@ def test_tool_names_are_sorted():
     assert registry.tool_names() == ["a.tool", "b.tool"]
 
 
+def test_tool_timeout_override_is_applied():
+    registry = ToolRegistry(
+        timeout_overrides={"ocr.pdf": 900},
+    )
+    tool = make_tool("ocr.pdf")
+    registry.register(tool)
+
+    assert tool.timeout == 900
+
+
 def test_unregister():
     registry = ToolRegistry()
     registry.register(make_tool())

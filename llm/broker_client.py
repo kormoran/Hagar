@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from core.broker import Broker, BrokerError
 from core.models import ModelConfig
+from core.timeouts import TimeoutPolicy
 from llm.base import LLMClient
 from llm.factory import create_llm
 
@@ -27,6 +28,7 @@ class BrokerLLMClient(LLMClient):
         audit: Any = None,
         llm_factory: Callable[..., LLMClient] | None = None,
         local_only: bool = False,
+        timeout_policy: TimeoutPolicy | None = None,
     ) -> None:
 
         self.broker = broker
@@ -35,6 +37,7 @@ class BrokerLLMClient(LLMClient):
         self.audit = audit
         self._factory = llm_factory or create_llm
         self.local_only = local_only
+        self.timeout_policy = timeout_policy
         self.fallback_reason: str | None = None
         self.selection: Any = None
 
@@ -289,6 +292,7 @@ class BrokerLLMClient(LLMClient):
         self,
         messages: list[dict[str, str]],
     ) -> str:
+        self._apply_timeout(messages)
         return self._client.chat(messages)
 
     def generate(
@@ -296,6 +300,9 @@ class BrokerLLMClient(LLMClient):
         prompt: str,
         system_prompt: str | None = None,
     ) -> str:
+        self._apply_timeout([
+            {"role": "user", "content": prompt}
+        ])
         return self._client.generate(
             prompt,
             system_prompt=system_prompt,
@@ -306,6 +313,7 @@ class BrokerLLMClient(LLMClient):
         messages: list[dict[str, str]],
         registry: Any,
     ) -> Any:
+        self._apply_timeout(messages)
         return self._client.request_tool_call(
             messages,
             registry,
@@ -316,9 +324,50 @@ class BrokerLLMClient(LLMClient):
         messages: list[dict[str, Any]],
         registry: Any,
     ) -> Any:
+        self._apply_timeout(messages)
         return self._client.native_step(
             messages,
             registry,
+        )
+
+    @property
+    def turn_timeout(self) -> float | None:
+        if (
+            self.timeout_policy is None
+            or self.selection is None
+        ):
+            return None
+
+        return self.timeout_policy.turn_timeout(
+            self.selection.entry,
+        )
+
+    def _apply_timeout(
+        self,
+        messages: list[dict[str, Any]],
+    ) -> None:
+
+        if (
+            self.timeout_policy is None
+            or self.selection is None
+        ):
+            return
+
+        timeout = self.timeout_policy.request_timeout(
+            self.selection.entry,
+            messages,
+            self.config.max_tokens,
+            self.config.timeout,
+        )
+
+        if timeout is None:
+            return
+
+        self._client.timeout = timeout
+        self._record(
+            "llm.timeout",
+            seconds=round(timeout, 3),
+            model_id=self.selection.entry.id,
         )
 
     def _native_request(

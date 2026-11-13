@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from core.broker import BrokerError
 from core.models import ModelConfig
 from core.task_profile import TaskProfile, TaskProfileStore
+from core.timeouts import TimeoutPolicy
 from llm.broker_client import BrokerLLMClient
 
 
@@ -25,6 +26,7 @@ class FakeLLM:
     def __init__(self, model):
         self.model = model
         self.native_tools = True
+        self.timeout = 120
         self.last_usage = "usage"
         self.last_reasoning = "reasoning"
         self.usage_sink = None
@@ -166,6 +168,43 @@ def test_missing_audit_is_allowed():
     client = make_client(FakeBroker(), factory, audit=None)
 
     assert client.model == "coder"
+
+
+def test_adaptive_timeout_is_applied():
+    entry = SimpleNamespace(
+        id="lmstudio/slow",
+        provider="lmstudio",
+        model="slow",
+        card={
+            "benchmarks": {
+                "chat": {
+                    "duration_ms": {
+                        "p50": 50000,
+                        "p95": 100000,
+                    }
+                }
+            }
+        },
+    )
+
+    def factory(config, audit=None):
+        return FakeLLM(config.name)
+
+    client = BrokerLLMClient(
+        FakeBroker(entry),
+        ModelConfig(provider="lmstudio", name="base"),
+        profile="coding",
+        llm_factory=factory,
+        timeout_policy=TimeoutPolicy(
+            floor_seconds=30,
+            ceiling_seconds=900,
+        ),
+    )
+
+    client.chat([{"role": "user", "content": "x"}])
+
+    assert client._client.timeout >= 30
+    assert client.turn_timeout is not None
 
 
 def test_local_only_forces_local_privacy():

@@ -37,6 +37,7 @@ from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
 from core.model_registry import ModelRegistry, ModelRegistryError
 from core.task_profile import TaskProfileStore, TaskProfileError
+from core.timeouts import TimeoutPolicy
 from core.plugins import PluginContext
 from core.plugins import load_tool_plugins
 from core.service import HarnessService
@@ -556,6 +557,7 @@ def build_harness(
         agent_id=audit.session_id,
         default_timeout=config.tools.timeout,
         repeat_limit=config.tools.repeat_limit,
+        timeout_overrides=config.tools.timeouts,
     )
 
     # ==========================================
@@ -793,6 +795,9 @@ def build_harness(
                 config.model,
                 profile=config.broker.default_profile,
                 audit=audit,
+                timeout_policy=TimeoutPolicy.from_config(
+                    config.timeouts
+                ),
             )
 
     except Exception as exc:
@@ -929,6 +934,18 @@ def build_harness(
     # Agent
     # ==========================================
 
+    turn_timeout = getattr(llm, "turn_timeout", None)
+    tool_ceiling = max(
+        config.tools.timeouts.values(),
+        default=0.0,
+    )
+
+    if turn_timeout is not None and tool_ceiling > 0:
+        turn_timeout = max(
+            turn_timeout,
+            float(tool_ceiling) + 60.0,
+        )
+
     agent = Agent(
         llm=llm,
         tool_registry=registry,
@@ -943,6 +960,7 @@ def build_harness(
         ),
         agent_id=audit.session_id,
         hifi=hifi,
+        turn_timeout=turn_timeout,
         artifact_store=getattr(subagents, "artifacts", None),
     )
 

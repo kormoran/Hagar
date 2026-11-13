@@ -25,6 +25,7 @@ from .models import (
     DecisionsConfig,
     HiFiConfig,
     ToolsConfig,
+    TimeoutsConfig,
     DevConfig,
     BoxesConfig,
     BrokerConfig,
@@ -120,6 +121,66 @@ def _positive_int(
 
         raise ConfigError(
             f"{name} must be greater than zero"
+        )
+
+    return value
+
+
+def _tool_timeouts(
+    section: dict[str, Any],
+) -> dict[str, float]:
+
+    raw = section.get("timeouts", {}) or {}
+
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            "tools.timeouts must be a mapping"
+        )
+
+    result = {}
+
+    for name, value in raw.items():
+
+        if not isinstance(name, str) or not name.strip():
+            raise ConfigError(
+                "tools.timeouts keys must be non-empty strings"
+            )
+
+        result[name.strip()] = _positive_float(
+            {"value": value},
+            "value",
+            f"tools.timeouts.{name}",
+            0.0,
+        )
+
+    return result
+
+
+def _positive_float(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+    default: float,
+    *,
+    allow_zero: bool = False,
+) -> float:
+
+    value = section.get(key, default)
+
+    if isinstance(value, bool) or not isinstance(
+        value,
+        (int, float),
+    ):
+        raise ConfigError(
+            f"{name} must be a number"
+        )
+
+    value = float(value)
+
+    if (value < 0 if allow_zero else value <= 0):
+        raise ConfigError(
+            f"{name} must be "
+            + ("zero or greater" if allow_zero else "greater than zero")
         )
 
     return value
@@ -1202,6 +1263,57 @@ class ConfigLoader:
                 "tools.repeat_limit",
                 3,
             ),
+            timeouts=_tool_timeouts(tools_data),
+        )
+
+        # -------------------------
+        # Adaptive timeouts (optional)
+        # -------------------------
+
+        timeouts_data = _mapping(
+            data.get("timeouts", {}) or {},
+            "timeouts",
+        )
+        adaptive = timeouts_data.get("adaptive", True)
+
+        if not isinstance(adaptive, bool):
+            raise ConfigError(
+                "timeouts.adaptive must be a boolean"
+            )
+
+        timeouts = TimeoutsConfig(
+            adaptive=adaptive,
+            floor_seconds=_positive_float(
+                timeouts_data,
+                "floor_seconds",
+                "timeouts.floor_seconds",
+                30.0,
+            ),
+            ceiling_seconds=_positive_float(
+                timeouts_data,
+                "ceiling_seconds",
+                "timeouts.ceiling_seconds",
+                900.0,
+            ),
+            safety_factor=_positive_float(
+                timeouts_data,
+                "safety_factor",
+                "timeouts.safety_factor",
+                1.5,
+            ),
+            cold_start_seconds=_positive_float(
+                timeouts_data,
+                "cold_start_seconds",
+                "timeouts.cold_start_seconds",
+                120.0,
+                allow_zero=True,
+            ),
+            turn_ceiling_seconds=_positive_float(
+                timeouts_data,
+                "turn_ceiling_seconds",
+                "timeouts.turn_ceiling_seconds",
+                1800.0,
+            ),
         )
 
         # -------------------------
@@ -1429,6 +1541,7 @@ class ConfigLoader:
             decisions=decisions,
             hifi=hifi,
             tools=tools,
+            timeouts=timeouts,
             dev=dev,
             boxes=boxes,
             broker=broker,

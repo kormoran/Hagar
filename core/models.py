@@ -168,6 +168,19 @@ class ToolsConfig:
 
     timeout: float | None = 120.0
     repeat_limit: int = 3
+    timeouts: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class TimeoutsConfig:
+    """Timeout adattivi per chiamate LLM e turni."""
+
+    adaptive: bool = True
+    floor_seconds: float = 30.0
+    ceiling_seconds: float = 900.0
+    safety_factor: float = 1.5
+    cold_start_seconds: float = 120.0
+    turn_ceiling_seconds: float = 1800.0
 
 
 @dataclass(slots=True)
@@ -290,6 +303,10 @@ class AppConfig:
 
     tools: ToolsConfig = field(
         default_factory=ToolsConfig
+    )
+
+    timeouts: TimeoutsConfig = field(
+        default_factory=TimeoutsConfig
     )
 
     dev: DevConfig = field(

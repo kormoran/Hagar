@@ -63,6 +63,18 @@ tools:
   timeout: 120
   # Blocca la terza chiamata identica nello stesso turno; 0 disabilita.
   repeat_limit: 3
+  # Eccezioni per tool lenti (es. OCR di PDF).
+  timeouts:
+    # document.ocr_pdf: 900
+
+timeouts:
+  # Timeout adattivo delle chiamate LLM basato sulle schede.
+  adaptive: true
+  floor_seconds: 30
+  ceiling_seconds: 900
+  safety_factor: 1.5
+  cold_start_seconds: 120
+  turn_ceiling_seconds: 1800
 
 dev:
   # Le ricette sono configurazione fidata per test, debug e build.

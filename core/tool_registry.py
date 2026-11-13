@@ -54,6 +54,7 @@ class ToolRegistry:
         parent_id: str | None = None,
         default_timeout: float | None = None,
         repeat_limit: int = 3,
+        timeout_overrides: dict[str, float] | None = None,
     ) -> None:
 
         self._tools: dict[
@@ -70,6 +71,10 @@ class ToolRegistry:
         self.parent_id = parent_id
         self.default_timeout = default_timeout
         self.repeat_limit = int(repeat_limit)
+        self.timeout_overrides = {
+            str(name): float(value)
+            for name, value in (timeout_overrides or {}).items()
+        }
         self._repeat_counts: dict[str, int] = {}
 
     # ==================================================
@@ -102,6 +107,9 @@ class ToolRegistry:
                 f"tool {tool.name} must declare "
                 f"capabilities when permissions are enabled"
             )
+
+        if tool.name in self.timeout_overrides:
+            tool.timeout = self.timeout_overrides[tool.name]
 
         self._tools[tool.name] = tool
 

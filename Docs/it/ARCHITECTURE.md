@@ -923,10 +923,19 @@ Se il checkpoint è incompleto, l'undo viene rifiutato.
 `ToolRegistry` applica:
 
 - `tools.timeout` per singola chiamata, tramite worker demone;
+- `tools.timeouts.<nome>` per eccezioni su tool lenti;
 - `tools.repeat_limit` sull'hash `tool + argomenti` per turno.
 
-Il timeout è best effort: un handler Python già partito non viene
-ucciso. Il repeat guard azzera il conteggio a ogni `Agent.ask`.
+Le chiamate LLM usano un timeout adattivo (`core/timeouts.py`):
+p95 della scheda, dimensione del prompt, `max_tokens`, fattore di
+sicurezza e limiti `timeouts.floor_seconds`/`ceiling_seconds`. Il turno
+ha un tetto separato che non scende sotto il timeout massimo dei tool
+configurati.
+
+Il timeout dei tool è best effort: un handler Python già partito non
+viene ucciso. Il repeat guard azzera il conteggio a ogni `Agent.ask`.
+L'esecuzione asincrona dei tool non è implementata: un OCR lungo resta
+sincrono con un timeout dedicato.
 
 `OutputSpiller` sposta gli output oltre 12.000 caratteri
 nell'`ArtifactStore` e restituisce un riepilogo con `artifact_id`.
@@ -1205,9 +1214,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1091 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1099 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-13): tutti i test verdi, inclusi i
-  symlink (1093 superati, 0 skip). Dettagli e motivazione dello shim in README §3.1.
+  symlink (1101 superati, 0 skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).

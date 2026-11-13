@@ -45,6 +45,7 @@ class Agent:
         event_sink: EventSink | None = None,
         agent_id: str | None = None,
         deadline: float | None = None,
+        turn_timeout: float | None = None,
         hifi: Any = None,
         artifact_store: Any = None,
         max_inline_output_chars: int = 12_000,
@@ -58,6 +59,7 @@ class Agent:
         self.event_sink = event_sink
         self.agent_id = agent_id
         self.deadline = deadline
+        self.turn_timeout = turn_timeout
         self.hifi = hifi
         self.output_spiller = OutputSpiller(
             artifact_store,
@@ -145,6 +147,12 @@ class Agent:
 
         turn = uuid.uuid4().hex[:8]
         self.reset_cancel()
+
+        if self.turn_timeout is not None:
+            self.deadline = (
+                time.monotonic()
+                + max(0.0, float(self.turn_timeout))
+            )
 
         if hasattr(self.tools, "begin_turn"):
             self.tools.begin_turn()
