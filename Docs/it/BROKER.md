@@ -337,6 +337,9 @@ Ollama     /api/ps         → models
 
 La disponibilità viene aggiornata prima della selezione, con cache breve
 (2 secondi). `/models explain` mostra anche questo motivo di esclusione.
+Prima di ogni chiamata il `BrokerLLMClient` ricontrolla il modello
+scelto: se è stato scaricato, riseleziona il profilo e passa a un altro
+modello caricato.
 
 ```yaml
 broker:

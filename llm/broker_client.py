@@ -297,6 +297,7 @@ class BrokerLLMClient(LLMClient):
         self,
         messages: list[dict[str, str]],
     ) -> str:
+        self._ensure_loaded()
         self._apply_timeout(messages)
         return self._client.chat(messages)
 
@@ -305,6 +306,7 @@ class BrokerLLMClient(LLMClient):
         prompt: str,
         system_prompt: str | None = None,
     ) -> str:
+        self._ensure_loaded()
         self._apply_timeout([
             {"role": "user", "content": prompt}
         ])
@@ -318,6 +320,7 @@ class BrokerLLMClient(LLMClient):
         messages: list[dict[str, str]],
         registry: Any,
     ) -> Any:
+        self._ensure_loaded()
         self._apply_timeout(messages)
         return self._client.request_tool_call(
             messages,
@@ -329,10 +332,37 @@ class BrokerLLMClient(LLMClient):
         messages: list[dict[str, Any]],
         registry: Any,
     ) -> Any:
+        self._ensure_loaded()
         self._apply_timeout(messages)
         return self._client.native_step(
             messages,
             registry,
+        )
+
+    def _ensure_loaded(self) -> None:
+
+        if (
+            not getattr(self.broker, "loaded_only", False)
+            or self.selection is None
+        ):
+            return
+
+        refresh = getattr(self.broker, "refresh", None)
+
+        if callable(refresh):
+            refresh()
+
+        state = self.broker.loaded_state(self.selection.entry)
+
+        if state is not False:
+            return
+
+        previous = self.selection.entry.id
+        self.switch_profile(self.profile)
+        self._record(
+            "broker.loaded_switch",
+            previous=previous,
+            model_id=self.selection.entry.id,
         )
 
     @property

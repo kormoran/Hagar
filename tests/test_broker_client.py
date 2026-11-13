@@ -163,6 +163,44 @@ def test_falls_back_when_selected_client_fails():
     assert any(event == "broker.fallback" for event, _ in audit.events)
 
 
+def test_unloaded_model_is_reselected_before_call():
+    class LoadedBroker(FakeBroker):
+        loaded_only = True
+
+        def __init__(self):
+            super().__init__()
+            self.loaded = True
+            self.refreshes = 0
+
+        def refresh(self):
+            self.refreshes += 1
+
+        def loaded_state(self, entry):
+            return self.loaded
+
+    broker = LoadedBroker()
+    audit = FakeAudit()
+
+    def factory(config, audit=None):
+        return FakeLLM(config.name)
+
+    client = BrokerLLMClient(
+        broker,
+        ModelConfig(provider="lmstudio", name="base"),
+        profile="coding",
+        audit=audit,
+        llm_factory=factory,
+    )
+
+    assert client.chat([{"role": "user", "content": "x"}])
+    broker.loaded = False
+    assert client.chat([{"role": "user", "content": "x"}])
+    assert any(
+        event == "broker.loaded_switch"
+        for event, _ in audit.events
+    )
+
+
 def test_strict_loaded_mode_does_not_fallback():
     broker = FakeBroker(
         error=BrokerError(
