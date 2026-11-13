@@ -220,7 +220,10 @@ class Broker:
 
         reasons = []
 
-        missing = task.required_capabilities - entry.capabilities
+        missing = (
+            task.required_capabilities
+            - entry.effective_capabilities
+        )
 
         if missing:
             reasons.append(

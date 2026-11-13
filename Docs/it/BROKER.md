@@ -319,6 +319,34 @@ da `/models use <profilo>` oppure dalla configurazione del broker. Il
 pulsante di reset da `hagar.yaml` ricrea il `BrokerLLMClient` ma non
 ricarica catalogo e profili: per quelli serve un riavvio.
 
+## Capability verificate
+
+Il broker usa `capabilities_verified` dalla scheda, se presente; in
+assenza usa le capability dichiarate nel catalogo.
+
+```text
+chat
+coding
+structured_json
+tool_calling
+native_tools
+vision
+ocr
+reasoning
+```
+
+Questo permette di distinguere un modello chat da un modello che sa
+usare i tool e scrivere codice ma rifiuta la conversazione libera.
+
+I profili devono richiedere la capability giusta:
+
+```text
+quick_chat           → chat
+private_chat         → chat + local_only
+coding               → coding + tool_calling
+structured_extraction → structured_json
+```
+
 ## Subagenti
 
 I subagenti usano lo stesso registry e gli stessi profili del padre, ma

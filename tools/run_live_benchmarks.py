@@ -14,6 +14,7 @@ import requests
 
 from core.benchmark_runs import BenchmarkRunStore
 from core.benchmark_suite import manifest as benchmark_manifest
+from core.capabilities import verified_capabilities
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardStore, utc_now
 from core.quality_bench import benchmark_quality
@@ -69,7 +70,7 @@ def write_document(
         "",
         "## Riepilogo",
         "",
-        "| Modello | Tipo | Testo | Qualità | Vision | Errori |",
+        "| Modello | Tipo | Capabilities | Qualità | Vision | Errori |",
         "|---|---|---|---|---|---|",
     ])
 
@@ -78,17 +79,18 @@ def write_document(
         quality = item.get("quality") or {}
         vision = item.get("vision") or {}
         errors = item.get("errors") or []
+        verified = item.get("capabilities_verified") or {}
 
         lines.append(
             "| "
             + " | ".join([
                 f"`{item['id']}`",
                 item.get("type", ""),
-                (
-                    "ok"
-                    if text.get("ok")
-                    else ("fail" if item.get("text_attempted") else "n/d")
-                ),
+                ", ".join(
+                    name
+                    for name, enabled in verified.items()
+                    if enabled
+                ) or "n/d",
                 (
                     f"{quality.get('overall', 0):.4f}"
                     if quality
@@ -115,6 +117,18 @@ def write_document(
             f"- quantizzazione: `{item.get('quantization', 'unknown')}`",
             f"- contesto max: `{item.get('max_context', 'unknown')}`",
         ])
+
+        verified = item.get("capabilities_verified") or {}
+
+        if verified:
+            lines.append(
+                "- capability verificate: "
+                + ", ".join(
+                    name
+                    for name, enabled in verified.items()
+                    if enabled
+                )
+            )
 
         text = item.get("text") or {}
 
@@ -265,6 +279,10 @@ def run() -> None:
             }
             item["quality"] = completed.get("quality")
             item["vision"] = completed.get("vision")
+            item["capabilities_verified"] = (
+                completed.get("capabilities_verified")
+                or verified_capabilities(completed)
+            )
             write_document(
                 results,
                 started=started,
@@ -362,9 +380,18 @@ def run() -> None:
 
         if text_report is not None:
 
+            combined = dict(text_report)
+            combined["quality"] = quality_report
+            item["capabilities_verified"] = verified_capabilities(
+                combined
+            )
+
             card = cards.load("lmstudio", model_id) or {}
             card.update(text_report)
             card["quality"] = quality_report
+            card["capabilities_verified"] = item[
+                "capabilities_verified"
+            ]
             card["last_tested_at"] = text_report["tested_at"]
 
             try:
@@ -404,6 +431,12 @@ def run() -> None:
 
                 card = cards.load("lmstudio", model_id) or {}
                 card["vision"] = vision_report
+                card["capabilities_verified"] = (
+                    verified_capabilities(card)
+                )
+                item["capabilities_verified"] = card[
+                    "capabilities_verified"
+                ]
                 card["last_tested_at"] = (
                     vision_report["tested_at"]
                 )

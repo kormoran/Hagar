@@ -5,9 +5,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 974 test superati, 2 skip su Windows (symlink non disponibili senza
-  Developer Mode).
-- 976 test superati, 0 skip su Debian Linux (2026-11-12); i due test
+- 1076 test superati, 2 skip e 1 xfailed su Windows (symlink non
+  disponibili senza Developer Mode).
+- 1078 test superati, 0 skip su Debian Linux (2026-11-13); i due test
   symlink girano davvero. Questo è il primo controllo multipiattaforma
   reale prima della release.
 - Esecuzione: `.\tools\run_tests.ps1` (Windows) oppure

@@ -12,6 +12,7 @@ Completato: `2026-11-13T06:51:39+00:00`
 - `deepseek-coder-6.7b-instruct`, `starcoder2-7b` e `llama-3.2-8x3b-gated-moe-horror-reasoning...` sono stati fermati dopo oltre 30–40 minuti senza risposta e sono registrati come failure.
 - I due modelli `text-embedding-*` sono esclusi: non sono agenti chat.
 - I punteggi sono indicativi: una sola esecuzione per la maggior parte dei modelli.
+- Questa run è precedente al capability layer: i modelli code/tool-only come `qwen3-coder-next` vanno letti con `chat=false`, `coding=true`, `tool_calling=true`; la suite chat non è applicabile.
 
 ## Politica
 

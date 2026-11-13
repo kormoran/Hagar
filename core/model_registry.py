@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from core.capabilities import CAPABILITIES
+from core.capabilities import verified_capabilities as compute_verified
 from core.model_cards import ModelCardError, ModelCardStore
 
 
@@ -49,15 +51,6 @@ def _quality_from_section(
 
     return float(value)
 
-
-CAPABILITIES = frozenset({
-    "chat",
-    "structured_json",
-    "tool_calling",
-    "native_tools",
-    "vision",
-    "reasoning",
-})
 
 LOCALITIES = frozenset({
     "local",
@@ -106,6 +99,55 @@ class ModelEntry:
     def has_capability(self, name: str) -> bool:
         return name in self.capabilities
 
+    @property
+    def verified_capabilities(self) -> frozenset[str] | None:
+        """Capability verificate, se la scheda le contiene."""
+
+        if not isinstance(self.card, dict):
+            return None
+
+        values = self.card.get("capabilities_verified")
+
+        if isinstance(values, dict):
+            return frozenset(
+                name
+                for name, enabled in values.items()
+                if enabled is True
+            )
+
+        if not any(
+            key in self.card
+            for key in ("benchmarks", "quality", "vision")
+        ):
+            return None
+
+        benchmarks = self.card.get("benchmarks")
+
+        if (
+            not isinstance(benchmarks, dict)
+            or not {"chat", "structured", "tool_call"}.issubset(
+                benchmarks
+            )
+        ):
+            return None
+
+        values = compute_verified(self.card)
+        return frozenset(
+            name
+            for name, enabled in values.items()
+            if enabled
+        )
+
+    @property
+    def effective_capabilities(self) -> frozenset[str]:
+        """Usa le capability verificate, altrimenti quelle dichiarate."""
+
+        verified = self.verified_capabilities
+        return self.capabilities if verified is None else verified
+
+    def has_effective_capability(self, name: str) -> bool:
+        return name in self.effective_capabilities
+
     def measured_quality(self, task: str) -> float | None:
         """Qualità misurata per un task, se presente nella scheda."""
 
@@ -132,6 +174,14 @@ class ModelEntry:
             "model": self.model,
             "context_window": self.context_window,
             "capabilities": sorted(self.capabilities),
+            "verified_capabilities": (
+                sorted(self.verified_capabilities)
+                if self.verified_capabilities is not None
+                else None
+            ),
+            "effective_capabilities": sorted(
+                self.effective_capabilities
+            ),
             "locality": self.locality,
             "quality": self.quality,
             "cost_per_1k_input": self.cost_per_1k_input,
@@ -302,7 +352,7 @@ class ModelRegistry:
             entry
             for entry in self._entries
             if entry.enabled
-            and entry.has_capability(capability)
+            and entry.has_effective_capability(capability)
         )
 
     # --------------------------------------------------

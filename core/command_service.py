@@ -9,6 +9,7 @@ from core.audit import read_entries
 from core.benchmark_runs import BenchmarkRunStore
 from core.benchmark_suite import manifest as benchmark_manifest
 from core.broker import BrokerError
+from core.capabilities import verified_capabilities
 from core.hardware import detect_hardware
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardError
@@ -350,6 +351,7 @@ class CommandService:
                     f"{card.get('provider')}/{card.get('model')}",
                     f"Ultima prova: {card.get('last_tested_at')}",
                     f"Capabilities: {card.get('capabilities')}",
+                    f"Verified: {card.get('capabilities_verified')}",
                     f"Benchmarks: {card.get('benchmarks')}",
                     f"Quality: {card.get('quality')}",
                 ],
@@ -395,6 +397,9 @@ class CommandService:
                 ) or {}
                 existing.update(report)
                 report = existing
+                report["capabilities_verified"] = (
+                    verified_capabilities(report)
+                )
                 report["last_tested_at"] = report["tested_at"]
                 path = self.model_cards.save(report)
                 run_path = None

@@ -34,6 +34,9 @@ class FakeLLM:
         if "JSON" in prompt or "choice" in prompt:
             return '{"choice":"yes","probabilities":{"yes":0.9,"no":0.1}}'
 
+        if "print(len" in prompt:
+            return "3"
+
         return "OK"
 
     def request_tool_call(self, messages, registry):
@@ -171,6 +174,8 @@ def test_models_command_runs_benchmark(tmp_path, monkeypatch):
     assert "extraction" in result.data["quality"]["tasks"]
     assert "summary" in result.data["quality"]["tasks"]
     assert "translation" in result.data["quality"]["tasks"]
+    assert result.data["capabilities_verified"]["chat"] is True
+    assert result.data["capabilities_verified"]["coding"] is True
     assert len(BenchmarkRunStore(tmp_path / "runs").list()) == 1
 
     history = commands.handle("/models runs")

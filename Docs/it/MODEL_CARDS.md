@@ -159,6 +159,50 @@ Un `quality_task` nel TaskProfile seleziona il task da usare; se manca,
 il broker usa il nome del profilo. Se la scheda non ha qualità misurata,
 usa la qualità dichiarata nel catalogo.
 
+## Capability verificate
+
+La scheda distingue:
+
+```text
+capabilities           dichiarate dal catalogo
+capabilities_verified  misurate dal benchmark
+```
+
+Capability:
+
+```text
+chat
+coding
+structured_json
+tool_calling
+native_tools
+vision
+ocr
+reasoning
+```
+
+Il broker usa `capabilities_verified` quando presente. Un modello che
+dichiara `chat` ma rifiuta la conversazione non viene selezionato per un
+profilo chat; può comunque essere selezionato per `coding` o
+`tool_calling`.
+
+Esempio:
+
+```json
+{
+  "capabilities": {
+    "chat": false,
+    "coding": true,
+    "structured_json": true,
+    "tool_calling": true,
+    "native_tools": true,
+    "vision": false,
+    "ocr": false,
+    "reasoning": true
+  }
+}
+```
+
 ## Vision
 
 Solo su richiesta:

@@ -4,7 +4,7 @@ profiles:
   coding:
     description: Scrittura e revisione di codice con tool.
     required_capabilities:
-      - chat
+      - coding
       - tool_calling
     min_context: 16000
     privacy: any
@@ -35,7 +35,6 @@ profiles:
   structured_extraction:
     description: Estrazione JSON da documenti.
     required_capabilities:
-      - chat
       - structured_json
     min_context: 8000
     quality_floor: 0.75
