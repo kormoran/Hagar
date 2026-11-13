@@ -192,6 +192,18 @@ Apre una GUI locale su `http://127.0.0.1:8765/`.
 - **Thinking** mostra il reasoning esposto dal provider, se presente; in
   alternativa la timeline degli eventi dell'agente.
 - **Memories** mostra memorie e skill del database in sola lettura, con ricerca.
+- I pulsanti **Pannello** e **Sandbox** aprono le pagine amministrative;
+  entrambe hanno **Torna alla chat**. Dettagli in
+  [WEB_UI.md](WEB_UI.md).
+- **Pannello** elenca i tool con toggle allow/deny runtime, i provider e
+  i modelli selezionabili, e i valori di configurazione modificabili
+  (Hi-Fi, timeout, limiti). **Ritorna a configurazione hagar.yaml**
+  ricarica i valori, riabilita i tool e azzera gli override RWX.
+- **Sandbox** mostra l’albero della sandbox con checkbox R/W/X per
+  elemento, il path reale dell’elemento selezionato e la creazione di
+  nuove directory. Non esiste una funzione di cancellazione.
+- Le mutazioni amministrative sono rifiutate mentre un turno è in
+  corso; allow/deny non scavalca policy, conferme o tetto di sistema.
 - Il pulsante **Stop** interrompe il turno in modo cooperativo.
 - Il pulsante **Immagine** allega PNG/JPEG/WebP (max 4, 10 MB ciascuna)
   per i modelli vision. WebP viene convertito in PNG nella GUI perché LM
@@ -466,6 +478,8 @@ permissions:
   shell: false
   network: false
   agents: false
+  database_read: false
+  database_write: false
 ```
 
 Sono il **tetto di sistema**. Default: `read=true`, gli altri `false`.
@@ -477,6 +491,11 @@ Sono il **tetto di sistema**. Default: `read=true`, gli altri `false`.
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
 | `agents` | `AGENT_SPAWN` e `AGENT_DATA`, per `agent.*`/`artifact.*`/`mailbox.*` |
+| `database_read` | `DATABASE_READ`, per query SQL in lettura |
+| `database_write` | `DATABASE_WRITE` (e `DATABASE_READ`), per modifiche SQL |
+
+`database_write` implica `DATABASE_READ` nel tetto, perché un tool di
+scrittura deve poter leggere lo schema prima di modificarlo.
 
 `COMPUTE` e `MCP_CALL` sono sempre nel tetto, ma la policy può negarli.
 Se il tetto non concede una capability, la policy non può concederla.
@@ -707,6 +726,8 @@ mostra `lo faccio? (y/N)` e il default è `N`.
 | `DEV_EXEC` | esecuzione di ricette dev.run |
 | `BOX_EXEC` | esecuzione di boxed transform |
 | `FLOW_EXEC` | esecuzione del DSL Hagar Flow |
+| `DATABASE_READ` | lettura di database SQL |
+| `DATABASE_WRITE` | modifica di database SQL |
 
 ## 5.3 Regole e specificità
 

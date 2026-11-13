@@ -118,9 +118,16 @@ filesystem:
 
 permissions:
   read: true
+  # sql.odbc.execute also needs write: true and a W sandbox mount.
   write: false
   shell: false
+  # Network tools (feed.read, wikidata.*) need true here and a
+  # NETWORK rule in policy.yaml.
   network: false
+  # Local database files via sql.file.* require database_read.
+  # Write-capable SQL plugins require database_write as well.
+  database_read: false
+  database_write: false
 
 rag:
   top_k: 8

@@ -14,6 +14,8 @@ from local_tools.clock_tool import ClockToolProvider
 from local_tools.feeder import Feeder
 from local_tools.feeder_tool import FeederToolProvider
 from local_tools.math_tools import MathToolsProvider
+from local_tools.sql_file import memory_database_paths
+from local_tools.sql_file_tool import SqlFileToolProvider
 from local_tools.statistics import Stats_calc
 from local_tools.subagent_tool import SubagentToolProvider
 from local_tools.text_diff import TextDiff
@@ -87,6 +89,22 @@ def register_feeder(
     FeederToolProvider(Feeder()).register_tools(registry)
 
 
+def register_sql_file(
+    registry: ToolRegistry,
+    context: PluginContext,
+) -> None:
+    if context.filesystem is None:
+        return
+
+    SqlFileToolProvider(
+        context.filesystem,
+        forbidden_paths=memory_database_paths(
+            context.config,
+            context.memory,
+        ),
+    ).register_tools(registry)
+
+
 def register_subagent(
     registry: ToolRegistry,
     context: PluginContext,
@@ -147,6 +165,12 @@ BUILTIN_TOOL_PLUGINS = [
         version="1.0",
         builtin=True,
         register=register_feeder,
+    ),
+    ToolPlugin(
+        name="sql-file",
+        version="1.0",
+        builtin=True,
+        register=register_sql_file,
     ),
     ToolPlugin(
         name="subagent",

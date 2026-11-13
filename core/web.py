@@ -18,7 +18,10 @@ from urllib.parse import parse_qs
 from urllib.parse import unquote
 from urllib.parse import urlparse
 
+from core.admin import AdminError
+from core.admin import AdminService
 from core.audit import read_entries
+from core.config import ConfigError
 from core.confirmations import QueueConfirmationProvider
 from core.events import ServiceEvent
 from core.events import make_event
@@ -32,7 +35,11 @@ from memory.projects import ProjectError
 
 STATIC_TYPES = {
     "style.css": "text/css; charset=utf-8",
+    "admin.css": "text/css; charset=utf-8",
     "app.js": "application/javascript; charset=utf-8",
+    "admin.js": "application/javascript; charset=utf-8",
+    "control.js": "application/javascript; charset=utf-8",
+    "sandbox.js": "application/javascript; charset=utf-8",
 }
 
 # Quattro immagini da 10 MB in base64 occupano circa 53 MB.
@@ -54,12 +61,22 @@ def _read_web_asset(name: str) -> bytes:
         return source.read_bytes()
 
 
-def render_index(token: str) -> bytes:
-    html = _read_web_asset("index.html").decode("utf-8")
+def render_page(
+    name: str,
+    token: str,
+) -> bytes:
+
+    html = _read_web_asset(name).decode("utf-8")
+
     return html.replace(
         "__HAGAR_TOKEN__",
         json.dumps(token),
     ).encode("utf-8")
+
+
+def render_index(token: str) -> bytes:
+
+    return render_page("index.html", token)
 
 
 class EventBus:
@@ -136,6 +153,11 @@ class WebSession:
             event_sink=self._publish,
         )
 
+        self.admin = AdminService(
+            harness,
+            usage_sink=self.service.usage.record,
+        )
+
         self._lock = threading.Lock()
         self._busy = False
         self._closed = False
@@ -175,6 +197,11 @@ class WebSession:
         thread.start()
 
         return True
+
+    def is_busy(self) -> bool:
+
+        with self._lock:
+            return self._busy
 
     def stop(self) -> bool:
         """Richiede l'interruzione del turno corrente."""
@@ -445,6 +472,19 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
         return data if isinstance(data, dict) else None
 
+    def _admin_ready(self) -> bool:
+        """Rifiuta mutazioni amministrative durante un turno."""
+
+        if self.session.is_busy():
+
+            self._error(
+                "a turn is running",
+                HTTPStatus.CONFLICT,
+            )
+            return False
+
+        return True
+
     # ==================================================
     # GET
     # ==================================================
@@ -456,6 +496,32 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/":
 
             body = render_index(self.session.token)
+
+            self.send_response(HTTPStatus.OK)
+            self.send_header(
+                "Content-Type",
+                "text/html; charset=utf-8",
+            )
+            self.send_header(
+                "Content-Length",
+                str(len(body)),
+            )
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        page = {
+            "/control": "control.html",
+            "/sandbox": "sandbox.html",
+        }.get(parsed.path.rstrip("/"))
+
+        if page is not None:
+
+            body = render_page(
+                page,
+                self.session.token,
+            )
 
             self.send_response(HTTPStatus.OK)
             self.send_header(
@@ -519,6 +585,55 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/status":
 
             self._json(self.session.status())
+            return
+
+        if parsed.path == "/api/admin/control":
+
+            params = parse_qs(parsed.query)
+            force = params.get(
+                "refresh",
+                ["0"],
+            )[0] in {"1", "true", "yes"}
+
+            try:
+                self._json(
+                    self.session.admin.control(
+                        force=force
+                    )
+                )
+
+            except AdminError as exc:
+                self._error(str(exc))
+
+            return
+
+        if parsed.path == "/api/admin/sandbox":
+
+            params = parse_qs(parsed.query)
+            path = params.get("path", [""])[0] or None
+
+            try:
+                offset = int(params.get("offset", ["0"])[0])
+            except ValueError:
+                offset = 0
+
+            try:
+                limit = int(params.get("limit", ["500"])[0])
+            except ValueError:
+                limit = 500
+
+            try:
+                data = self.session.admin.sandbox_list(
+                    path,
+                    offset=offset,
+                    limit=limit,
+                )
+
+            except AdminError as exc:
+                self._error(str(exc))
+                return
+
+            self._json(data)
             return
 
         if parsed.path == "/api/projects":
@@ -873,6 +988,142 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                     )
                 }
             )
+            return
+
+        if parsed.path == "/api/admin/tool":
+
+            if not self._admin_ready():
+                return
+
+            try:
+
+                tool = self.session.admin.set_tool(
+                    str(payload.get("name", "")),
+                    payload.get("enabled"),
+                )
+
+            except (AdminError, ValueError) as exc:
+
+                self._error(str(exc))
+                return
+
+            self._json({"tool": tool})
+            return
+
+        if parsed.path == "/api/admin/model":
+
+            if not self._admin_ready():
+                return
+
+            try:
+
+                model = self.session.admin.change_model(
+                    str(payload.get("provider", "")),
+                    str(payload.get("model", "")),
+                )
+
+            except (
+                AdminError,
+                ConfigError,
+                ValueError,
+            ) as exc:
+
+                self._error(str(exc))
+                return
+
+            self._json({"model": model})
+            return
+
+        if parsed.path == "/api/admin/settings":
+
+            if not self._admin_ready():
+                return
+
+            try:
+
+                if payload.get("reset") is True:
+
+                    data = (
+                        self.session.admin
+                        .reset_from_config()
+                    )
+                    self._json(data)
+
+                else:
+
+                    settings = (
+                        self.session.admin
+                        .update_settings(
+                            payload.get("values")
+                        )
+                    )
+
+                    self._json(
+                        {
+                            "settings": settings,
+                            "model": (
+                                self.session.admin
+                                .model_state()
+                            ),
+                        }
+                    )
+
+            except (
+                AdminError,
+                ConfigError,
+                ValueError,
+            ) as exc:
+
+                self._error(str(exc))
+
+            return
+
+        if parsed.path == "/api/admin/sandbox/permissions":
+
+            if not self._admin_ready():
+                return
+
+            try:
+
+                data = (
+                    self.session.admin
+                    .sandbox_set_permissions(
+                        str(payload.get("path", "")),
+                        payload.get("read", False),
+                        payload.get("write", False),
+                        payload.get("execute", False),
+                    )
+                )
+
+            except (AdminError, ValueError) as exc:
+
+                self._error(str(exc))
+                return
+
+            self._json(data)
+            return
+
+        if parsed.path == "/api/admin/sandbox/mkdir":
+
+            if not self._admin_ready():
+                return
+
+            try:
+
+                entry = (
+                    self.session.admin
+                    .sandbox_mkdir(
+                        str(payload.get("path", "")),
+                        str(payload.get("name", "")),
+                    )
+                )
+
+            except (AdminError, ValueError) as exc:
+
+                self._error(str(exc))
+                return
+
+            self._json({"entry": entry})
             return
 
         self._error("not found", HTTPStatus.NOT_FOUND)

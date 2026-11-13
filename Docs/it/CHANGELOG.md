@@ -54,6 +54,51 @@ questa release.
   timeout.
 - Ogni tentativo è registrato nell'audit e nel risultato.
 
+## Pannello di controllo e Sandbox manager
+
+- Nuove pagine web `/control` e `/sandbox`, raggiungibili dalla GUI
+  principale e con ritorno alla chat.
+- Pannello: tool allow/deny runtime, provider/modelli con cambio modello,
+  impostazioni Hi-Fi/tool/modello/filesystem/memoria e reset da
+  `hagar.yaml`.
+- Sandbox manager: albero lazy, override RWX per percorso, path reale
+  dell’elemento selezionato e creazione directory; nessuna delete.
+- Nuove API `/api/admin/*` protette dal token, con mutazioni rifiutate
+  durante un turno; `config.config_path` per il reset.
+
+## Plugin SQL ODBC
+
+- Nuovo plugin esterno `plugins/sql_odbc`: `sql.odbc.drivers`,
+  `sql.odbc.schema`, `sql.odbc.query` e `sql.odbc.execute`.
+- Scrittura DML (`INSERT`, `UPDATE`, `DELETE`, `MERGE`, `REPLACE`)
+  solo via ODBC, con `DATABASE_WRITE`, `FILESYSTEM_WRITE` e conferma
+  umana obbligatoria.
+- Stessi limiti del tool locale: solo file in sandbox, DB memorie
+  escluso, una istruzione, timeout e niente DDL.
+
+## Tool SQL locale
+
+- Nuove capability `DATABASE_READ` e `DATABASE_WRITE`, con
+  `permissions.database_read` e `permissions.database_write`.
+- Nuovi `sql.file.drivers`, `sql.file.schema` e `sql.file.query` per
+  database su file nella sandbox.
+- SQLite nativo in `mode=ro` con authorizer; altri formati via ODBC,
+  con errore esplicito se il driver non è installato.
+- Limiti: solo file in sandbox, una istruzione read-only, righe/byte e
+  timeout; il database delle memorie di Hagar è sempre escluso.
+
+## Plugin Wikidata
+
+- Nuovo plugin esterno `plugins/wikidata`, con entry point
+  `hagar.tools`: `wikidata.search`, `wikidata.entity`,
+  `wikidata.article` e `wikidata.query`.
+- Capability `NETWORK`, policy `wikidata.*` con conferma e nessun
+  accesso a URL arbitrari: solo endpoint Wikimedia in HTTPS.
+- SPARQL in sola lettura (`SELECT`), senza federazione `SERVICE` o
+  clausole `FROM`; risposte e output limitati.
+- Etichette `mul`, priorità delle claim principali, risoluzione delle
+  etichette referenziate e troncamento esplicito.
+
 # 0.6.0 — 2026-11-09
 
 ## Riepilogo

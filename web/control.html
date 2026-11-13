@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hagar — Pannello di controllo</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body class="admin">
+<header class="admin-header">
+  <div>
+    <h1>Pannello di controllo</h1>
+    <p class="muted">Tool, modello e valori di configurazione a runtime.</p>
+  </div>
+  <a class="button-link" href="/">← Torna alla chat</a>
+</header>
+<main class="admin-main">
+  <div id="status" class="status" role="status"></div>
+
+  <section class="card">
+    <h2>Tool</h2>
+    <p class="hint">Clic su una riga per alternare allow/deny. Un tool negato non viene eseguito, anche se la policy lo consentirebbe. La policy dell’host resta comunque attiva.</p>
+    <div id="tools" class="tool-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>Modello IA</h2>
+    <p class="hint">Seleziona provider e modello, poi conferma con “Cambia modello”. La modifica è runtime: non scrive hagar.yaml. Se il broker LLM è attivo, il modello è scelto dal profilo broker e il cambio diretto è disabilitato.</p>
+    <div id="current-model" class="current-model"></div>
+    <label class="field model-filter">
+      <span>Filtra provider</span>
+      <select id="provider-filter">
+        <option value="">Tutti</option>
+      </select>
+    </label>
+    <div id="providers"></div>
+    <div class="row">
+      <button id="change-model" class="primary" disabled>Cambia modello</button>
+      <button id="refresh-models">Aggiorna elenco</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Configurazione</h2>
+    <p class="hint">Valori semplici applicati subito all’harness. “Ritorna a configurazione hagar.yaml” ricarica questi valori dal file, riabilita tutti i tool e azzera i permessi RWX per percorso.</p>
+    <div id="settings" class="settings-grid"></div>
+    <div class="row">
+      <button id="apply-settings" class="primary">Applica</button>
+      <button id="reset-settings">Ritorna a configurazione hagar.yaml</button>
+    </div>
+  </section>
+</main>
+<script>window.HAGAR_TOKEN = __HAGAR_TOKEN__;</script>
+<script src="/static/admin.js"></script>
+<script src="/static/control.js"></script>
+</body>
+</html>

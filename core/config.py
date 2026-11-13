@@ -223,6 +223,7 @@ class ConfigLoader:
             )
 
         config = ConfigLoader._parse(data)
+        config.config_path = path.resolve()
 
         #
         # I percorsi relativi dell'audit log sono relativi al file di
@@ -543,6 +544,8 @@ class ConfigLoader:
             "shell": False,
             "network": False,
             "agents": False,
+            "database_read": False,
+            "database_write": False,
         }
 
         values: dict[str, bool] = {}

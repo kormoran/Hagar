@@ -115,6 +115,32 @@ subjects:
         effect: ask
         tools: ["feed.*"]
 
+      # Wikidata: consultazione in sola lettura, con conferma.
+      # Richiede anche permissions.network: true in hagar.yaml.
+      - capabilities: [NETWORK]
+        effect: ask
+        tools: ["wikidata.*"]
+
+      # Database locali in sola lettura: solo file nella sandbox.
+      # Richiede anche permissions.database_read: true in hagar.yaml.
+      - capabilities: [FILESYSTEM_READ, DATABASE_READ]
+        effect: ask
+        tools: ["sql.file.*"]
+
+      # Plugin SQL ODBC in sola lettura.
+      - capabilities: [FILESYSTEM_READ, DATABASE_READ]
+        effect: ask
+        tools:
+          - "sql.odbc.drivers"
+          - "sql.odbc.schema"
+          - "sql.odbc.query"
+
+      # Plugin SQL ODBC in scrittura: richiede DATABASE_WRITE,
+      # FILESYSTEM_WRITE e comunque la conferma del tool.
+      - capabilities: [FILESYSTEM_READ, FILESYSTEM_WRITE, DATABASE_READ, DATABASE_WRITE]
+        effect: ask
+        tools: ["sql.odbc.execute"]
+
       # Memoria: lettura libera, scrittura con conferma.
       - capabilities: [MEMORY_READ]
         effect: allow

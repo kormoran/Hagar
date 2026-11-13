@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hagar — Sandbox manager</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body class="admin">
+<header class="admin-header">
+  <div>
+    <h1>Sandbox manager</h1>
+    <p class="muted">Albero dei file, permessi RWX per elemento, creazione directory. Nessuna cancellazione.</p>
+  </div>
+  <a class="button-link" href="/">← Torna alla chat</a>
+</header>
+<main class="admin-main">
+  <div id="status" class="status" role="status"></div>
+
+  <section class="card">
+    <div class="panel-head" style="padding:0;border:0;margin-bottom:8px">
+      <h2>Albero sandbox</h2>
+      <div class="new-dir">
+        <input id="new-dir-name" type="text" placeholder="Nome nuova directory" autocomplete="off">
+        <button id="new-dir" disabled>Crea directory</button>
+      </div>
+    </div>
+    <p class="hint">R = lettura, W = scrittura/creazione/rename/delete, X = ingresso. I permessi valgono per l’elemento e per i contenuti senza override più specifici. Seleziona una directory per creare una sottodirectory.</p>
+    <div id="tree" class="tree"></div>
+  </section>
+
+  <div id="path-status" class="path-status">Seleziona un elemento.</div>
+</main>
+<script>window.HAGAR_TOKEN = __HAGAR_TOKEN__;</script>
+<script src="/static/admin.js"></script>
+<script src="/static/sandbox.js"></script>
+</body>
+</html>

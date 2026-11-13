@@ -120,10 +120,11 @@ policy.yaml			Configurazione dei permessi per i tool (integrati ed MCP)
 core/               config, agent, audit log, registry, sandbox, service e web server
 llm/                LLM backends (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), client MCP
 memory/             memoria SQLite (sqlite_store.py) e backend markdown legacy
-web/                HTML, CSS e JavaScript della GUI locale
+web/                HTML, CSS e JavaScript della GUI locale e delle pagine admin
 tests/              suite pytest
 tools/              helper di sviluppo (test runner, sandbox shim, model benchmark)
 local_tools/        tool integrati; i built-in passano da local_tools/plugins.py
+plugins/            plugin esterni: wikidata e sql_odbc
 core/plugins.py     contratti e scoperta dei plugin (hagar.tools, hagar.llm)
 core/subagents.py   manager del subagente MVP sincrono e read-only
 llm/plugins.py      provider LLM built-in registrati come plugin
@@ -182,7 +183,8 @@ Il log è concepito per essere consultato in seguito a un incidente, non per ess
 Ogni chiamata a uno strumento viene autorizzata prima della sua esecuzione. Uno strumento dichiara le proprie
 **capability** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
 `FILESYSTEM_CREATE`, `FILESYSTEM_DELETE`, `MEMORY_READ`,
-`MEMORY_WRITE`, `MCP_CALL`, ...); un **soggetto** (l'agente) definisce
+`MEMORY_WRITE`, `NETWORK`, `DATABASE_READ`, `DATABASE_WRITE`,
+`MCP_CALL`, ...); un **soggetto** (l'agente) definisce
 regole che associano tali funzionalità a `allow` (consenti), `ask` (chiedi) o `deny` (nega),
 eventualmente circoscritte in base al nome dello strumento, al prefisso del percorso o allo spazio dei nomi.
 
@@ -288,6 +290,10 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [ROADMAP.md](ROADMAP.md) — Funzioni progettate da implementare, decisioni già prese
   e questioni ancora aperte.
 - [PLUGINS.md](PLUGINS.md) — contratti per tool e provider LLM plugin.
+- [WIKIDATA.md](WIKIDATA.md) — plugin Wikidata: ricerca, entità, articoli Wikipedia e SPARQL.
+- [SQL.md](SQL.md) — tool SQL locale in sola lettura, SQLite e ODBC.
+- [SQL_ODBC.md](SQL_ODBC.md) — plugin SQL ODBC con scrittura DML.
+- [WEB_UI.md](WEB_UI.md) — pannello di controllo e Sandbox manager.
 - [HIFI.md](HIFI.md) — pre-pass di interpretazione e chiarimento.
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeout, spill e compaction.
 - [AISH.md](AISH.md) — shell semantica ristretta e policy DENY.
@@ -298,6 +304,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
 - [BROKER.md](BROKER.md) — catalogo modelli e futuro broker LLM.
+- [MULTIBOT.md](MULTIBOT.md) — architettura futura per l’interazione pubblica su social e contesti non sicuri.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
   grafo semantico, plugin di formato e host nativo.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP subagenti, isolamento e limiti.

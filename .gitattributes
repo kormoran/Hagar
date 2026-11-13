@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Il corpus benchmark è hashato byte per byte: il testo deve restare
+# LF su ogni piattaforma, mentre le immagini non vanno convertite.
+benchmarks/corpus/text/** text eol=lf
+benchmarks/corpus/manifest.yaml text eol=lf
+benchmarks/corpus/vision/** -text

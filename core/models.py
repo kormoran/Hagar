@@ -72,6 +72,8 @@ class PermissionConfig:
     shell: bool
     network: bool = False
     agents: bool = False
+    database_read: bool = False
+    database_write: bool = False
 
 
 @dataclass(slots=True)
@@ -305,3 +307,5 @@ class AppConfig:
     flow: FlowConfig = field(
         default_factory=FlowConfig
     )
+
+    config_path: Path | None = None

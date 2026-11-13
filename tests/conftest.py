@@ -60,6 +60,24 @@ def pytest_ignore_collect(
     return True
 
 
+@pytest.fixture(autouse=True)
+def isolate_external_plugins(monkeypatch):
+    """La suite testa i built-in senza plugin installati nell'ambiente.
+
+    Un plugin esterno installato cambierebbe il set dei tool attesi in
+    ``test_hagar.py``. I test che vogliono verificare la scoperta
+    monkeypatchano ``_entry_points`` esplicitamente.
+    """
+
+    import core.plugins as plugins
+
+    monkeypatch.setattr(
+        plugins,
+        "_entry_points",
+        lambda group: [],
+    )
+
+
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:
     """Radice scrivibile della sandbox."""

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hagar-wikidata"
+version = "1.0.0"
+description = "Plugin Wikidata per Hagar"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+    { name = "Massimo Soricetti" },
+]
+dependencies = [
+    "requests>=2.31",
+]
+keywords = [
+    "hagar",
+    "wikidata",
+    "wikipedia",
+    "sparql",
+    "plugin",
+]
+
+[project.entry-points."hagar.tools"]
+wikidata = "hagar_wikidata:PLUGIN"
+
+[tool.setuptools]
+packages = ["hagar_wikidata"]

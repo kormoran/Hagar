@@ -420,6 +420,320 @@ def test_connection_abort_does_not_print_traceback(capsys):
         server.close()
 
 
+class FakeAdmin:
+    def __init__(self):
+
+        self.calls = []
+        self.control_payload = {
+            "tools": [],
+            "model": {
+                "current": {
+                    "provider": "ollama",
+                    "name": "qwen3:8b",
+                },
+                "providers": [],
+            },
+            "settings": {"groups": []},
+        }
+
+    def control(self, force=False):
+
+        return self.control_payload
+
+    def set_tool(self, name, enabled):
+
+        self.calls.append(
+            ("set_tool", name, enabled)
+        )
+        return {"name": name, "enabled": enabled}
+
+    def change_model(self, provider, model):
+
+        self.calls.append(
+            ("change_model", provider, model)
+        )
+        return {
+            "current": {
+                "provider": provider,
+                "name": model,
+            },
+            "providers": [],
+        }
+
+    def update_settings(self, values):
+
+        self.calls.append(
+            ("update_settings", values)
+        )
+        return {"groups": []}
+
+    def reset_from_config(self):
+
+        self.calls.append(("reset_from_config",))
+        return self.control_payload
+
+    def model_state(self):
+
+        return self.control_payload["model"]
+
+    def sandbox_list(self, path, offset=0, limit=500):
+
+        self.calls.append(
+            ("sandbox_list", path, offset, limit)
+        )
+        return {
+            "path": path or "/home/ai",
+            "real_path": "C:/sandbox",
+            "entries": [],
+            "total_entries": 0,
+            "returned_entries": 0,
+            "offset": offset,
+            "has_more": False,
+            "message": None,
+        }
+
+    def sandbox_set_permissions(
+        self,
+        path,
+        read,
+        write,
+        execute,
+    ):
+
+        self.calls.append(
+            (
+                "sandbox_set_permissions",
+                path,
+                read,
+                write,
+                execute,
+            )
+        )
+        return {
+            "path": path,
+            "real_path": "C:/sandbox",
+            "permissions": {
+                "read": read,
+                "write": write,
+                "execute": execute,
+            },
+        }
+
+    def sandbox_mkdir(self, parent, name):
+
+        self.calls.append(
+            ("sandbox_mkdir", parent, name)
+        )
+        return {
+            "name": name,
+            "path": parent + "/" + name,
+            "kind": "directory",
+        }
+
+
+def test_admin_pages_are_served_with_token():
+    server = RunningServer()
+
+    try:
+
+        status, body = server.request(
+            "GET",
+            "/control",
+            token=False,
+        )
+        text = body.decode("utf-8")
+
+        assert status == 200
+        assert "Pannello di controllo" in text
+        assert server.session.token in text
+        assert 'href="/"' in text
+
+        status, body = server.request(
+            "GET",
+            "/sandbox",
+            token=False,
+        )
+        text = body.decode("utf-8")
+
+        assert status == 200
+        assert "Sandbox manager" in text
+        assert server.session.token in text
+        assert 'href="/"' in text
+
+    finally:
+        server.close()
+
+
+def test_admin_static_assets_are_served():
+    server = RunningServer()
+
+    try:
+
+        for name, marker in (
+            ("admin.css", b".tree"),
+            ("admin.js", b"adminApi"),
+            ("control.js", b"loadControl"),
+            ("sandbox.js", b"loadTree"),
+        ):
+
+            status, body = server.request(
+                "GET",
+                "/static/" + name,
+                token=False,
+            )
+
+            assert status == 200
+            assert marker in body
+
+    finally:
+        server.close()
+
+
+def test_admin_endpoints_require_token():
+    server = RunningServer()
+
+    try:
+
+        status, _ = server.request(
+            "GET",
+            "/api/admin/control",
+            token=False,
+        )
+        assert status == 401
+
+        status, _ = server.request(
+            "POST",
+            "/api/admin/tool",
+            {"name": "x", "enabled": False},
+            token=False,
+        )
+        assert status == 401
+
+    finally:
+        server.close()
+
+
+def test_admin_control_endpoint_and_mutations():
+    server = RunningServer()
+    fake = FakeAdmin()
+    server.session.admin = fake
+
+    try:
+
+        status, body = server.request(
+            "GET",
+            "/api/admin/control",
+        )
+        assert status == 200
+        assert json.loads(body)["model"]["current"][
+            "provider"
+        ] == "ollama"
+
+        status, body = server.request(
+            "POST",
+            "/api/admin/tool",
+            {"name": "demo.echo", "enabled": False},
+        )
+        assert status == 200
+        assert json.loads(body)["tool"]["enabled"] is False
+
+        status, body = server.request(
+            "POST",
+            "/api/admin/model",
+            {
+                "provider": "ollama",
+                "model": "llama3.1:latest",
+            },
+        )
+        assert status == 200
+        assert json.loads(body)["model"]["current"][
+            "name"
+        ] == "llama3.1:latest"
+
+        status, _ = server.request(
+            "POST",
+            "/api/admin/settings",
+            {"values": {"tools.timeout": 1}},
+        )
+        assert status == 200
+
+        status, body = server.request(
+            "POST",
+            "/api/admin/settings",
+            {"reset": True},
+        )
+        assert status == 200
+        assert "tools" in json.loads(body)
+
+        status, body = server.request(
+            "GET",
+            "/api/admin/sandbox?path=%2Fhome%2Fai",
+        )
+        assert status == 200
+        assert json.loads(body)["real_path"] == "C:/sandbox"
+
+        status, body = server.request(
+            "POST",
+            "/api/admin/sandbox/permissions",
+            {
+                "path": "/home/ai/workspace",
+                "read": True,
+                "write": False,
+                "execute": True,
+            },
+        )
+        assert status == 200
+        assert json.loads(body)["permissions"]["write"] is False
+
+        status, body = server.request(
+            "POST",
+            "/api/admin/sandbox/mkdir",
+            {
+                "path": "/home/ai/workspace",
+                "name": "new",
+            },
+        )
+        assert status == 200
+        assert json.loads(body)["entry"]["kind"] == "directory"
+
+        assert [
+            call[0] for call in fake.calls
+        ] == [
+            "set_tool",
+            "change_model",
+            "update_settings",
+            "reset_from_config",
+            "sandbox_list",
+            "sandbox_set_permissions",
+            "sandbox_mkdir",
+        ]
+
+    finally:
+        server.close()
+
+
+def test_admin_mutation_is_rejected_while_busy():
+    server = RunningServer()
+    fake = FakeAdmin()
+    server.session.admin = fake
+    server.session._busy = True
+
+    try:
+
+        status, _ = server.request(
+            "POST",
+            "/api/admin/tool",
+            {"name": "demo.echo", "enabled": False},
+        )
+
+        assert status == 409
+        assert fake.calls == []
+
+    finally:
+        server.session._busy = False
+        server.close()
+
+
 def test_serve_exits_on_keyboard_interrupt(monkeypatch):
     def interrupt(self):
         raise KeyboardInterrupt

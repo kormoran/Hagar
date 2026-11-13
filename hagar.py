@@ -355,6 +355,16 @@ def build_harness(
                 "agents",
                 False,
             ),
+            database_read=getattr(
+                config.permissions,
+                "database_read",
+                False,
+            ),
+            database_write=getattr(
+                config.permissions,
+                "database_write",
+                False,
+            ),
         )
     )
 

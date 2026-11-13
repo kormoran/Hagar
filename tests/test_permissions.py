@@ -137,6 +137,37 @@ def test_capabilities_from_permissions():
     assert mask & Capability.NETWORK
 
 
+def test_database_capabilities_from_permissions():
+    mask = capabilities_from_permissions(
+        read=False,
+        write=False,
+        shell=False,
+    )
+
+    assert not mask & Capability.DATABASE_READ
+    assert not mask & Capability.DATABASE_WRITE
+
+    mask = capabilities_from_permissions(
+        read=False,
+        write=False,
+        shell=False,
+        database_read=True,
+    )
+
+    assert mask & Capability.DATABASE_READ
+    assert not mask & Capability.DATABASE_WRITE
+
+    mask = capabilities_from_permissions(
+        read=False,
+        write=False,
+        shell=False,
+        database_write=True,
+    )
+
+    assert mask & Capability.DATABASE_READ
+    assert mask & Capability.DATABASE_WRITE
+
+
 # =====================================================
 # Percorsi e scope
 # =====================================================

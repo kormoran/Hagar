@@ -115,6 +115,13 @@ class FileSystemSandbox:
         # Versione osservata dei file per il gate read-before-write.
         self._observed: dict[Path, tuple[int, int]] = {}
 
+        # Override RWX per singoli percorsi, impostati dal sandbox
+        # manager della GUI. Vince sempre sul permesso della radice.
+        self._path_permissions: dict[
+            Path,
+            DirectoryPermissions,
+        ] = {}
+
         # Checkpoint del turno corrente e ultimo checkpoint completato.
         self._current_checkpoint: WorkspaceCheckpoint | None = None
         self.last_checkpoint: WorkspaceCheckpoint | None = None
@@ -553,7 +560,7 @@ class FileSystemSandbox:
         path = path.resolve()
 
         matches: list[
-            tuple[Path, DirectoryPermissions]
+            tuple[Path, DirectoryPermissions, int]
         ] = []
 
         for root, perms in self.roots.items():
@@ -562,10 +569,22 @@ class FileSystemSandbox:
 
             try:
                 path.relative_to(root)
-                matches.append((root, perms))
+                matches.append((root, perms, 0))
 
             except ValueError:
                 pass
+
+        for override, perms in list(
+            self._path_permissions.items()
+        ):
+
+            try:
+                path.relative_to(override)
+
+            except ValueError:
+                continue
+
+            matches.append((override, perms, 1))
 
         if not matches:
 
@@ -574,12 +593,15 @@ class FileSystemSandbox:
             )
 
         #
-        # Dalla radice più esterna alla più interna:
-        # la più specifica vince.
+        # Dalla radice più esterna alla più interna: la più specifica
+        # vince. A parità di profondità un override vince sulla radice.
         #
 
         matches.sort(
-            key=lambda item: len(item[0].parts)
+            key=lambda item: (
+                len(item[0].parts),
+                item[2],
+            )
         )
 
         effective = DirectoryPermissions(
@@ -591,7 +613,7 @@ class FileSystemSandbox:
             execute=False,
         )
 
-        for _, perms in matches:
+        for _, perms, _ in matches:
 
             if perms.read is not None:
                 effective.read = perms.read
@@ -612,6 +634,39 @@ class FileSystemSandbox:
                 effective.execute = perms.execute
 
         return effective
+
+    def set_rwx(
+        self,
+        path: str | Path,
+        read: bool,
+        write: bool,
+        execute: bool,
+    ) -> DirectoryPermissions:
+        """Imposta i permessi RWX di un singolo percorso."""
+
+        target = self.resolve_path(path)
+
+        # Fuori dalle radici concesse ``effective_permissions`` solleva
+        # ``PermissionError``: l'override non deve creare nuove radici.
+        self.effective_permissions(target)
+
+        self._path_permissions[target] = (
+            DirectoryPermissions(
+                read=bool(read),
+                write=bool(write),
+                create=bool(write),
+                rename=bool(write),
+                delete=bool(write),
+                execute=bool(execute),
+            )
+        )
+
+        return self.effective_permissions(target)
+
+    def clear_permission_overrides(self) -> None:
+        """Rimuove tutti gli override RWX per percorso."""
+
+        self._path_permissions.clear()
 
     def find_root(
         self,

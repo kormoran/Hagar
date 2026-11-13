@@ -45,6 +45,8 @@ class Capability(IntFlag):
     DEV_EXEC = auto()
     BOX_EXEC = auto()
     FLOW_EXEC = auto()
+    DATABASE_READ = auto()
+    DATABASE_WRITE = auto()
 
 
 ALL_CAPABILITIES = Capability.NONE
@@ -96,6 +98,8 @@ def capabilities_from_permissions(
     shell: bool,
     network: bool = False,
     agents: bool = False,
+    database_read: bool = False,
+    database_write: bool = False,
 ) -> Capability:
     """
     Tetto di sistema derivato dalla configurazione attuale.
@@ -127,6 +131,19 @@ def capabilities_from_permissions(
 
     if network:
         capabilities |= Capability.NETWORK
+
+    #
+    # Il database è un canale separato da filesystem e rete: un file
+    # SQLite è locale, un ODBC può essere locale o remoto. La scrittura
+    # implica la lettura, perché il tool deve poter ispezionare lo
+    # schema prima di modificare i dati.
+    #
+
+    if database_read or database_write:
+        capabilities |= Capability.DATABASE_READ
+
+    if database_write:
+        capabilities |= Capability.DATABASE_WRITE
 
     #
     # I calcoli locali non escono dalla macchina e non toccano il

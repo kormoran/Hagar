@@ -139,6 +139,8 @@ def test_permissions_defaults():
     assert cfg.permissions.write is False
     assert cfg.permissions.shell is False
     assert cfg.permissions.network is False
+    assert cfg.permissions.database_read is False
+    assert cfg.permissions.database_write is False
 
 
 def test_missing_model_key():
@@ -242,6 +244,28 @@ def test_permissions_network_must_be_boolean(tmp_path):
     data["permissions"]["network"] = "yes"
 
     with pytest.raises(ConfigError, match="permissions.network"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_permissions_database_can_be_enabled(tmp_path):
+    data = base_config(tmp_path)
+    data["permissions"]["database_read"] = True
+    data["permissions"]["database_write"] = True
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.permissions.database_read is True
+    assert cfg.permissions.database_write is True
+
+
+def test_permissions_database_must_be_boolean(tmp_path):
+    data = base_config(tmp_path)
+    data["permissions"]["database_read"] = "yes"
+
+    with pytest.raises(
+        ConfigError,
+        match="permissions.database_read",
+    ):
         ConfigLoader.load(write_yaml(tmp_path, data))
 
 
