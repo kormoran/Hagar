@@ -386,10 +386,59 @@ class AdminService:
         force: bool = False,
     ) -> dict[str, Any]:
 
-        return model_catalog(
+        data = model_catalog(
             self.config,
             force=force,
         )
+
+        broker = getattr(
+            self.harness,
+            "broker",
+            None,
+        )
+
+        broker_error = getattr(
+            self.harness,
+            "broker_error",
+            None,
+        )
+
+        info = {
+            "enabled": broker is not None,
+            "profile": getattr(
+                self.config.broker,
+                "default_profile",
+                None,
+            ),
+            "selection": None,
+            "error": broker_error,
+        }
+
+        if broker is not None:
+
+            try:
+
+                selection = broker.select(
+                    info["profile"]
+                )
+
+                info["selection"] = {
+                    "model_id": selection.entry.id,
+                    "provider": selection.entry.provider,
+                    "model": selection.entry.model,
+                    "score": round(
+                        selection.score,
+                        4,
+                    ),
+                }
+
+            except Exception as exc:  # noqa: BLE001
+
+                info["error"] = str(exc)
+
+        data["broker"] = info
+
+        return data
 
     def _sync_model_client(self) -> None:
 
@@ -412,19 +461,47 @@ class AdminService:
             if hasattr(llm, "native_tools"):
                 llm.native_tools = model.native_tools
 
+    def _create_client(
+        self,
+        model: Any,
+    ) -> Any:
+
+        audit = getattr(
+            self.harness,
+            "audit",
+            None,
+        )
+
+        broker = getattr(
+            self.harness,
+            "broker",
+            None,
+        )
+
+        if broker is not None:
+
+            from llm.broker_client import (
+                BrokerLLMClient,
+            )
+
+            return BrokerLLMClient(
+                broker,
+                model,
+                profile=self.config.broker.default_profile,
+                audit=audit,
+            )
+
+        return create_llm(
+            model,
+            audit=audit,
+        )
+
     def _install_model(
         self,
         model: Any,
     ) -> None:
 
-        client = create_llm(
-            model,
-            audit=getattr(
-                self.harness,
-                "audit",
-                None,
-            ),
-        )
+        client = self._create_client(model)
 
         old = self.config.model
 
@@ -492,6 +569,21 @@ class AdminService:
         if "\x00" in model:
             raise AdminError(
                 "model name contains invalid characters"
+            )
+
+        if getattr(self.harness, "broker", None) is not None:
+
+            profile = getattr(
+                self.config.broker,
+                "default_profile",
+                "coding",
+            )
+
+            raise AdminError(
+                "broker LLM attivo: il modello è scelto "
+                f"dal profilo '{profile}'. Disabilita "
+                "broker.enabled oppure cambia profilo con "
+                "il comando /models use."
             )
 
         current = self.config.model

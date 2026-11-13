@@ -311,6 +311,14 @@ sandbox. La scelta viene registrata nell’audit.
 La selezione non avviene ancora per ogni turno: usa il profilo
 `broker.default_profile`. La scelta dinamica per task arriverà dopo.
 
+## Pannello web
+
+Con il broker attivo, il pannello di controllo mostra profilo e modello
+scelto e disabilita il cambio diretto provider/modello. Il cambio passa
+da `/models use <profilo>` oppure dalla configurazione del broker. Il
+pulsante di reset da `hagar.yaml` ricrea il `BrokerLLMClient` ma non
+ricarica catalogo e profili: per quelli serve un riavvio.
+
 ## Subagenti
 
 I subagenti usano lo stesso registry e gli stessi profili del padre, ma

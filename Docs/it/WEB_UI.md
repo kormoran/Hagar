@@ -41,7 +41,12 @@ Mostra i provider disponibili e i modelli noti per ciascuno:
   locale, con timeout breve.
 
 Il combo **Filtra provider** restringe l’elenco a un solo provider.
-Seleziona provider e modello, poi premi **Cambia modello**. La
+Seleziona provider e modello, poi premi **Cambia modello**.
+
+Se il broker LLM è attivo (`broker.enabled: true`), il pannello mostra
+profilo e modello scelto dal broker, disabilita il cambio diretto e
+rimanda al comando `/models use <profilo>`. Il broker resta l’unico
+responsabile della scelta; il pannello non lo bypassa. La
 procedura:
 
 1. valida provider e nome;
@@ -76,12 +81,12 @@ dell’harness, non solo alla dataclass.
 - ricarica il file di configurazione;
 - ripristina i valori modificabili;
 - ricrea il client se provider, modello, host o variabile della chiave
-  sono cambiati;
+  sono cambiati; con broker attivo ricrea il `BrokerLLMClient`;
 - riabilita tutti i tool;
 - cancella gli override RWX del sandbox manager.
 
-Non ricarica policy, permessi di sistema, audit o server MCP: sono
-scelte di configurazione che richiedono un riavvio.
+Non ricarica policy, permessi di sistema, audit, server MCP o il
+catalogo/profili del broker: sono scelte che richiedono un riavvio.
 
 Le modifiche amministrative sono rifiutate con `409` mentre un turno è
 in corso. Le letture restano disponibili.

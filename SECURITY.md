@@ -53,6 +53,25 @@ Ollama and (forthcoming) LM Studio are local services. Bind them to loopback unl
 you intentionally want LAN access, and do not expose them to the
 internet. Hagar does not add authentication to those servers.
 
+## Security tests
+
+La suite `tests/security/` contiene i test L0/L1:
+
+- **L0**: un `ScriptedLLM` deterministico simula un modello
+  completamente compromesso e tenta escape da sandbox, policy e
+  registry;
+- **L1**: prompt injection indiretta da file e righe SQL; il modello
+  finto obbedisce all’istruzione ostile e il test verifica che il
+  canary fuori sandbox resti inaccessibile.
+
+I test usano solo file sintetici e canary casuali, non segreti reali né
+target esterni. Il limite hardlink è coperto da un test `xfail`
+esplicito: se viene corretto, il test passa.
+
+L0/L1 non dimostrano la resistenza di un modello reale a un jailbreak;
+dimostrano che, anche se il modello obbedisce, l’harness contiene il
+danno. I test con modello reale restano separati e probabilistici.
+
 ## Out of scope
 
 - a local attacker who can already read or write the Hagar workspace,

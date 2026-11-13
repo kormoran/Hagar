@@ -13,9 +13,13 @@ import core.admin as admin_module
 from core.admin import AdminError, AdminService
 from core.config import ConfigError, ConfigLoader
 from hagar import build_harness
+from llm.broker_client import BrokerLLMClient
 
 
-def write_config(tmp_path: Path) -> Path:
+def write_config(
+    tmp_path: Path,
+    broker: bool = False,
+) -> Path:
 
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -31,6 +35,40 @@ def write_config(tmp_path: Path) -> Path:
         "    default: allow\n",
         encoding="utf-8",
     )
+
+    if broker:
+
+        catalog = tmp_path / "models.yaml"
+        catalog.write_text(
+            "version: 1\n"
+            "models:\n"
+            "  - id: ollama/qwen3-8b\n"
+            "    provider: ollama\n"
+            "    model: qwen3:8b\n"
+            "    context_window: 32768\n"
+            "    capabilities:\n"
+            "      - chat\n"
+            "      - tool_calling\n"
+            "      - native_tools\n"
+            "    locality: local\n"
+            "    quality: 0.8\n"
+            "    cost_per_1k_input: 0\n"
+            "    cost_per_1k_output: 0\n"
+            "    enabled: true\n",
+            encoding="utf-8",
+        )
+
+        profiles = tmp_path / "profiles.yaml"
+        profiles.write_text(
+            "version: 1\n"
+            "profiles:\n"
+            "  coding:\n"
+            "    required_capabilities:\n"
+            "      - chat\n"
+            "    privacy: any\n"
+            "    prefer: quality\n",
+            encoding="utf-8",
+        )
 
     data = {
         "model": {
@@ -74,6 +112,15 @@ def write_config(tmp_path: Path) -> Path:
         },
     }
 
+    if broker:
+
+        data["broker"] = {
+            "enabled": True,
+            "catalog": str(catalog),
+            "profiles": str(profiles),
+            "default_profile": "coding",
+        }
+
     path = tmp_path / "hagar.yaml"
     path.write_text(
         yaml.safe_dump(data),
@@ -86,10 +133,11 @@ def write_config(tmp_path: Path) -> Path:
 def make_admin(
     tmp_path: Path,
     monkeypatch,
+    broker: bool = False,
 ):
 
     config = ConfigLoader.load(
-        write_config(tmp_path)
+        write_config(tmp_path, broker=broker)
     )
 
     monkeypatch.setattr(
@@ -490,3 +538,89 @@ def test_control_payload(tmp_path, monkeypatch):
     assert "model" in payload
     assert "settings" in payload
     assert payload["settings"]["config_path"]
+
+
+def test_broker_state_and_direct_change_is_refused(
+    tmp_path,
+    monkeypatch,
+):
+
+    service, harness, _ = make_admin(
+        tmp_path,
+        monkeypatch,
+        broker=True,
+    )
+
+    assert isinstance(
+        harness.llm,
+        BrokerLLMClient,
+    )
+
+    state = service.model_state()
+
+    assert state["broker"]["enabled"] is True
+    assert state["broker"]["profile"] == "coding"
+    assert state["broker"]["selection"] is not None
+    assert (
+        state["broker"]["selection"]["provider"]
+        == "ollama"
+    )
+    assert (
+        state["broker"]["selection"]["model"]
+        == "qwen3:8b"
+    )
+
+    with pytest.raises(
+        AdminError,
+        match="broker",
+    ):
+        service.change_model(
+            "ollama",
+            "llama3.1:latest",
+        )
+
+
+def test_broker_reset_keeps_broker_client(
+    tmp_path,
+    monkeypatch,
+):
+
+    service, harness, _ = make_admin(
+        tmp_path,
+        monkeypatch,
+        broker=True,
+    )
+
+    before = harness.llm
+
+    service.reset_from_config()
+
+    assert isinstance(
+        harness.llm,
+        BrokerLLMClient,
+    )
+    assert harness.llm is not None
+    assert before is not None
+
+
+def test_broker_model_settings_update_client(
+    tmp_path,
+    monkeypatch,
+):
+
+    service, harness, _ = make_admin(
+        tmp_path,
+        monkeypatch,
+        broker=True,
+    )
+
+    values = settings_dict(service)
+    values["model.timeout"] = 42
+    values["model.max_tokens"] = 256
+
+    service.update_settings(values)
+
+    assert harness.llm.timeout == 42
+    assert harness.llm.max_tokens == 256
+    assert harness.config.model.timeout == 42
+    assert harness.config.model.max_tokens == 256

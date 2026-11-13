@@ -135,6 +135,22 @@ HIR, parallelismo e subagenti restano fuori dall’MVP.
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` e `Docs/ar` si
 rigenerano solo quando si prepara una release.
 
+## 0.6 Post-1.0 — Multibot
+
+Architettura a servizi separati per l’interazione del modello con
+entità esterne su social e contesti pubblici non sicuri. Non entra
+nella 1.0: il documento è [MULTIBOT.md](MULTIBOT.md).
+
+Vincoli già decisi:
+
+- Hagar resta single-user e il chat principale non diventa multiutente;
+- il modello produce solo bozze e non ha la capability di pubblicare;
+- identità, token, worker, guard, approvazione e publisher sono servizi
+  separati;
+- autonomia graduata, quote, kill switch e accettazione esplicita del
+  rischio;
+- nessun accesso del worker a memoria, filesystem o rete generica.
+
 ---
 
 ## 1.0 Stato: v2 implementata (2026-11-04)

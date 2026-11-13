@@ -58,8 +58,20 @@ function renderTools() {
 
 function renderModels() {
   const current = control.model.current;
-  document.getElementById('current-model').textContent =
+  const broker = control.model.broker || {};
+  let label =
     'Modello attivo: ' + current.provider + ' / ' + current.name;
+
+  if (broker.enabled) {
+    label += ' · broker: ' + (broker.profile || '?');
+    if (broker.selection) {
+      label += ' → ' + broker.selection.provider +
+        ' / ' + broker.selection.model;
+    }
+    if (broker.error) label += ' · ' + broker.error;
+  }
+
+  document.getElementById('current-model').textContent = label;
 
   const box = document.getElementById('providers');
   box.replaceChildren();
@@ -110,6 +122,13 @@ function renderModels() {
         };
         renderModels();
       };
+
+      if (broker.enabled) {
+        button.disabled = true;
+        button.title = 'Broker attivo: il modello è scelto dal profilo ' +
+          (broker.profile || '?');
+      }
+
       list.appendChild(button);
     }
 
@@ -118,7 +137,7 @@ function renderModels() {
   }
 
   const change = document.getElementById('change-model');
-  change.disabled = !selectedModel ||
+  change.disabled = broker.enabled || !selectedModel ||
     (
       selectedModel.provider === current.provider &&
       selectedModel.model === current.name

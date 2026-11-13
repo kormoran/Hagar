@@ -220,6 +220,36 @@ class BrokerLLMClient(LLMClient):
         return self._client.supports_native_tools
 
     @property
+    def timeout(self) -> Any:
+        return getattr(
+            self._client,
+            "timeout",
+            self.config.timeout,
+        )
+
+    @timeout.setter
+    def timeout(self, value: Any) -> None:
+        self.config.timeout = value
+
+        if hasattr(self._client, "timeout"):
+            self._client.timeout = value
+
+    @property
+    def max_tokens(self) -> Any:
+        return getattr(
+            self._client,
+            "max_tokens",
+            self.config.max_tokens,
+        )
+
+    @max_tokens.setter
+    def max_tokens(self, value: Any) -> None:
+        self.config.max_tokens = value
+
+        if hasattr(self._client, "max_tokens"):
+            self._client.max_tokens = value
+
+    @property
     def native_tools(self) -> bool:
         return self._client.native_tools
 
