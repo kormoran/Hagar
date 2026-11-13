@@ -1,0 +1,609 @@
+{
+  "tested_at": "2026-11-13T05:50:54+00:00",
+  "provider": "lmstudio",
+  "model": "gemma-3-27b-it",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 25899708416,
+      "total_gib": 47.91,
+      "available_gib": 24.12
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": true,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 112861.47,
+        "mean": 112861.47,
+        "p50": 112861.47,
+        "p95": 112861.47,
+        "max": 112861.47
+      },
+      "output_tokens_per_second": 0.027
+    },
+    "structured": {
+      "attempts": 1,
+      "valid_json": 1,
+      "valid_choice": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 20310.6,
+        "mean": 20310.6,
+        "p50": 20310.6,
+        "p95": 20310.6,
+        "max": 20310.6
+      }
+    },
+    "tool_call": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 27853.62,
+        "mean": 27853.62,
+        "p50": 27853.62,
+        "p95": 27853.62,
+        "max": 27853.62
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T05:55:35+00:00",
+    "attempts": 1,
+    "tasks": {
+      "summary": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.36000000000000004,
+          0.6000000000000001
+        ],
+        "mean": 0.48,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.9797038211833968,
+          0.34094845535403184
+        ],
+        "mean": 0.6603,
+        "errors": []
+      },
+      "extraction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 1,
+        "scores": [
+          0.36000000000000004
+        ],
+        "mean": 0.36,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 1,
+        "scores": [
+          0.6000000000000001
+        ],
+        "mean": 0.6,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 1,
+        "scores": [
+          0.9797038211833968
+        ],
+        "mean": 0.9797,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 1,
+        "scores": [
+          0.34094845535403184
+        ],
+        "mean": 0.3409,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.8567
+  },
+  "suite_manifest": {
+    "version": 3,
+    "suite": "hagar-bench-2026-11",
+    "corpus": {
+      "version": 1,
+      "suite": "hagar-bench-2026-11",
+      "license": "project",
+      "texts": [
+        {
+          "id": "it_technical",
+          "path": "text/it_technical.md",
+          "sha256": "93efc8b74c226712e5169ffd36aae62fbcd537904c031d31e018987f23c7a72b",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        },
+        {
+          "id": "it_broker",
+          "path": "text/it_broker.md",
+          "sha256": "40123507af8aeb0826ed763f202d434cfa0e5e9989f7596d38ed4434f4cfa50f",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        },
+        {
+          "id": "en_broker",
+          "path": "text/en_broker.md",
+          "sha256": "5286edf73d68e129299557df9ed4f8284dfeba9203df6b6754f8de4ffb578191",
+          "license": "project",
+          "tags": [
+            "english"
+          ]
+        },
+        {
+          "id": "it_instruction",
+          "path": "text/it_instruction.md",
+          "sha256": "89ffd3a757fa609b99d98f24b033e1d52b80d98a749edda35e940ca140671020",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        },
+        {
+          "id": "it_extraction",
+          "path": "text/it_extraction.md",
+          "sha256": "cc9094d3231586feafbeae82c22d9aa7d1ffeac76153391b9ae71dce85b436b6",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        },
+        {
+          "id": "it_code",
+          "path": "text/it_code.md",
+          "sha256": "35708b784d06bb2aed5aaf8ee50e2ffb4ec2877f9012ae1f5ed3c60a6043d446",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        },
+        {
+          "id": "it_numbers",
+          "path": "text/it_numbers.md",
+          "sha256": "1dd4daa54a1e5d4c86bc1f43e9d9c2b72f2ed4c73250dad364948b04237d4e41",
+          "license": "project",
+          "tags": [
+            "italian"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "id": "it_broker_en",
+          "path": "text/references/it_broker.en.md",
+          "sha256": "eaceb32347a81378d95a6d34ce08c546f75edcebedb99732b3b499f0ddda32ac",
+          "license": "project",
+          "tags": [
+            "translation-reference"
+          ]
+        },
+        {
+          "id": "en_broker_it",
+          "path": "text/references/en_broker.it.md",
+          "sha256": "aee907d744ba115eca1a37c2dc61bba87d0ea889dfdce47138ca6b3fba9b89db",
+          "license": "project",
+          "tags": [
+            "translation-reference"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "id": "color_red_01",
+          "path": "vision/color_red_01.png",
+          "sha256": "a81613cb49e87d1ee7ece38d2e43b03b9bd55e113f586297be6dfb5c444d8158",
+          "license": "project",
+          "tags": [
+            "vision",
+            "color"
+          ]
+        },
+        {
+          "id": "count_three_01",
+          "path": "vision/count_three_01.png",
+          "sha256": "8ebdade696feddfad199eebf6d34374a1d16b1f871b6824272d2b666b76774f5",
+          "license": "project",
+          "tags": [
+            "vision",
+            "count"
+          ]
+        },
+        {
+          "id": "spatial_left_01",
+          "path": "vision/spatial_left_01.png",
+          "sha256": "562fcb05d7353c98a54d8aff2ddbc3f065b3f2b9a68c8c760979852a18c2d159",
+          "license": "project",
+          "tags": [
+            "vision",
+            "spatial"
+          ]
+        },
+        {
+          "id": "ocr_hagar_42",
+          "path": "vision/ocr_hagar_42.png",
+          "sha256": "3fb91c8613c25f281eadf12dfbc864e027c1eda0b5eb1b9e8adeafb9db5b3558",
+          "license": "project",
+          "tags": [
+            "vision",
+            "ocr"
+          ]
+        },
+        {
+          "id": "chart_bars_01",
+          "path": "vision/chart_bars_01.png",
+          "sha256": "c01977bc601e3e4fdbbb9b15445c9097a3f8be14d59aca55afe0ad70d9ac055f",
+          "license": "project",
+          "tags": [
+            "vision",
+            "chart"
+          ]
+        },
+        {
+          "id": "ui_port_01",
+          "path": "vision/ui_port_01.png",
+          "sha256": "9069272ed934fc0c542c3e2191e4ff3f5ac7ef5cba514a2b1ad19f5799e740d6",
+          "license": "project",
+          "tags": [
+            "vision",
+            "ui"
+          ]
+        },
+        {
+          "id": "ocr_small_7b",
+          "path": "vision/ocr_small_7b.png",
+          "sha256": "27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e",
+          "license": "project",
+          "tags": [
+            "vision",
+            "ocr",
+            "small"
+          ]
+        },
+        {
+          "id": "chart_months_01",
+          "path": "vision/chart_months_01.png",
+          "sha256": "5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710",
+          "license": "project",
+          "tags": [
+            "vision",
+            "chart"
+          ]
+        },
+        {
+          "id": "ui_multi_01",
+          "path": "vision/ui_multi_01.png",
+          "sha256": "3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5",
+          "license": "project",
+          "tags": [
+            "vision",
+            "ui"
+          ]
+        },
+        {
+          "id": "scene_mixed_01",
+          "path": "vision/scene_mixed_01.png",
+          "sha256": "e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9",
+          "license": "project",
+          "tags": [
+            "vision",
+            "scene",
+            "description"
+          ]
+        }
+      ],
+      "quality": [
+        {
+          "name": "summary_technical",
+          "task": "summary",
+          "sample": "it_technical",
+          "prompt": "Riassumi in al massimo due frasi, in italiano:\n\n{text}",
+          "scorer": "summary",
+          "expected": [
+            "sandbox",
+            "policy",
+            "tool",
+            "broker",
+            "1.0"
+          ]
+        },
+        {
+          "name": "summary_broker",
+          "task": "summary",
+          "sample": "it_broker",
+          "prompt": "Riassumi in al massimo due frasi, in italiano:\n\n{text}",
+          "scorer": "summary",
+          "expected": [
+            "catalogo",
+            "schede",
+            "profili",
+            "audit"
+          ]
+        },
+        {
+          "name": "translation_it_en",
+          "task": "translation",
+          "sample": "it_broker",
+          "reference": "it_broker_en",
+          "prompt": "Traduci in inglese. Rispondi solo con la traduzione:\n\n{text}",
+          "scorer": "translation",
+          "required": [
+            "broker",
+            "catalog",
+            "profile",
+            "audit"
+          ]
+        },
+        {
+          "name": "translation_en_it",
+          "task": "translation",
+          "sample": "en_broker",
+          "reference": "en_broker_it",
+          "prompt": "Traduci in italiano. Rispondi solo con la traduzione:\n\n{text}",
+          "scorer": "translation",
+          "required": [
+            "broker",
+            "capability",
+            "policy",
+            "audit"
+          ],
+          "forbidden": [
+            "brokering",
+            "missione",
+            "carte misurate",
+            "ritardo",
+            "politica",
+            "agenti secondari",
+            "capacità"
+          ]
+        },
+        {
+          "name": "extraction",
+          "task": "extraction",
+          "sample": "it_extraction",
+          "prompt": "Estrai nome, eta e citta dal testo. Rispondi solo con un oggetto JSON con le chiavi name, age, city.\n\n{text}",
+          "scorer": "extraction",
+          "expected": {
+            "name": "Mario Rossi",
+            "age": 42,
+            "city": "Roma"
+          }
+        },
+        {
+          "name": "instruction",
+          "task": "instruction",
+          "sample": "it_instruction",
+          "prompt": "Esegui esattamente questa istruzione:\n\n{text}",
+          "scorer": "exact",
+          "expected": "HAGAR"
+        },
+        {
+          "name": "reasoning",
+          "task": "reasoning",
+          "sample": "it_numbers",
+          "prompt": "{text}\nRispondi solo con il numero.",
+          "scorer": "number",
+          "expected": 6
+        },
+        {
+          "name": "coding",
+          "task": "coding",
+          "sample": "it_code",
+          "prompt": "Cosa stampa questo codice Python?\n\n```python\n{text}\n```\nRispondi solo con il numero.",
+          "scorer": "number",
+          "expected": 3
+        }
+      ],
+      "vision": [
+        {
+          "name": "vision_color",
+          "image": "color_red_01",
+          "prompt": "What is the dominant color of this image? Answer with one word: red, blue or green.",
+          "scorer": "exact",
+          "expected": "red"
+        },
+        {
+          "name": "vision_count",
+          "image": "count_three_01",
+          "prompt": "How many blue squares are in this image? Answer with only the number.",
+          "scorer": "number",
+          "expected": 3
+        },
+        {
+          "name": "vision_spatial",
+          "image": "spatial_left_01",
+          "prompt": "Is the red square to the left or to the right of the blue square? Answer only left or right.",
+          "scorer": "exact",
+          "expected": "left"
+        },
+        {
+          "name": "vision_ocr",
+          "image": "ocr_hagar_42",
+          "prompt": "Read the text in this image. Answer only with the text.",
+          "scorer": "exact",
+          "expected": "HAGAR 42"
+        },
+        {
+          "name": "vision_chart",
+          "image": "chart_bars_01",
+          "prompt": "Which bar is the highest? Answer only with the letter A, B or C.",
+          "scorer": "exact",
+          "expected": "B"
+        },
+        {
+          "name": "vision_ui",
+          "image": "ui_port_01",
+          "prompt": "What value is shown next to PORT? Answer only with the number.",
+          "scorer": "exact",
+          "expected": "8080"
+        },
+        {
+          "name": "vision_ocr_small",
+          "image": "ocr_small_7b",
+          "prompt": "Read the small text in this image. It contains letters, a dash and digits. Answer only with the text.",
+          "scorer": "exact",
+          "expected": "HAGAR-7B"
+        },
+        {
+          "name": "vision_chart_months",
+          "image": "chart_months_01",
+          "prompt": "Which month has the highest bar? Answer only with JAN, FEB, MAR or APR.",
+          "scorer": "exact",
+          "expected": "MAR"
+        },
+        {
+          "name": "vision_ui_multi",
+          "image": "ui_multi_01",
+          "prompt": "Which field contains the value 8080? Answer only with the field name.",
+          "scorer": "exact",
+          "expected": "PORT"
+        },
+        {
+          "name": "vision_scene_description",
+          "image": "scene_mixed_01",
+          "prompt": "Describe the image in one sentence. Mention the shapes, their colors and their positions.",
+          "scorer": "keypoints",
+          "expected": [
+            "red",
+            "circle",
+            "left",
+            "blue",
+            "square",
+            "center",
+            "green",
+            "triangle",
+            "right"
+          ]
+        }
+      ]
+    }
+  },
+  "run_id": "20261113T055535Z-cab203e1",
+  "suite_version": 3,
+  "saved_at": "2026-11-13T05:55:35+00:00"
+}

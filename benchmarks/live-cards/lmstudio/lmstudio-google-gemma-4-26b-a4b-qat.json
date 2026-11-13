@@ -1,0 +1,433 @@
+{
+  "tested_at": "2026-11-13T06:34:23+00:00",
+  "provider": "lmstudio",
+  "model": "google/gemma-4-26b-a4b-qat",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 26856050688,
+      "total_gib": 47.91,
+      "available_gib": 25.01
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": false,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 122361.31,
+        "mean": 122361.31,
+        "p50": 122361.31,
+        "p95": 122361.31,
+        "max": 122361.31
+      },
+      "output_tokens_per_second": 1.152
+    },
+    "structured": {
+      "attempts": 1,
+      "valid_json": 0,
+      "valid_choice": 0,
+      "errors": [
+        "Extra data: line 1 column 54 (char 53)"
+      ],
+      "duration_ms": {
+        "count": 1,
+        "min": 22296.54,
+        "mean": 22296.54,
+        "p50": 22296.54,
+        "p95": 22296.54,
+        "max": 22296.54
+      }
+    },
+    "tool_call": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 109581.72,
+        "mean": 109581.72,
+        "p50": 109581.72,
+        "p95": 109581.72,
+        "max": 109581.72
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T06:46:48+00:00",
+    "attempts": 1,
+    "tasks": {
+      "summary": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.9,
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.0,
+          0.26297860507224996
+        ],
+        "mean": 0.1315,
+        "errors": [
+          "HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=300)"
+        ]
+      },
+      "extraction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 1,
+        "scores": [
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 1,
+        "scores": [
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": [
+          "HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=300)"
+        ]
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 1,
+        "scores": [
+          0.26297860507224996
+        ],
+        "mean": 0.263,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.1719
+  },
+  "last_tested_at": "2026-11-13T06:51:39+00:00",
+  "card_version": 1,
+  "vision": {
+    "suite_version": 2,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T06:51:39+00:00",
+    "attempts": 1,
+    "images": [
+      {
+        "id": "color_red_01",
+        "case": "vision_color",
+        "path": "vision/color_red_01.png",
+        "sha256": "a81613cb49e87d1ee7ece38d2e43b03b9bd55e113f586297be6dfb5c444d8158"
+      },
+      {
+        "id": "count_three_01",
+        "case": "vision_count",
+        "path": "vision/count_three_01.png",
+        "sha256": "8ebdade696feddfad199eebf6d34374a1d16b1f871b6824272d2b666b76774f5"
+      },
+      {
+        "id": "spatial_left_01",
+        "case": "vision_spatial",
+        "path": "vision/spatial_left_01.png",
+        "sha256": "562fcb05d7353c98a54d8aff2ddbc3f065b3f2b9a68c8c760979852a18c2d159"
+      },
+      {
+        "id": "ocr_hagar_42",
+        "case": "vision_ocr",
+        "path": "vision/ocr_hagar_42.png",
+        "sha256": "3fb91c8613c25f281eadf12dfbc864e027c1eda0b5eb1b9e8adeafb9db5b3558"
+      },
+      {
+        "id": "chart_bars_01",
+        "case": "vision_chart",
+        "path": "vision/chart_bars_01.png",
+        "sha256": "c01977bc601e3e4fdbbb9b15445c9097a3f8be14d59aca55afe0ad70d9ac055f"
+      },
+      {
+        "id": "ui_port_01",
+        "case": "vision_ui",
+        "path": "vision/ui_port_01.png",
+        "sha256": "9069272ed934fc0c542c3e2191e4ff3f5ac7ef5cba514a2b1ad19f5799e740d6"
+      },
+      {
+        "id": "ocr_small_7b",
+        "case": "vision_ocr_small",
+        "path": "vision/ocr_small_7b.png",
+        "sha256": "27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e"
+      },
+      {
+        "id": "chart_months_01",
+        "case": "vision_chart_months",
+        "path": "vision/chart_months_01.png",
+        "sha256": "5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710"
+      },
+      {
+        "id": "ui_multi_01",
+        "case": "vision_ui_multi",
+        "path": "vision/ui_multi_01.png",
+        "sha256": "3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5"
+      },
+      {
+        "id": "scene_mixed_01",
+        "case": "vision_scene_description",
+        "path": "vision/scene_mixed_01.png",
+        "sha256": "e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9"
+      }
+    ],
+    "tasks": {
+      "vision": {
+        "attempts": 1,
+        "cases": 10,
+        "scores": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "mean": 0.1,
+        "errors": [],
+        "case_results": [
+          {
+            "name": "vision_color",
+            "image_id": "color_red_01",
+            "sha256": "a81613cb49e87d1ee7ece38d2e43b03b9bd55e113f586297be6dfb5c444d8158",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_count",
+            "image_id": "count_three_01",
+            "sha256": "8ebdade696feddfad199eebf6d34374a1d16b1f871b6824272d2b666b76774f5",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_spatial",
+            "image_id": "spatial_left_01",
+            "sha256": "562fcb05d7353c98a54d8aff2ddbc3f065b3f2b9a68c8c760979852a18c2d159",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ocr",
+            "image_id": "ocr_hagar_42",
+            "sha256": "3fb91c8613c25f281eadf12dfbc864e027c1eda0b5eb1b9e8adeafb9db5b3558",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_chart",
+            "image_id": "chart_bars_01",
+            "sha256": "c01977bc601e3e4fdbbb9b15445c9097a3f8be14d59aca55afe0ad70d9ac055f",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ui",
+            "image_id": "ui_port_01",
+            "sha256": "9069272ed934fc0c542c3e2191e4ff3f5ac7ef5cba514a2b1ad19f5799e740d6",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ocr_small",
+            "image_id": "ocr_small_7b",
+            "sha256": "27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_chart_months",
+            "image_id": "chart_months_01",
+            "sha256": "5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ui_multi",
+            "image_id": "ui_multi_01",
+            "sha256": "3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_scene_description",
+            "image_id": "scene_mixed_01",
+            "sha256": "e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9",
+            "attempts": 1,
+            "scores": [
+              1.0
+            ],
+            "mean": 1.0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    "overall": 0.1
+  }
+}

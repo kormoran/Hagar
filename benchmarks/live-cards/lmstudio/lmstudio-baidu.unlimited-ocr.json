@@ -1,0 +1,431 @@
+{
+  "tested_at": "2026-11-13T05:33:13+00:00",
+  "provider": "lmstudio",
+  "model": "baidu.unlimited-ocr",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 40135020544,
+      "total_gib": 47.91,
+      "available_gib": 37.38
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": false,
+    "tool_calling": false,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 42087.63,
+        "mean": 42087.63,
+        "p50": 42087.63,
+        "p95": 42087.63,
+        "max": 42087.63
+      },
+      "output_tokens_per_second": 38.087
+    },
+    "structured": {
+      "attempts": 1,
+      "valid_json": 0,
+      "valid_choice": 0,
+      "errors": [
+        "no JSON object"
+      ],
+      "duration_ms": {
+        "count": 1,
+        "min": 146897.89,
+        "mean": 146897.89,
+        "p50": 146897.89,
+        "p95": 146897.89,
+        "max": 146897.89
+      }
+    },
+    "tool_call": {
+      "attempts": 1,
+      "successes": 0,
+      "errors": [
+        "Unable to extract a valid ToolCall from model response.\n\nFirst response:\n\n\nRepair response:\n.\ntext [100, 499, 999, 519]The output of the code is empty.\n\n(No text to output)\ntitle [99, 525, 188, 545][Unreadable]\ntitle [98, 551, 190, 571][Non-Text]\ntitle [97, 577, 189, 597][NO TEXT]\ntitle [96, 603, 192, 623][NO TEXT]\ntitle [95, 629, 193, 649][NO TEXT]\ntitle [94, 655, 194, 675][Non-Text]\ntitle [93, 681, 195, 701][NO TEXT]\ntitle [92, 707, 192, 727][NO TEXT]\ntitle [91, 733, 190, 753][NO TEXT]\ntitle [90, 759, 189, 779][Non-Text]\ntitle [89, 785, 188, 805][NO TEXT]\ntitle [88, 811, 187, 831][NO TEXT]\ntitle [87, 837, 186, 857][NO TEXT]\ntitle [86, 863, 185, 883][NO TEXT]\ntitle [85, 889, 184, 909][NO TEXT]\ntitle [84, 915, 183, 935][NO TEXT]\ntitle [83, 941, 182, 961][NO TEXT]\ntitle [82, 967, 190, 987][NO TEXT]\ntitle [81, 993, 189, 999][Non-Text]\ntitle [80, 100, 188, 120][NO TEXT]\ntitle [79, 126, 187, 146][NO TEXT]\ntitle [78, 152, 186, 172][NO TEXT]\ntitle [77, 178, 185, 198][NO TEXT]\ntitle [76, 204, 184, 224][NO TEXT]\ntitle [75, 230, 183, 250][NO TEXT]\ntitle [74, 256, 182, 276][NO TEXT]\ntitle [73, 282, 181, 302][NO TEXT]\ntitle [72, 308, 180, 328][NO TEXT]\ntitle [71, 334, 179, 354][NO TEXT]\ntitle [70, 360, 178, 380][NO TEXT]\ntitle [69, 386, 177, 406][NO TEXT]\ntitle [68, 412, 176, 432][NO TEXT]\ntitle [67, 438, 175, 458][NO TEXT]\ntitle [66, 464, 174, 484][NO TEXT]\ntitle [65, 490, 173, 510][NO TEXT]\ntitle [64, 516, 172, 536][NO TEXT]\ntitle [63, 542, 171, 562][NO TEXT]\ntitle [62, 568, 170, 588][NO TEXT]\ntitle [61, 594, 169, 614][NO TEXT]\ntitle [60, 620, 168, 640][NO TEXT]\ntitle [59, 646, 167, 666][NO TEXT]\ntitle [58, 672, 166, 692][NO TEXT]\ntitle [57, 698, 165, 718][NO TEXT]\ntitle [56, 724, 164, 744][NO TEXT]\ntitle [55, 750, 163, 770][NO TEXT]\ntitle [54, 776, 162, 796][NO TEXT]\ntitle [53, 802, 161, 822][NO TEXT]\ntitle [52, 828, 160, 848][NO TEXT]\ntitle [51, 854, 159, 874][NO TEXT]\ntitle [50, 880, 158, 900][NO TEXT]\ntitle [49, 906, 157, 926][NO TEXT]\ntitle [48, 932, 156, 952][NO TEXT]\ntitle [47, 958, 155, 978][NO TEXT]\ntitle [46, 984, 154, 999][NO TEXT]\ntitle [45, 100, 153, 120][NO TEXT]\ntitle [44, 126, 152, 146][NO TEXT]\ntitle [43, 152, 151, 172][NO TEXT]\ntitle [42, 178, 150, 198][NO TEXT]\ntitle [41, 204, 149, 224][NO TEXT]\ntitle [40, 230, 148, 250][NO TEXT]\ntitle [39, 256, 147, 276][NO TEXT]\ntitle [38, 282, 146, 302][NO TEXT]\ntitle [37, 308, 145, 328][NO TEXT]\ntitle [36, 334, 144, 354][NO TEXT]\ntitle [35, 360, 143, 380][NO TEXT]\ntitle [34, 386, 142, 406][NO TEXT]\ntitle [33, 412, 141, 432][NO TEXT]\ntitle [32, 438, 140, 458][NO TEXT]\ntitle [31, 464, 139, 484][NO TEXT]\ntitle [30, 490, 138, 510][NO TEXT]\ntitle [29, 516, 137, 536][NO TEXT]\ntitle [28, 542, 136, 562][NO TEXT]\ntitle [27, 568, 135, 588][NO TEXT]\ntitle [26, 594, 134, 614][NO TEXT]\ntitle [25, 620, 133, 640][NO TEXT]\ntitle [24, 646, 132, 666][NO TEXT]\ntitle [23, 672, 131, 692][NO TEXT]\ntitle [22, 698, 130, 718][NO TEXT]\ntitle [21, 724, 129, 744][NO TEXT]\ntitle [20, 750, 128, 770][NO TEXT]\ntitle [19, 776, 127, 796][NO TEXT]\ntitle [18, 802, 126, 822][NO TEXT]\ntitle [17, 828, 125, 848][NO TEXT]\ntitle [16, 854, 124, 874][NO TEXT]\ntitle [15, 880, 123, 900][NO TEXT]\ntitle [14, 906, 122, 926][NO TEXT]\ntitle [13, 932, 121, 952][NO TEXT]\ntitle [12, 958, 120, 978][NO TEXT]\ntitle [11, 984, 119, 999, 999]\ntitle [10, 100, 118, 998][NO TEXT]\ntitle [9, 124, 117, 144][NO TEXT]\ntitle [8, 150, 116, 170][NO TEXT]\ntitle [7, 176, 115, 196][NO TEXT]\ntitle [6, 202, 114, 222][NO TEXT]\ntitle [5, 228, 113, 248][NO TEXT]\ntitle [4, 254, 112, 274][NO TEXT]\ntitle [3, 280, 111, 300][NO TEXT]\ntitle [2, 306, 110, 326][NO TEXT]\ntitle [1, 332, 109, 352][NO TEXT]\ntitle [0, 358, 108, 378][NO TEXT]\ntitle [0, 384, 107, 404][NO TEXT]\ntitle [0, 410, 106, 430][NO TEXT]\ntitle [0, 436, 105, 456][NO TEXT]\ntitle [0, 462, 104, 482][NO TEXT]\ntitle [0, 488, 103, 508][NO TEXT]\ntitle [0, 514, 102, 534][NO TEXT]\ntitle [0, 540, 101, 560][NO TEXT]\ntitle [0, 566, 100, 586][NO TEXT]\ntitle [0, 592, 99, 612][NO TEXT]\ntitle [0, 618, 98, 638][NO TEXT]\ntitle [0, 644, 96, 664][NO TEXT]\ntitle [0, 670, 95, 690][NO TEXT]\ntitle [0, 696, 94, 716][NO TEXT]\ntitle [0, 722, 93, 742][NO TEXT]\ntitle [0, 748, 91, 768][NO TEXT]\ntitle [0, 774, 89, 794][NO TEXT]\ntitle [0, 800, 88, 820][NO TEXT]\ntitle [0, 826, 86, 846][NO TEXT]\ntitle [0, 852, 85, 872][NO TEXT]\ntitle [0, 878, 84, 898][NO TEXT]\ntitle [0, 904, 83, 924][NO TEXT]\ntitle [0, 930, 81, 950][NO TEXT]\ntitle [0, 956, 79, 976][NO TEXT]\ntitle [3, 982, 77, 999][NO TEXT]\ntitle [2, 100, 110, 998][NO TEXT]\ntitle [1, 124, 108, 144][NO TEXT]\ntitle [0, 150, 107, 170][NO TEXT]\ntitle [0, 176, 105, 196][NO TEXT]\ntitle [0, 202, 104, 222][NO TEXT]\ntitle [0, 228, 103, 248][NO TEXT]\ntitle [0, 254, 102, 274][NO TEXT]\ntitle [0, 280, 101, 300][NO TEXT]\ntitle [0, 306, 99, 326][NO TEXT]\ntitle [0, 332, 98, 352][NO TEXT]\ntitle [0, 358, 96, 378][NO TEXT]\ntitle [0, 384, 95, 404][NO TEXT]\ntitle [0, 410, 94, 430][NO TEXT]\ntitle [0, 436, 93, 456][NO TEXT]\ntitle [0, 462, 92, 482][NO TEXT]\ntitle [0, 488, 91, 508][NO TEXT]\ntitle [0, 514, 89, 534][NO TEXT]\ntitle [0, 540, 88, 560][NO TEXT]\ntitle [0, 566, 87, 586][NO TEXT]\ntitle [0, 592, 85, 612][NO TEXT]\ntitle [0, 618, 84, 638][NO TEXT]\ntitle [0, 644, 83, 664][NO TEXT]\ntitle [0, 670, 82, 690][NO TEXT]\ntitle [0, 696, 81, 716][NO TEXT]\ntitle [0, 722, 80, 742][NO TEXT]\ntitle [0, 748, 79, 768][NO TEXT]\ntitle [0, 774, 77, 794][NO TEXT]\ntitle [0, 800, 75, 820][NO TEXT]\ntitle [0, 826, 82, 846][NO TEXT]\ntitle [0, 852, 83, 872][NO TEXT]\ntitle [0, 878, 81, 898][NO TEXT]\ntitle [0, 904, 80, 924][NO TEXT]\ntitle [0, 930, 79, 950][NO TEXT]\ntitle [0, 956, 78, 976][NO TEXT]\ntitle [3, 982, 77, 999][NO TEXT]\ntext [100, 99, 160, 119][NO TEXT]\ntitle [98, 125, 159, 145][NO TEXT]\ntitle [97, 151, 158, 171][NO TEXT]\ntitle [96, 177, 157, 197][NO TEXT]\ntitle [95, 203, 156, 223][NO TEXT]\ntitle [94, 229, 155, 249][NO TEXT]\ntitle [93, 255, 154, 275][NO TEXT]\ntitle [92, 281, 153, 301][NO TEXT]\ntitle [91, 307, 152, 327][NO TEXT]\ntitle [90, 333, 151, 353][NO TEXT]\ntitle [89, 359, 150, 379][NO TEXT]\ntitle [88, 385, 149, 405][NO TEXT]\ntitle [87, 411, 148, 431][NO TEXT]\ntitle [86, 437, 146, 457][NO TEXT]\ntitle [85, 463, 145, 483][NO TEXT]\ntitle [84, 489, 144, 509][NO TEXT]\ntitle [83, 515, 143, 535][NO TEXT]\ntitle [82, 541, 142, 561][NO TEXT]\ntitle [81, 567, 141, 587][NO TEXT]\ntitle [80, 593, 140, 613][NO TEXT]\ntitle [79, 619, 139, 639][NO TEXT]\ntitle [78, 645, 138, 665][NO TEXT]\ntitle [77, 671, 137, 691][NO TEXT]\ntitle [76, 697, 136, 717][NO TEXT]\ntitle [75, 723, 135, 743][NO TEXT]\ntitle [74, 749, 134, 769][NO TEXT]\ntitle [73, 775, 133, 795][NO TEXT]\ntitle [72, 801, 132, 821][NO TEXT]\ntitle [71, 827, 131, 847][NO TEXT]\ntitle [70, 853, 130, 873][NO TEXT]\ntitle [69, 879, 129, 899][NO TEXT]\ntitle [68, 905, 128, 925][NO TEXT]\ntitle [67, 931, 126, 951][NO TEXT]\ntitle [66, 957, 125, 977][NO TEXT]\ntitle [65, 983, 124, 999][NO TEXT]\ntext [0, 99, 80, 119][NO TEXT]\ntitle [3, 126, 82, 146][NO TEXT]\ntitle [2, 152, 81, 172][NO TEXT]\ntitle [1, 178, 79, 198][NO TEXT]\ntitle [0, 205, 80, 225][NO TEXT]\ntitle [3, 231, 82, 251][NO TEXT]\ntitle [2, 257, 81, 277][NO TEXT]\ntitle [1, 283, 79, 303][NO TEXT]\ntitle [0, 310, 80, 330][NO TEXT]\ntitle [3, 336, 82, 356][NO TEXT]\ntitle [2, 362, 81, 382][NO TEXT]\ntitle [1, 388, 79, 408][NO TEXT]\ntitle [0, 415, 80, 435][NO TEXT]\ntitle [3, 441, 82, 461][NO TEXT]\ntitle [2, 467, 81, 487][NO TEXT]\ntitle [1, 493, 79, 513][NO TEXT]\ntitle [0, 519, 80, 539][NO TEXT]\ntitle [3, 545, 82, 565][NO TEXT]\ntitle [2, 571, 81, 591][NO TEXT]\ntitle [1, 597, 79, 617][NO TEXT]\ntitle [0, 623, 80, 643][NO TEXT]\ntitle [3, 649, 82, 669][NO TEXT]\ntitle [2, 675, 81, 695][NO TEXT]\ntitle [1, 701, 79, 721][NO TEXT]\ntitle [0, 727, 80, 747][NO TEXT]\ntitle [3, 753, 82, 773][NO TEXT]\ntitle [2, 779, 81, 799][NO TEXT]\ntitle [1, 805, 79, 825][NO TEXT]\ntitle [0, 831, 80, 851][NO TEXT]\ntitle [3, 857, 82, 877][NO TEXT]\ntitle [2, 883, 81, 903][NO TEXT]\ntitle [1, 909, 79, 929][NO TEXT]\ntitle [0, 935, 80, 955][NO TEXT]\ntitle [3, 961, 82, 981][NO TEXT]\ntitle [2, 987, 81, 999][NO TEXT]\ntext [99, 100, 130, 119][NO TEXT]\ntitle [98, 125, 129, 145][NO TEXT]\ntitle [97, 151, 128, 171][NO TEXT]\ntitle [96, 177, 127, 197][NO TEXT]\ntitle [95, 203, 126, 223][NO TEXT]\ntitle [94, 229, 124, 249][NO TEXT]\ntitle [93, 255, 123, 275][NO TEXT]\ntitle [92, 281, 122, 301][NO TEXT]\ntitle [91, 307, 121, 327][NO TEXT]\ntitle [90, 333, 120, 353][NO TEXT]\ntitle [89, 359, 129, 379][NO TEXT]\ntitle [88, 385, 128, 405][NO TEXT]\ntitle [87, 411, 127, 431][NO TEXT]\ntitle [86, 437, 126, 457][NO TEXT]\ntitle [85, 463, 125, 483][NO TEXT]\ntitle [84, 489, 124, 509][NO TEXT]\ntitle [83, 515, 123, 535][NO TEXT]\ntitle [82, 541, 121, 561][NO TEXT]\ntitle [81, 567, 120, 587][NO TEXT]\ntitle [80, 593, 129, 613][NO TEXT]\ntitle [79, 619, 128, 639][NO TEXT]\ntitle [78, 645, 127, 665][NO TEXT]\ntitle [77, 671, 126, 691][NO TEXT]\ntitle [76, 697, 125, 717][NO TEXT]\ntitle [75, 723, 124, 743][NO TEXT]\ntitle [74, 749, 123, 769][NO TEXT]\ntitle [73, 775, 122, 795][NO TEXT]\ntitle [72, 801, 130, 821][NO TEXT]\ntitle [71, 827, 129, 847][NO TEXT]\ntitle [70, 853, 128, 873][NO TEXT]\ntitle [69, 879, 127, 899][NO TEXT]\ntitle [68, 905, 126, 925][NO TEXT]\ntitle [67, 931, 125, 951][NO TEXT]\ntitle [66, 957, 124, 977][NO TEXT]\ntitle [65, 983, 123, 999][NO TEXT]\ntext [99, 100, 130, 120][NO TEXT]\ntitle [98, 126, 128, 146][NO TEXT]\ntitle [97, 152, 127, 172][NO TEXT]\ntitle [96, 178, 125, 198][NO TEXT]\ntitle [95, 204, 124, 224][NO TEXT]\ntitle [94, 230, 123, 250][NO TEXT]\ntitle [93, 256, 122, 276][NO TEXT]\ntitle [92, 282, 121, 302][NO TEXT]\ntitle [91, 308, 120, 328][NO TEXT]\ntitle [90, 334, 119, 354][NO TEXT]\ntitle [89, 360, 118, 380][NO TEXT]\ntitle [88, 386, 117, 406][NO TEXT]\ntitle [87, 412, 116, 432][NO TEXT]\ntitle [86, 438, 115, 458][NO TEXT]\ntitle [85, 464, 114, 484][NO TEXT]\ntitle [84, 490, 113, 510][NO TEXT]\ntitle [83, 516, 112, 536][NO TEXT]\ntitle [82, 542, 111, 562][NO TEXT]\ntitle [81, 568, 110, 588][NO TEXT]\ntitle [80, 594, 109, 614][NO TEXT]\ntitle [79, 620, 108, 640][NO TEXT]\ntitle [78, 646, 107, 666][NO TEXT]\ntitle [77, 672, 106, 692][NO TEXT]\ntitle [76, 698, 105, 718][NO TEXT]\ntitle [75, 724, 104, 744][NO TEXT]\ntitle [74, 750, 103, 770][NO TEXT]\ntitle [73, 776, 102, 796][NO TEXT]\ntitle [72, 802, 101, 822][NO TEXT]\ntitle [71, 828, 100, 848][NO TEXT]\ntitle [70, 854, 99, 874][NO TEXT]\ntitle [69, 880, 98, 900][NO TEXT]\ntitle [68, 906, 97, 926][NO TEXT]\ntitle [67, 932, 96, 952][NO TEXT]\ntitle [66, 958, 95, 978][NO TEXT]\ntitle [65, 984, 94, 999][NO TEXT]\ntext [99, 100, 128, 120][NO TEXT]\ntitle [98, 126, 127, 146][NO TEXT]\ntitle [97, 152, 125, 172][NO TEXT]\ntitle [96, 178, 124, 198][NO TEXT]\ntitle [95, 204, 123, 224][NO TEXT]\ntitle [94, 230, 122, 250][NO TEXT]\ntitle [93, 256, 121, 276][NO TEXT]\ntitle [92, 282, 120, 302][NO TEXT]\ntitle [91, 308, 119, 328][NO TEXT]\ntitle [90, 334, 118, 354][NO TEXT]\ntitle [89, 360, 117, 380][NO TEXT]\ntitle [88, 386, 116, 406][NO TEXT]\ntitle [87, 412, 115, 432][NO TEXT]\ntitle [86, 438, 114, 458][NO TEXT]\ntitle [85, 464, 113, 484][NO TEXT]\ntitle [84, 490, 112, 510][NO TEXT]\ntitle [83, 516, 111, 536][NO TEXT]\ntitle [82, 542, 110, 562][NO TEXT]\ntitle [81, 568, 109, 588][NO TEXT]\ntitle [80, 594, 108, 614][NO TEXT]\ntitle [79, 620, 107, 640][NO TEXT]\ntitle [78, 646, 106, 666][NO TEXT]\ntitle [77, 672, 105, 692][NO TEXT]\ntitle [76, 698, 104, 718][NO TEXT]\ntitle [75, 724, 103, 744][NO TEXT]\ntitle [74, 750, 102, 770][NO TEXT]\ntitle [73, 776, 101, 796][NO TEXT]\ntitle [72, 802, 100, 822][NO TEXT]\ntitle [71, 828, 99, 848][NO TEXT]\ntitle [70, 854, 98, 874][NO TEXT]\ntitle [69, 880, 97, 900][NO TEXT]\ntitle [68, 906, 96, 926][NO TEXT]\ntitle [67, 932, 95, 952][NO TEXT]\ntitle [66, 958, 94, 978][NO TEXT]\ntitle [65, 984, 93, 999][NO TEXT]\ntext [99, 990, 128, 999][NO TEXT]\ntext [100, 101, 129, 121][NO TEXT]\ntext [99, 127, 126, 147][NO TEXT]\ntitle [98, 153, 125, 173][NO TEXT]\ntitle [97, 179, 124, 199][NO TEXT]\ntitle [96, 205, 123, 225][NO TEXT]\ntitle [95, 231, 122, 250][NO TEXT]\ntitle [94, 256, 121, 276][NO TEXT]\ntitle [93, 282, 119, 302][NO TEXT]\ntitle [92, 308, 118, 328][NO TEXT]\ntitle [91, 334, 117, 354][NO TEXT]\ntitle [90, 360, 116, 379][NO TEXT]\ntitle [89, 386, 115, 406][NO TEXT]\ntitle [88, 412, 114, 432][NO TEXT]\ntitle [87, 438, 113, 458][NO TEXT]\ntitle [86, 464, 112, 484][NO TEXT]\ntitle [85, 490, 111, 510][NO TEXT]\ntitle [84, 516, 110, 536][NO TEXT]\ntitle [83, 542, 109, 562][NO TEXT]\ntitle [82, 568, 108, 588][NO TEXT]\ntitle [81, 594, 107, 614][NO TEXT]\ntitle [80, 620, 106, 640][NO TEXT]\ntitle [79, 646, 105, 666][NO TEXT]\ntitle [78, 672, 104, 692][NO TEXT]\ntitle [77, 698, 103, 718][NO TEXT]\ntitle [76, 724, 102, 744][NO TEXT]\ntitle [75, 750, 101, 770][NO TEXT]\ntitle [74, 776, 100, 796][NO TEXT]\ntitle [73, 802, 99, 822][NO TEXT]\ntitle [72, 828, 98, 848][NO TEXT]\ntitle [71, 854, 97, 874][NO TEXT]\ntitle [70, 880, 96, 899][NO TEXT]\ntitle [89, 905, 115, 925][NO TEXT]\ntitle [98, 931, 124, 949][NO TEXT]\ntitle [97, 956, 113, 976][NO TEXT]\ntitle [96, 982, 112, 999][NO TEXT]\ntext [99, 100, 126, 120][NO TEXT]\ntext [98, 127, 114, 147][NO TEXT]\ntitle [97, 153, 113, 173][NO TEXT]\ntitle [96, 180, 112, 199][NO TEXT]\ntitle [95, 206, 111, 226][NO TEXT]\ntitle [94, 232, 110, 252][NO TEXT]\ntitle [93, 259, 109, 279][NO TEXT]\ntitle [92, 285, 108, 305][NO TEXT]\ntitle [91, 311, 107, 331][NO TEXT]\ntitle [90, 337, 106, 357][NO TEXT]\ntitle [89, 363, 105, 383][NO TEXT]\ntitle [88, 389, 104, 409][NO TEXT]\ntitle [87, 415, 103, 435][NO TEXT]\ntitle [86, 441, 102, 461][NO TEXT]\ntitle [85, 467, 101, 487][NO TEXT]\ntitle [84, 493, 100, 513][NO TEXT]\ntitle [93, 519, 109, 539][NO TEXT]\ntitle [98, 545, 114, 565][NO TEXT]\ntitle [93, 571, 108, 591][NO TEXT]\ntitle [92, 597, 107, 617][NO TEXT]\ntitle [96, 623, 112, 643][NO TEXT]\ntitle [99, 649, 115, 669][NO TEXT]\ntitle [98, 675, 114, 695][NO TEXT]\ntitle [93, 701, 108, 721][NO TEXT]\ntitle [100, 727, 116, 743][NO TEXT]\ntitle [99, 750, 115, 770][NO TEXT]\ntitle [98, 776, 113, 796][NO TEXT]\ntitle [99, 802, 105, 822][NO TEXT]\ntitle [98, 828, 114, 844][NO TEXT]\ntitle [93, 851, 108, 871][NO TEXT]\ntitle [99, 877, 115, 893][NO TEXT]\ntitle [92, 900, 107, 920][NO TEXT]\ntitle [98, 926, 113, 942][NO TEXT]\ntitle [100, 950, 116, 966][NO TEXT]\ntitle [99, 972, 115, 988][NO TEXT]\ntext [94, 995, 109, 999][NO TEXT]\nimage [118, 996, 134, 1000]\nimage [140, 997, 155, 999]\ntitle [159, 998, 175, 999]\ntitle [180, 990, 196, 999][NO TEXT]\ntitle [200, 995, 216, 999]\ntext [223, 100, 238, 116][NO TEXT]\nimage [240, 122, 256, 138]\nimage [263, 142, 278, 157]\ntitle [282, 162, 297, 178][NO TEXT]\ntitle [301, 184, 316, 199][NO TEXT]\ntitle [320, 205, 335, 220][NO TEXT]\ntitle [339, 226, 355, 242][NO TEXT]\ntitle [360, 248, 375, 263][NO TEXT]\ntitle [380, 269, 395, 284][NO TEXT]\ntitle [400, 290, 415, 305][NO TEXT]\ntitle [420, 311"
+      ],
+      "duration_ms": {
+        "count": 1,
+        "min": 147056.69,
+        "mean": 147056.69,
+        "p50": 147056.69,
+        "p95": 147056.69,
+        "max": 147056.69
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T05:43:07+00:00",
+    "attempts": 1,
+    "tasks": {
+      "summary": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.1,
+          0.4
+        ],
+        "mean": 0.25,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.010932579627010948,
+          0.005401978250740469
+        ],
+        "mean": 0.0082,
+        "errors": []
+      },
+      "extraction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 1,
+        "scores": [
+          0.1
+        ],
+        "mean": 0.1,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 1,
+        "scores": [
+          0.4
+        ],
+        "mean": 0.4,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 1,
+        "scores": [
+          0.010932579627010948
+        ],
+        "mean": 0.0109,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 1,
+        "scores": [
+          0.005401978250740469
+        ],
+        "mean": 0.0054,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.043
+  },
+  "last_tested_at": "2026-11-13T05:48:13+00:00",
+  "card_version": 1,
+  "vision": {
+    "suite_version": 2,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T05:48:13+00:00",
+    "attempts": 1,
+    "images": [
+      {
+        "id": "color_red_01",
+        "case": "vision_color",
+        "path": "vision/color_red_01.png",
+        "sha256": "a81613cb49e87d1ee7ece38d2e43b03b9bd55e113f586297be6dfb5c444d8158"
+      },
+      {
+        "id": "count_three_01",
+        "case": "vision_count",
+        "path": "vision/count_three_01.png",
+        "sha256": "8ebdade696feddfad199eebf6d34374a1d16b1f871b6824272d2b666b76774f5"
+      },
+      {
+        "id": "spatial_left_01",
+        "case": "vision_spatial",
+        "path": "vision/spatial_left_01.png",
+        "sha256": "562fcb05d7353c98a54d8aff2ddbc3f065b3f2b9a68c8c760979852a18c2d159"
+      },
+      {
+        "id": "ocr_hagar_42",
+        "case": "vision_ocr",
+        "path": "vision/ocr_hagar_42.png",
+        "sha256": "3fb91c8613c25f281eadf12dfbc864e027c1eda0b5eb1b9e8adeafb9db5b3558"
+      },
+      {
+        "id": "chart_bars_01",
+        "case": "vision_chart",
+        "path": "vision/chart_bars_01.png",
+        "sha256": "c01977bc601e3e4fdbbb9b15445c9097a3f8be14d59aca55afe0ad70d9ac055f"
+      },
+      {
+        "id": "ui_port_01",
+        "case": "vision_ui",
+        "path": "vision/ui_port_01.png",
+        "sha256": "9069272ed934fc0c542c3e2191e4ff3f5ac7ef5cba514a2b1ad19f5799e740d6"
+      },
+      {
+        "id": "ocr_small_7b",
+        "case": "vision_ocr_small",
+        "path": "vision/ocr_small_7b.png",
+        "sha256": "27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e"
+      },
+      {
+        "id": "chart_months_01",
+        "case": "vision_chart_months",
+        "path": "vision/chart_months_01.png",
+        "sha256": "5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710"
+      },
+      {
+        "id": "ui_multi_01",
+        "case": "vision_ui_multi",
+        "path": "vision/ui_multi_01.png",
+        "sha256": "3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5"
+      },
+      {
+        "id": "scene_mixed_01",
+        "case": "vision_scene_description",
+        "path": "vision/scene_mixed_01.png",
+        "sha256": "e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9"
+      }
+    ],
+    "tasks": {
+      "vision": {
+        "attempts": 1,
+        "cases": 10,
+        "scores": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": [],
+        "case_results": [
+          {
+            "name": "vision_color",
+            "image_id": "color_red_01",
+            "sha256": "a81613cb49e87d1ee7ece38d2e43b03b9bd55e113f586297be6dfb5c444d8158",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_count",
+            "image_id": "count_three_01",
+            "sha256": "8ebdade696feddfad199eebf6d34374a1d16b1f871b6824272d2b666b76774f5",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_spatial",
+            "image_id": "spatial_left_01",
+            "sha256": "562fcb05d7353c98a54d8aff2ddbc3f065b3f2b9a68c8c760979852a18c2d159",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ocr",
+            "image_id": "ocr_hagar_42",
+            "sha256": "3fb91c8613c25f281eadf12dfbc864e027c1eda0b5eb1b9e8adeafb9db5b3558",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_chart",
+            "image_id": "chart_bars_01",
+            "sha256": "c01977bc601e3e4fdbbb9b15445c9097a3f8be14d59aca55afe0ad70d9ac055f",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ui",
+            "image_id": "ui_port_01",
+            "sha256": "9069272ed934fc0c542c3e2191e4ff3f5ac7ef5cba514a2b1ad19f5799e740d6",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ocr_small",
+            "image_id": "ocr_small_7b",
+            "sha256": "27311f3c61012c044acd22cafc64a819edf0f0a138751ab9f3f368321ae9d27e",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_chart_months",
+            "image_id": "chart_months_01",
+            "sha256": "5a4ad4bd2b4a0fb4fbff85ab9c87e2ae6b5cfd92c86a6194c9dbe4ee38029710",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_ui_multi",
+            "image_id": "ui_multi_01",
+            "sha256": "3f5d10070bed3d8562d30d0b0d36001dc23ec583ba3c19e890684d63587310c5",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          },
+          {
+            "name": "vision_scene_description",
+            "image_id": "scene_mixed_01",
+            "sha256": "e89c1017ef7c882a03263bb764df80c417fc9daac97f1227f16fbdd457cf1df9",
+            "attempts": 1,
+            "scores": [
+              0.0
+            ],
+            "mean": 0.0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    "overall": 0.0
+  }
+}

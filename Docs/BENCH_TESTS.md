@@ -1,10 +1,17 @@
 # Hagar benchmark live — LM Studio
 
-Avvio: `2026-11-13T02:13:31+00:00`
-Aggiornato: `2026-11-13T04:46:36+00:00`
+Avvio: `2026-11-13T05:27:34+00:00`
+Aggiornato: `2026-11-13T06:51:39+00:00`
 Host: `http://localhost:1234/v1`
 
-In corso: `starcoder2-7b`
+Completato: `2026-11-13T06:51:39+00:00`
+
+## Note
+
+- Le prime schede completate prima del resume usano i tentativi originali (3 chat, 2 tool, 2 qualità); i modelli successivi usano 1 tentativo per completare la rassegna.
+- `deepseek-coder-6.7b-instruct`, `starcoder2-7b` e `llama-3.2-8x3b-gated-moe-horror-reasoning...` sono stati fermati dopo oltre 30–40 minuti senza risposta e sono registrati come failure.
+- I due modelli `text-embedding-*` sono esclusi: non sono agenti chat.
+- I punteggi sono indicativi: una sola esecuzione per la maggior parte dei modelli.
 
 ## Politica
 
@@ -14,7 +21,7 @@ vlm: anche benchmark vision
 embeddings: esclusi
 un modello alla volta
 errori registrati, si continua
-ripetizioni per test: 1
+ripetizioni: 3 chat/2 tool/2 qualità per le prime schede, 1 per le successive
 ```
 
 ## Riepilogo
@@ -45,7 +52,11 @@ ripetizioni per test: 1
 | `qwen3-coder-next` | llm | ok | 0.9295 | n/d | 0 |
 | `qwen3.5-35b-a3b` | llm | ok | 0.2182 | n/d | 0 |
 | `recursivesi/flint` | llm | ok | 0.3976 | n/d | 0 |
-| `starcoder2-7b` | llm | fail | n/d | n/d | 0 |
+| `starcoder2-7b` | llm | fail | n/d | n/d | 1 |
+| `baidu.unlimited-ocr` | vlm | ok | 0.0430 | 0.0000 | 0 |
+| `gemma-3-27b-it` | vlm | ok | 0.8567 | 0.9667 | 0 |
+| `google/gemma-4-12b-qat` | vlm | ok | 0.2260 | 0.1000 | 0 |
+| `google/gemma-4-26b-a4b-qat` | vlm | ok | 0.1719 | 0.1000 | 0 |
 
 ## Dettaglio
 
@@ -369,6 +380,108 @@ ripetizioni per test: 1
 - quantizzazione: `Q4_K_S`
 - contesto max: `16384`
 - testo: fallito
+- errori:
+  - `saltato: bloccato nella run precedente`
+
+### `baidu.unlimited-ocr`
+
+- tipo: `vlm`
+- quantizzazione: `Q4_K_M`
+- contesto max: `32768`
+- testo: chat 1/1, p50 42087.63 ms, JSON 0/1, tool 0/1
+- qualità: 0.0430
+  - summary: 0.2500
+  - translation: 0.0082
+  - extraction: 0.0000
+  - instruction: 0.0000
+  - reasoning: 0.0000
+  - coding: 0.0000
+- vision: 0.0000
+  - vision_color: 0.0000
+  - vision_count: 0.0000
+  - vision_spatial: 0.0000
+  - vision_ocr: 0.0000
+  - vision_chart: 0.0000
+  - vision_ui: 0.0000
+  - vision_ocr_small: 0.0000
+  - vision_chart_months: 0.0000
+  - vision_ui_multi: 0.0000
+  - vision_scene_description: 0.0000
+
+### `gemma-3-27b-it`
+
+- tipo: `vlm`
+- quantizzazione: `Q3_K_L`
+- contesto max: `131072`
+- testo: chat 1/1, p50 112861.47 ms, JSON 1/1, tool 1/1
+- qualità: 0.8567
+  - summary: 0.4800
+  - translation: 0.6603
+  - extraction: 1.0000
+  - instruction: 1.0000
+  - reasoning: 1.0000
+  - coding: 1.0000
+- vision: 0.9667
+  - vision_color: 1.0000
+  - vision_count: 1.0000
+  - vision_spatial: 1.0000
+  - vision_ocr: 1.0000
+  - vision_chart: 1.0000
+  - vision_ui: 1.0000
+  - vision_ocr_small: 1.0000
+  - vision_chart_months: 1.0000
+  - vision_ui_multi: 1.0000
+  - vision_scene_description: 0.6667
+
+### `google/gemma-4-12b-qat`
+
+- tipo: `vlm`
+- quantizzazione: `Q4_0`
+- contesto max: `262144`
+- testo: chat 1/1, p50 89840.47 ms, JSON 0/1, tool 1/1
+- qualità: 0.2260
+  - summary: 0.8000
+  - translation: 0.5559
+  - extraction: 0.0000
+  - instruction: 0.0000
+  - reasoning: 0.0000
+  - coding: 0.0000
+- vision: 0.1000
+  - vision_color: 0.0000
+  - vision_count: 0.0000
+  - vision_spatial: 0.0000
+  - vision_ocr: 0.0000
+  - vision_chart: 0.0000
+  - vision_ui: 0.0000
+  - vision_ocr_small: 0.0000
+  - vision_chart_months: 0.0000
+  - vision_ui_multi: 0.0000
+  - vision_scene_description: 1.0000
+
+### `google/gemma-4-26b-a4b-qat`
+
+- tipo: `vlm`
+- quantizzazione: `Q4_0`
+- contesto max: `262144`
+- testo: chat 1/1, p50 122361.31 ms, JSON 0/1, tool 1/1
+- qualità: 0.1719
+  - summary: 0.9000
+  - translation: 0.1315
+  - extraction: 0.0000
+  - instruction: 0.0000
+  - reasoning: 0.0000
+  - coding: 0.0000
+- vision: 0.1000
+  - vision_color: 0.0000
+  - vision_count: 0.0000
+  - vision_spatial: 0.0000
+  - vision_ocr: 0.0000
+  - vision_chart: 0.0000
+  - vision_ui: 0.0000
+  - vision_ocr_small: 0.0000
+  - vision_chart_months: 0.0000
+  - vision_ui_multi: 0.0000
+  - vision_scene_description: 1.0000
 
 ## File
 
