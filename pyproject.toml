@@ -44,6 +44,9 @@ dev = [
     "build>=1.2",
     "twine>=5",
 ]
+database = [
+    "pyodbc>=5.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/kormoran/Hagar"
@@ -65,7 +68,7 @@ web = ["*.html", "*.css", "*.js"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-pythonpath = ["."]
+pythonpath = [".", "plugins/wikidata", "plugins/sql_odbc"]
 addopts = "-v"
 markers = [
     "live: test che chiamano servizi esterni reali (eseguire con --live)",

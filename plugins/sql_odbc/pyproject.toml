@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hagar-sql-odbc"
+version = "1.0.0"
+description = "Plugin SQL ODBC con scrittura per Hagar"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+    { name = "Massimo Soricetti" },
+]
+dependencies = [
+    "pyodbc>=5.1",
+]
+keywords = [
+    "hagar",
+    "sql",
+    "odbc",
+    "database",
+    "plugin",
+]
+
+[project.entry-points."hagar.tools"]
+sql-odbc = "hagar_sql_odbc:PLUGIN"
+
+[tool.setuptools]
+packages = ["hagar_sql_odbc"]

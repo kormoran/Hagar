@@ -46,16 +46,21 @@ limiti; niente broker senza subagenti e model registry.**
 - il broker non concede mai permessi: può solo proporre un sottoinsieme;
 - override umano e audit `broker.decision`.
 
-## 0.3 0.8.0 — Tool SQL
+## 0.3 Tool SQL — implementato
 
-- solo lettura nella prima versione;
+- tool locale read-only `sql.file.*`: SQLite nativo e altri formati
+  via ODBC;
 - SQLite `mode=ro`, `PRAGMA query_only`, una sola istruzione;
 - niente `ATTACH`, `PRAGMA` di scrittura o `load_extension`;
 - timeout, limite righe/byte e audit della query;
-- alias di database configurati, mai path arbitrari;
-- capability `DATABASE_READ`;
-- scrittura e database di rete solo in una fase successiva, con
-  `DATABASE_WRITE` e `NETWORK`.
+- solo file dentro la sandbox, mai path arbitrari; il database delle
+  memorie è sempre escluso;
+- capability `DATABASE_READ` e `DATABASE_WRITE`;
+- plugin esterno `sql.odbc.*` per la scrittura DML via ODBC, con
+  conferma umana e gli stessi limiti di sandbox;
+- database di rete fuori da questo taglio.
+
+Dettagli in [SQL.md](SQL.md) e [SQL_ODBC.md](SQL_ODBC.md).
 
 ## 0.4 Punti aperti
 

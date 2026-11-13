@@ -503,7 +503,8 @@ Il modello è una matrice soggetto × oggetto:
 - **Capability** (`IntFlag`): cosa un'operazione può fare
   (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`, `FILESYSTEM_CREATE`,
   `FILESYSTEM_DELETE`, `FILESYSTEM_EXEC`, `MEMORY_READ`,
-  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`). Si combinano con `|`;
+  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`,
+  `DATABASE_READ`, `DATABASE_WRITE`). Si combinano con `|`;
   la verifica è sempre di sottoinsieme.
 - **Effect** (`IntEnum`): `ALLOW`, `ASK`, `DENY`. In caso di conflitto
   vince il valore più alto (`DENY > ASK > ALLOW`).
@@ -1084,7 +1085,12 @@ nel registry e vivono fuori dal core, in un package separato.
 | `text` | `text.diff` | `COMPUTE` |
 | `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
+| `sql_file` | `sql.file.drivers`, `sql.file.schema`, `sql.file.query` | `DATABASE_READ`, `FILESYSTEM_READ` |
 
+- `sql.file.*` accede in sola lettura a database su file nella sandbox.
+  SQLite usa la stdlib con `mode=ro` e authorizer; gli altri formati
+  richiedono un driver ODBC installato. Il database delle memorie è
+  sempre escluso. Dettagli in [SQL.md](SQL.md).
 - `clock.now` restituisce ora locale, data, fuso, offset UTC ed epoch.
 - `calendar.date` converte la data locale, o una data ISO opzionale, nel
   calendario giuliano prolepticico o in quello islamico tabellare

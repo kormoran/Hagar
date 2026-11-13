@@ -207,6 +207,18 @@ button {
 }
 button.primary { background: #2c4a86; border-color: #3c5fa5; }
 button:disabled { opacity: .5; cursor: default; }
+.button-link {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #202632;
+  color: var(--text);
+  padding: 6px 10px;
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.button-link:hover { border-color: var(--accent); }
 .file-button {
   border: 1px solid var(--line);
   border-radius: 8px;
