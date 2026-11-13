@@ -42,6 +42,7 @@ def test_declared_packages():
         "memory",
         "local_tools",
         "web",
+        "benchmarks",
     }
 
 

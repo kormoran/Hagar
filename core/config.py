@@ -27,6 +27,7 @@ from .models import (
     ToolsConfig,
     DevConfig,
     BoxesConfig,
+    BrokerConfig,
     FlowConfig,
 )
 
@@ -257,6 +258,16 @@ class ConfigLoader:
                 recipes_path = path.resolve().parent / recipes_path
 
             config.dev.recipes = str(recipes_path)
+
+        for attr in ("catalog", "profiles"):
+
+            value = getattr(config.broker, attr)
+            broker_path = Path(value).expanduser()
+
+            if not broker_path.is_absolute():
+                broker_path = path.resolve().parent / broker_path
+
+            setattr(config.broker, attr, str(broker_path))
 
         #
         # Il token cache OAuth, se relativo, segue la configurazione.
@@ -1267,6 +1278,49 @@ class ConfigLoader:
         )
 
         # -------------------------
+        # Broker (optional)
+        # -------------------------
+
+        broker_data = _mapping(
+            data.get("broker", {}) or {},
+            "broker",
+        )
+        broker_enabled = broker_data.get("enabled", False)
+
+        if not isinstance(broker_enabled, bool):
+            raise ConfigError("broker.enabled must be a boolean")
+
+        broker_catalog = broker_data.get(
+            "catalog",
+            "models.yaml",
+        )
+        broker_profiles = broker_data.get(
+            "profiles",
+            "profiles.yaml",
+        )
+        broker_default = broker_data.get(
+            "default_profile",
+            "coding",
+        )
+
+        for name, value in (
+            ("catalog", broker_catalog),
+            ("profiles", broker_profiles),
+            ("default_profile", broker_default),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ConfigError(
+                    f"broker.{name} must be a non-empty string"
+                )
+
+        broker = BrokerConfig(
+            enabled=broker_enabled,
+            catalog=broker_catalog,
+            profiles=broker_profiles,
+            default_profile=broker_default,
+        )
+
+        # -------------------------
         # Hagar Flow (optional)
         # -------------------------
 
@@ -1377,5 +1431,6 @@ class ConfigLoader:
             tools=tools,
             dev=dev,
             boxes=boxes,
+            broker=broker,
             flow=flow,
         )

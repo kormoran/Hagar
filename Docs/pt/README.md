@@ -237,12 +237,50 @@ classificador linear local. Detalhes em [DECISIONS.md](DECISIONS.md).
 uma ficha JSON com o hardware e a data do último teste. Detalhes em
 [MODEL_CARDS.md](MODEL_CARDS.md).
 
+## 3.8 Modo Hi-Fi
+
+Com `--hifi` o Hagar pede ao modelo três interpretações do pedido
+e, se as duas mais prováveis estiverem demasiado próximas, pede um esclarecimento
+em vez de responder. Detalhes em [HIFI.md](HIFI.md).
+
+## 3.9 Checkpoint, timeouts e contexto
+
+O Hagar guarda um checkpoint dos ficheiros modificados no turno, limita as
+chamadas às ferramentas, derrama os outputs grandes para disco e poda o contexto antigo.
+Detalhes em [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md).
+
+## 3.10 AIsh
+
+`aish.exec` é uma shell semântica restrita: os comandos são traduzidos
+em ferramentas Hagar, não executados como programas. É **DENY por predefinição** e tem de ser
+ativada explicitamente em `policy.yaml`. Detalhes em [AISH.md](AISH.md).
+As transformações textuais usam [text.transform](TEXT_TRANSFORM.md).
+
+## 3.11 Receitas de desenvolvimento
+
+`dev.run` executa receitas fidedignas para testes, debug e build, sem shell e
+sem comandos arbitrários. É **DENY por predefinição** e requer `DEV_EXEC`.
+Detalhes em [DEV_RUN.md](DEV_RUN.md).
+
+## 3.12 Boxed transform
+
+`box.run` executa transformações LLM bounded (`summarize`, `translate`,
+`extract_json`) sem memória, ferramentas ou prompt livre. É **DENY por predefinição**
+e requer `BOX_EXEC`. Detalhes em [BOXES.md](BOXES.md).
+
+## 3.13 Hagar Flow
+
+`flow.run` executa um subconjunto linear de Python validado e
+interpretado pelo Hagar, sem import, funções, try ou acesso a objetos
+Python. É **DENY por predefinição** e requer `FLOW_EXEC`. Detalhes em
+[FLOW.md](FLOW.md).
+
 ---
 
 # 4. Documentação
 
 O HAGAR tem documentação em várias línguas. Neste momento as línguas suportadas
-são: italiano, inglês, espanhol, português, chinês, russo. Cada língua tem a sua subdiretório dedicada em Docs.
+são: italiano, inglês, espanhol, português, chinês, russo. Cada língua tem o seu próprio subdiretório dedicado em Docs.
 
 - [MANUAL.md](MANUAL.md) — formato da configuração, comandos de consola,
   opções de linha de comandos, pressupostos de base.
@@ -251,6 +289,15 @@ são: italiano, inglês, espanhol, português, chinês, russo. Cada língua tem 
 - [ROADMAP.md](ROADMAP.md) — Funcionalidades planeadas por implementar, decisões já tomadas
   e questões ainda em aberto.
 - [PLUGINS.md](PLUGINS.md) — contratos para ferramentas e providers LLM plugin.
+- [HIFI.md](HIFI.md) — pré-passo de interpretação e esclarecimento.
+- [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, timeouts, spill e compaction.
+- [AISH.md](AISH.md) — shell semântica restrita e policy DENY.
+- [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — transformações textuais bounded.
+- [DEV_RUN.md](DEV_RUN.md) — receitas para testes, debug e build.
+- [BOXES.md](BOXES.md) — transformações LLM bounded.
+- [FLOW.md](FLOW.md) — DSL restrita e interpretador.
+- [DECISIONS.md](DECISIONS.md) — ferramentas de decisão e providers.
+- [MODEL_CARDS.md](MODEL_CARDS.md) — fichas, benchmarks e hardware.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — especificação da document tool,
   grafo semântico, plugins de formato e host nativo.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP subagentes, isolamento e limites.

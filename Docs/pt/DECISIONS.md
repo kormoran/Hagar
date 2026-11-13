@@ -1,4 +1,4 @@
-# Decision tools
+# Ferramentas de decisão
 
 **Estado:** implementado
 **Ferramenta:** `decision.choose`
@@ -6,8 +6,8 @@
 
 ## O que são
 
-As decision tool não geram texto: escolhem uma label de um conjunto
-finito e devolvem probabilidades calibradas.
+As ferramentas de decisão não geram texto: escolhem um label de um
+conjunto finito e devolvem probabilidades calibradas.
 
 ```text
 decision.choose(
@@ -33,8 +33,8 @@ São adequadas a:
 - guardrail;
 - escolhas binárias allow/deny.
 
-Não substituem o modelo principal do Hagar: são uma ferramenta
-que o modelo generativo pode chamar.
+Não substituem o modelo principal do Hagar: são uma ferramenta que o
+modelo generativo pode chamar.
 
 ## Provider
 
@@ -50,12 +50,12 @@ exige exclusivamente JSON:
 }
 ```
 
-O provider valida label e probabilidades, normaliza a soma a 1 e
-recusa output inválidos.
+O provider valida label e probabilidades, normaliza a soma para 1 e
+rejeita output inválidos.
 
 ### `linear`
 
-Classificador linear local carregado de JSON:
+Classificador linear local carregado a partir de JSON:
 
 ```json
 {
@@ -74,7 +74,7 @@ Classificador linear local carregado de JSON:
 O score é:
 
 ```text
-bias[label] + soma(weights[label][token] por cada token do state)
+bias[label] + soma(weights[label][token] para cada token do state)
 ```
 
 As probabilidades são obtidas com softmax. O modelo é carregado uma
@@ -95,8 +95,8 @@ decisions:
 ```
 
 O provider `llm` está sempre disponível e usa o modelo principal.
-O percurso do modelo linear é relativo à diretoria a partir da qual se
-arranca o Hagar.
+O caminho do modelo linear é relativo à diretoria a partir da qual o
+Hagar é iniciado.
 
 ## Política
 
@@ -129,12 +129,12 @@ O `state` não é guardado na auditoria.
 ## Limites
 
 - label set fixo por chamada;
-- máximo 50 escolhas;
-- estado máximo 200.000 caracteres;
-- o provider linear não conhece label não presentes no modelo;
-- nada de treino automático;
-- Jev ainda não está integrado: o provider `llm` cobre LLM locais e
-  remotos compatíveis com os clientes Hagar.
+- máximo de 50 escolhas;
+- state com no máximo 200.000 caracteres;
+- o provider linear não conhece labels ausentes do modelo;
+- sem treino automático;
+- o Jev ainda não está integrado: o provider `llm` cobre LLMs locais
+  e remotos compatíveis com os clientes do Hagar.
 
 ## Exemplo
 

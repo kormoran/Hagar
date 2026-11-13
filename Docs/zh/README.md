@@ -236,6 +236,31 @@ memory:
 一份包含硬件和最近一次测试日期的 JSON 卡片。详见
 [MODEL_CARDS.md](MODEL_CARDS.md)。
 
+## 3.8 Hi-Fi 模式
+
+使用 `--hifi` 时，Hagar 会要求模型对请求给出三种解释；如果其中概率最高的两种过于接近，它会请求澄清，而不是直接作答。详见 [HIFI.md](HIFI.md)。
+
+## 3.9 检查点、超时与上下文
+
+Hagar 会在轮次中为被修改的文件保存检查点，限制工具调用次数，溢出处理大型输出，并裁剪旧上下文。详见 [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md)。
+
+## 3.10 AIsh
+
+`aish.exec` 是一个受限的语义 shell：命令会被翻译为 Hagar 工具，而不是作为程序执行。它**默认 DENY**，必须在 `policy.yaml` 中显式启用。详见 [AISH.md](AISH.md)。
+文本转换使用 [text.transform](TEXT_TRANSFORM.md)。
+
+## 3.11 开发配方
+
+`dev.run` 执行用于测试、调试和构建的可信配方，不使用 shell，也不执行任意命令。它**默认 DENY**，需要 `DEV_EXEC`。详见 [DEV_RUN.md](DEV_RUN.md)。
+
+## 3.12 Boxed transform
+
+`box.run` 执行有边界的 LLM 转换（`summarize`、`translate`、`extract_json`），不使用记忆、工具或自由提示。它**默认 DENY**，需要 `BOX_EXEC`。详见 [BOXES.md](BOXES.md)。
+
+## 3.13 Hagar Flow
+
+`flow.run` 执行一个线性子集，其中的 Python 由 Hagar 验证并解释执行，不使用 import、函数、try，也不访问 Python 对象。它**默认 DENY**，需要 `FLOW_EXEC`。详见 [FLOW.md](FLOW.md)。
+
 ---
 
 # 4. 文档
@@ -250,6 +275,15 @@ HAGAR 拥有多语言文档。目前支持的语言
 - [ROADMAP.md](ROADMAP.md) — 计划实现的功能、已做出的决定
   以及仍待解决的问题。
 - [PLUGINS.md](PLUGINS.md) — 工具与 LLM provider 插件的契约。
+- [HIFI.md](HIFI.md) — 解释性预检与澄清。
+- [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — 检查点、超时、溢出与压缩。
+- [AISH.md](AISH.md) — 受限语义 shell 与 DENY 策略。
+- [TEXT_TRANSFORM.md](TEXT_TRANSFORM.md) — 有边界的文本转换。
+- [DEV_RUN.md](DEV_RUN.md) — 用于测试、调试和构建的配方。
+- [BOXES.md](BOXES.md) — 有边界的 LLM 转换。
+- [FLOW.md](FLOW.md) — 受限 DSL 与解释器。
+- [DECISIONS.md](DECISIONS.md) — 决策工具与 provider。
+- [MODEL_CARDS.md](MODEL_CARDS.md) — 卡片、基准测试与硬件。
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — document tool 的规范、
   语义图、格式插件与原生宿主。
 - [SUBAGENTS.md](SUBAGENTS.md) — 子智能体 MVP、隔离与限制。

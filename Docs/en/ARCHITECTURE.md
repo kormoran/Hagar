@@ -1,6 +1,6 @@
 # HAGAR — Architecture
 
-Version: 0.5.2
+Version: 0.7.0
 Last updated: 2026-11-03
 
 ---
@@ -10,8 +10,8 @@ Last updated: 2026-11-03
 Hagar is a harness for LLMs written in Python, designed for the
 resilient execution of language models.
 
-The goal is not a chat with a model, but an operating environment
-that is **safe** and in which an LLM can use tools, consult a persistent
+The goal is not a chat with a model, but a **safe** operating
+environment in which an LLM can use tools, consult a persistent
 memory and interact with external systems without directly accessing
 the real resources of the host machine.
 
@@ -298,6 +298,7 @@ creation, renaming, copying and deletion; `X` covers `chdir`. The global
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -335,6 +336,20 @@ treat them as nonexistent files.
 `write_file` overwrites only existing files; creation goes through
 `create_file`, which requires the `create` permission. It is not possible to
 bypass the creation ban by writing a new path.
+
+`read_file`, `read_chunk` and `read_bytes` record an observed version of the
+file. `write_file`, `edit_file`, `delete_file` and `rename` require
+that the file has been read in the same sandbox and that the version has not
+changed in the meantime. The version is `(st_mtime_ns, st_size)`: it is a
+cooperative protection against blind overwrites, not a CAS against
+TOCTOU races.
+
+`edit_file` literally replaces `old_string` with `new_string`. By
+default the string must appear only once; `replace_all` allows
+multiple replacements. The write uses a temporary file in the same
+directory and `os.replace`, so the content is never seen half-written.
+The same atomic mechanism is used by `write_file`, `write_bytes` and
+`create_file`.
 
 ### Write limits
 
@@ -877,11 +892,153 @@ The `DECISION` capability is separate from `COMPUTE`, `NETWORK` and
 `FILESYSTEM_*`; the details and the model format are in
 `DECISIONS.md`. Jev/Kev are not native adapters yet.
 
+## 3.11.8 Hi-Fi (`core/hifi.py`)
+
+`HiFiResolver` runs a pre-pass before the agentic loop:
+
+1. it asks the model for the interpretations with probabilities;
+2. it normalizes and sorts the probabilities;
+3. if the margin between the first and the second exceeds `hifi.margin`, it
+   replaces the request with the chosen interpretation plus the original text;
+4. otherwise it asks the model for a clarifying question.
+
+The `hifi.interpretations` event records the probabilities and any
+clarification. An invalid JSON produces `hifi.failed` and the turn
+continues without the pre-pass.
+
+## 3.11.9 Checkpoint (`core/checkpoints.py`)
+
+`HarnessService.ask` opens a `WorkspaceCheckpoint` on the sandbox. The
+checkpoint does not copy the workspace: it only records the files that a
+mutation is about to change. `delete_file`, `rename` and `copy_file` also record
+the destination. `/undo` restores the last completed checkpoint.
+
+Limit: 32 MB of snapshot, regular files only, only the last turn.
+If the checkpoint is incomplete, the undo is refused.
+
+## 3.11.10 Runtime guards and context (`core/tool_registry.py`, `core/context.py`)
+
+`ToolRegistry` applies:
+
+- `tools.timeout` per single call, through a daemon worker;
+- `tools.repeat_limit` on the `tool + arguments` hash per turn.
+
+The timeout is best effort: a Python handler that has already started is not
+killed. The repeat guard resets the count on every `Agent.ask`.
+
+`OutputSpiller` moves outputs over 12,000 characters to the
+`ArtifactStore` and returns a summary with `artifact_id`.
+`ContextCompactor` replaces the oldest messages when the context
+exceeds 24,000 characters, preserving the last 8 and the system
+messages.
+
+## 3.11.11 AIsh (`core/aish.py`, `local_tools/aish_tool.py`)
+
+`aish.exec` implements a command language, not a host shell.
+`AishExecutor` parses with `shlex`, rejects redirections, operators,
+variables and command substitution, and translates every command into a call
+to the `ToolRegistry`. The `AISH` capability is denied by the default policy;
+enabling it requires an explicit change:
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+The internal commands preserve the rules of the underlying tools: enabling
+`aish.exec` does not enable `filesystem.delete_file`.
+
+## 3.11.12 `text.transform` (`local_tools/text_transform_tool.py`)
+
+Read-only tool with enumerated operations: `grep`, `sort`, `uniq`, `cut`,
+`tr`, `wc`, `head`, `tail`, `sed_replace`. It accepts a sandbox path
+or inline text; it applies limits on input, output, pattern and match.
+
+Capability:
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+It does not write files. AIsh uses it for the text commands; saving the
+result goes through `filesystem.write_file`/`create_file` with the
+read-before-write gate.
+
+## 3.11.13 `dev.run` (`core/dev_recipes.py`, `core/dev_runner.py`)
+
+`DevRecipeLoader` reads `recipes.yaml` only once at start-up and
+keeps an immutable snapshot with a hash. The file must live outside the
+writable sandbox.
+
+`DevRunner` executes a recipe:
+
+- it validates typed parameters and `cwd`;
+- it copies the project into a temporary directory;
+- it executes a single argv with `shell=False`;
+- it uses a minimal environment;
+- it applies a timeout and kills the process group;
+- it separates stdout/stderr;
+- it limits the output;
+- it records the audit.
+
+The `DEV_EXEC` capability is DENY by default. `dev.run` does not accept arbitrary
+commands and does not use containers: the recipes are trusted; the sandbox
+does not isolate the host process. The container remains frozen for future
+direct access to the real filesystem/programs.
+
+## 3.11.14 Boxed transform (`core/boxes.py`)
+
+Boxes are bounded LLM functions with a fixed prompt, file input/output
+and no memory, tools or autonomy.
+
+Tools:
+
+```text
+box.list
+box.run
+```
+
+Initial boxes:
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` reads the input from the sandbox, applies chunking where needed,
+calls the LLM client, validates the JSON output and writes the result with the
+read-before-write gate. `BOX_EXEC` is DENY by default.
+
+## 3.11.15 Hagar Flow (`core/flow/`)
+
+`validate()` parses the code with `ast.parse`, rejects imports, classes,
+functions, lambdas, try, dict/set comprehension, comprehension with more than
+one `for`, dunder and dynamic calls, and verifies the available
+primitives. List comprehensions with a single `for` and optional `if`
+are supported.
+
+`FlowRunner` interprets the validated AST without `eval`/`exec`:
+
+- linear scope;
+- budget of steps, iterations, tool calls and timeout;
+- `fs.*`, `box.*`, `memory.*` and `project.context` primitives passed by
+  an internal registry;
+- policy and confirmations for every primitive;
+- errors with line and column.
+
+`FLOW_EXEC` is DENY by default. `flow.run` never repairs the code:
+`flow.repair` proposes a valid candidate without executing it, with a
+maximum of `flow.repair_attempts` attempts. Runtime errors, policy,
+confirmation and timeout errors are not repaired. The HIR is not yet present:
+the validated AST is the IR of the MVP.
+
 ## 3.12 Start-up and packaging
 
 The project installs with `pip install -e .` and declares the packages in
 `pyproject.toml`. The entry point is `hagar = "hagar:main"`. The current
-version is `0.5.2`.
+version is `0.7.0`.
 
 The example configuration is `hagar.example.yaml`; `hagar.yaml` is a
 local file ignored by git. The example's default Vault is
@@ -1042,9 +1199,9 @@ dedicated GUI. The details are in `SUBAGENTS.md`.
 # 5. Development
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) or
-  `.\tools\run_tests.ps1` (Windows). On Windows: 832 passed, 2 skipped
+  `.\tools\run_tests.ps1` (Windows). On Windows: 892 passed, 2 skipped
   (symlinks not available without Developer Mode). On Debian Linux
-  (2026-11-06): all tests green, including the symlinks (743 passed, 0
+  (2026-11-12): all tests green, including the symlinks (894 passed, 0
   skipped). Details and rationale of the shim in README §3.1.
 - Live tests: `./tools/run_tests.sh --live` (Linux/macOS) or
   `.\tools\run_tests.ps1 --live` (Windows) — 9 extra tests (Ollama;

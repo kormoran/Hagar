@@ -5,11 +5,125 @@ referencia al commit cuando es útil.
 
 ---
 
+# 0.7.0 — 2026-11-12
+
+## Resumen
+
+Release de orquestación local: recetas `dev.run`, boxed transform,
+DSL Hagar Flow y list comprehension. El container mode queda fuera de
+esta release.
+
+## Recetas dev.run
+
+- Nuevos `dev.list` y `dev.run` para recetas de confianza de test, debug y
+  build; `DEV_EXEC` es DENY por defecto.
+- `recipes.yaml` fuera de la sandbox, cargado una sola vez al arranque,
+  sin hot reload; cada modificación requiere el reinicio.
+- Parámetros tipados, `cwd`, timeout, entorno explícito, exit code,
+  output limitado y audit.
+- Ejecución host sobre una copia temporal del proyecto, sin shell y
+  sin contenedor.
+
+## Boxed transform
+
+- Nuevos `box.list` y `box.run` para `summarize`, `translate` y
+  `extract_json`; `BOX_EXEC` es DENY por defecto.
+- Input/output en la sandbox, prompt fijo, ninguna memoria o tool,
+  chunking para los documentos largos y validación JSON.
+- Output escrito con el gate read-before-write.
+
+## Hagar Flow
+
+- Nuevos `flow.reference`, `flow.validate` y `flow.run`; `FLOW_EXEC` es
+  DENY por defecto.
+- DSL Python restringido con validador AST e intérprete sin
+  `eval`/`exec`; nada de import, class, def, lambda, try, dict/set
+  comprehension ni acceso a objetos Python.
+- List comprehension con un solo `for` e `if` opcionales, con scope
+  local y presupuesto de iteraciones.
+- Primitivas `fs.*`, `box.*`, `memory.search`, `memory.context`,
+  `memory.skill` y `project.context`, con presupuesto de step, tool call,
+  iteraciones y timeout; errores con línea y columna.
+
+## Repair explícito
+
+- Nuevo `flow.repair`: propone una corrección válida sin ejecutarla.
+- `flow.run` nunca modifica el código y no llama al modelo para
+  repararlo.
+- `flow.repair` no repara errores de runtime, policy, confirmación o
+  timeout.
+- Cada intento queda registrado en el audit y en el resultado.
+
+# 0.6.0 — 2026-11-09
+
+## Resumen
+
+Release de seguridad runtime e interacción controlada: Hi-Fi, edit
+atómico, read-before-write, checkpoint, timeout, repeat guard, spill,
+compaction, AIsh y text.transform.
+
+## Breaking change
+
+- `write_file`, `edit_file`, `delete_file` y `rename` requieren una
+  lectura previa en la misma sandbox y rechazan archivos modificados.
+- `filesystem.write_file`, `write_bytes`, `create_file` y `edit_file`
+  usan la escritura atómica.
+- `tools.timeout` vale 120 segundos por defecto; `tools.repeat_limit`
+  bloquea la tercera llamada idéntica del mismo turno.
+- AIsh está presente pero `AISH` está denegada por la policy predefinida.
+
+## Modalidad Hi-Fi
+
+- Nuevo pre-pass `core/hifi.py`: el modelo propone interpretaciones
+  con probabilidad, Hagar elige la más probable si el margen supera
+  el umbral o pide aclaración.
+- Activación con `--hifi` o `hifi.enabled: true`; `hifi.margin` y
+  `hifi.interpretations` configurables.
+- Eventos audit `hifi.interpretations`, `hifi.resolved`,
+  `hifi.clarification` y `hifi.failed`.
+
+## Filesystem edit y observación
+
+- Nuevo `filesystem.edit_file`: sustitución literal con match único
+  (o `replace_all`), escritura atómica mediante archivo temporal y
+  `os.replace`.
+- `read_file`, `read_chunk` y `read_bytes` registran la versión
+  observada; `write_file`, `edit_file`, `delete_file` y `rename`
+  requieren una lectura previa y rechazan archivos modificados.
+- `write_file`, `write_bytes`, `create_file` y `edit_file` usan la
+  escritura atómica.
+
+## Checkpoint, timeout, spill y compaction
+
+- Checkpoint por turno de los archivos modificados, con `/undo` y
+  `workspace.undo`.
+- `tools.timeout` por tool call individual y `tool.timeout`; el timeout es
+  best effort.
+- Repeat guard `tools.repeat_limit` sobre el hash `tool + argumentos`, con
+  audit `tool.repeat`.
+- Output spill en `ArtifactStore` por encima de 12.000 caracteres, con
+  `tool.spilled`.
+- Compaction determinista del contexto por encima de 24.000 caracteres, con
+  `context.compacted`.
+
+## AIsh
+
+- Nuevo `aish.exec`: lenguaje whitelisted (`pwd`, `ls`, `cat`,
+  `grep`, pipelines de texto, mutaciones de archivos individuales) que compila cada
+  comando en los tool Hagar; ningún subprocess y ninguna ruta host.
+- Capability `AISH` con regla `DENY` predefinida; el usuario debe
+  habilitarla explícitamente en `policy.yaml`.
+- Audit `aish.command`; los comandos internos mantienen policy, checkpoint
+  y audit de los tool subyacentes.
+- Nuevo `text.transform` read-only con operaciones `grep`, `sort`,
+  `uniq`, `cut`, `tr`, `wc`, `head`, `tail`, `sed_replace`; AIsh usa el
+  tool para los comandos textuales y añade `sed` restringido.
+
 # 0.5.2 — 2026-11-08
 
 ## Resumen
 
-Release de consolidación: memoria SQLite, subagentes, vision, tool
+Release de consolidación: memoria SQLite, subagentes, visión, tool
 de decisión, fichas de modelo, import/export Markdown e input broker CLI.
 
 ## Breaking change
@@ -101,7 +215,7 @@ de decisión, fichas de modelo, import/export Markdown e input broker CLI.
 - Policy del subagente estrictamente más restrictiva que la del padre; policy
   iguales o no más limitadas se rechazan.
 - Timeout de reloj de 5 minutos por subagente, cooperativo, con estado
-  `timed_out`; `agent_id` en todos los eventos de auditoría.
+  `timed_out`; `agent_id` en todos los eventos audit.
 - ASK de los subagentes reenviadas al usuario con `ParentBridgeConfirmation`,
   timeout 180 segundos y DENY al expirar; el padre LLM no aprueba.
 - `vision.open` carga PNG/JPEG/WebP desde la sandbox y los adjunta al turno;
@@ -192,7 +306,7 @@ de decisión, fichas de modelo, import/export Markdown e input broker CLI.
 - Ctrl-C durante OAuth o un turno cierra el callback local y sale con
   código 130, sin traceback.
 
-## Instrumentos locales y filesystem v2
+## Herramientas locales y filesystem v2
 
 - Nuevo directorio `local_tools/` para los proveedores locales: cálculo, estadística,
   conversión de unidades, hora/fecha y feed. No son servidores MCP: registran
@@ -237,11 +351,11 @@ de decisión, fichas de modelo, import/export Markdown e input broker CLI.
 - Los symlink no existen para la sandbox: no se muestran, leen,
   siguen ni borran; `chdir` sobre un enlace responde
   "Directory not found". Decisión de proyecto: siguen invisibles
-  aunque el sistema de archivos anfitrión los admita.
+  aunque el filesystem anfitrión los admita.
 - Hard link, mount y junction dentro de los directorios allowed no están
   controlados ni detectados por Hagar. No es un defecto: un hard link es un
   segundo nombre del mismo inode y un mount puede exponer otro
-  sistema de archivos permaneciendo dentro del prefijo. Los tool de filesystem no crean
+  filesystem permaneciendo dentro del prefijo. Los tool de filesystem no crean
   hard link. Para aislamiento total el usuario debe garantizar que en los
   directorios de la sandbox no los haya. Responsabilidad del usuario,
   punto cerrado.
@@ -260,8 +374,8 @@ de decisión, fichas de modelo, import/export Markdown e input broker CLI.
   escritura/creación/renombrado/copia/borrado, `X` `chdir`; los
   permisos globales siguen siendo un techo.
 - Alias obligatorio, un solo segmento, único sin distinguir mayúsculas, sin
-  nombres reservados de Windows; las entradas de la sandbox siguen siendo rutas del sistema
-  anfitrión y Hagar no crea directorios. Las rutas físicas y los nombres internos
+  nombres reservados de Windows; las entradas de la sandbox siguen siendo rutas del
+  sistema anfitrión y Hagar no crea directorios. Las rutas físicas y los nombres internos
   pueden contener espacios; el alias no.
 - Runner POSIX `tools/run_tests.sh`; `run_tests.ps1` y el shim siguen
   específicos de la sandbox de Windows. Actualizados los comandos de benchmark.
@@ -298,10 +412,10 @@ retention de la auditoría y packaging instalable.
   el usuario promueve desde la CLI.
 - Comandos `/memory list`, `/memory show`, `/memory review`,
   `/memory confirm`, `/memory archive`.
-- Inyección automática de las solas skill confirmadas, hasta
+- Inyección automática solo de las skill confirmadas, hasta
   `memory.context_skills` (default 3), por coincidencia léxica; las candidate
   y las archivadas quedan fuera.
-- `reviewed_at` en el frontmatter; eventos de auditoría `memory.review` y
+- `reviewed_at` en el frontmatter; eventos audit `memory.review` y
   `memory.status`.
 - Retention opción A: ningún borrado automático; `archive` es
   reversible con `confirm`.
@@ -410,7 +524,7 @@ retention de la auditoría y packaging instalable.
   las policy;
 - configuración `memory.*` y desactivación con aviso si falta el
   vault;
-- eventos de auditoría `memory.enabled`, `memory.disabled`, `memory.context`,
+- eventos audit `memory.enabled`, `memory.disabled`, `memory.context`,
   `memory.turn`, `memory.failed`;
 
 ## Permisos (PermissionEvaluator v1)
@@ -431,7 +545,7 @@ retention de la auditoría y packaging instalable.
 - `requires_confirmation` ahora aplicado como suelo de ASK;
 - eliminado el stub incompleto `PolicyRule` de `core/models.py`;
 
-## Filesystem v2, instrumentos matemáticos y feed
+## Filesystem v2, herramientas matemáticas y feed
 
 ### Filesystem
 
@@ -483,7 +597,7 @@ retention de la auditoría y packaging instalable.
 - Nuevo tool MCP:
 
   `calculator.evaluate`
-
+  
 Todas las operaciones se validan mediante whitelist de nodos AST, operadores y funciones permitidas.
 
 ### Estadística
@@ -612,7 +726,7 @@ Devolución del número total de elementos disponibles, número de elementos dev
 
 ### Notas
 
-Esta iteración amplía de forma significativa las capacidades operativas del agente. Además del filesystem en sandbox, Hagar dispone ahora de instrumentos fiables para:
+Esta iteración amplía de forma significativa las capacidades operativas del agente. Además del filesystem en sandbox, Hagar dispone ahora de herramientas fiables para:
 
 explorar y buscar contenidos;
 leer archivos muy grandes de forma incremental;
@@ -621,7 +735,7 @@ realizar análisis estadísticos;
 convertir unidades de medida pertenecientes a dominios diferentes;
 consumir fuentes informativas estructuradas mediante feed RSS y Atom.
 
-El objetivo sigue siendo privilegiar instrumentos deterministas, estructurados y fácilmente utilizables por los modelos mediante tool calling nativo.
+El objetivo sigue siendo privilegiar herramientas deterministas, estructuradas y fácilmente utilizables por los modelos mediante tool calling nativo.
 
 
 ## Documentación
@@ -720,5 +834,5 @@ hacia Ollama, es un agente operativo.
 ## Notas
 
 La v0.1 es la primera versión capaz de dialogar con un LLM local,
-exponer instrumentos, hacer que el modelo elija cuáles usar, operar sobre un
+exponer herramientas, hacer que el modelo elija cuáles usar, operar sobre un
 filesystem en sandbox y encadenar varias operaciones de forma autónoma.

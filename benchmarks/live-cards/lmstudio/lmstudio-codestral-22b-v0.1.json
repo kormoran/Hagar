@@ -1,0 +1,242 @@
+{
+  "tested_at": "2026-11-13T00:29:06+00:00",
+  "provider": "lmstudio",
+  "model": "codestral-22b-v0.1",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 29844824064,
+      "total_gib": 47.91,
+      "available_gib": 27.8
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": true,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 3,
+      "successes": 3,
+      "errors": [],
+      "duration_ms": {
+        "count": 3,
+        "min": 10393.11,
+        "mean": 17780.68,
+        "p50": 12284.62,
+        "p95": 28826.35,
+        "max": 30664.32
+      },
+      "output_tokens_per_second": 2.043
+    },
+    "structured": {
+      "attempts": 3,
+      "valid_json": 3,
+      "valid_choice": 3,
+      "errors": [],
+      "duration_ms": {
+        "count": 3,
+        "min": 10443.82,
+        "mean": 11904.68,
+        "p50": 12569.79,
+        "p95": 12687.38,
+        "max": 12700.44
+      }
+    },
+    "tool_call": {
+      "attempts": 2,
+      "successes": 2,
+      "errors": [],
+      "duration_ms": {
+        "count": 2,
+        "min": 15980.1,
+        "mean": 16184.49,
+        "p50": 16184.49,
+        "p95": 16368.45,
+        "max": 16388.89
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T00:35:49+00:00",
+    "attempts": 2,
+    "tasks": {
+      "summary": {
+        "attempts": 2,
+        "cases": 2,
+        "scores": [
+          0.7400000000000001,
+          0.58,
+          0.4,
+          0.8
+        ],
+        "mean": 0.63,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 2,
+        "cases": 2,
+        "scores": [
+          0.9785132043440868,
+          0.9793784757513987,
+          0.22855763045224492,
+          0.2247306988579485
+        ],
+        "mean": 0.6028,
+        "errors": []
+      },
+      "extraction": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 2,
+        "scores": [
+          0.7400000000000001,
+          0.58
+        ],
+        "mean": 0.66,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 2,
+        "scores": [
+          0.4,
+          0.8
+        ],
+        "mean": 0.6,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 2,
+        "scores": [
+          0.9785132043440868,
+          0.9793784757513987
+        ],
+        "mean": 0.9789,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 2,
+        "scores": [
+          0.22855763045224492,
+          0.2247306988579485
+        ],
+        "mean": 0.2266,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 2,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 2,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 2,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 2,
+        "scores": [
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.8721
+  },
+  "last_tested_at": "2026-11-13T00:29:06+00:00",
+  "card_version": 1
+}

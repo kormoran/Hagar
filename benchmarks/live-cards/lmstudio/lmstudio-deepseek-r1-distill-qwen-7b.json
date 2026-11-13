@@ -1,0 +1,246 @@
+{
+  "tested_at": "2026-11-13T00:46:36+00:00",
+  "provider": "lmstudio",
+  "model": "deepseek-r1-distill-qwen-7b",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 34484846592,
+      "total_gib": 47.91,
+      "available_gib": 32.12
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": true,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 3,
+      "successes": 3,
+      "errors": [],
+      "duration_ms": {
+        "count": 3,
+        "min": 63638.74,
+        "mean": 68174.22,
+        "p50": 64364.45,
+        "p95": 75303.97,
+        "max": 76519.47
+      },
+      "output_tokens_per_second": 4.122
+    },
+    "structured": {
+      "attempts": 3,
+      "valid_json": 2,
+      "valid_choice": 2,
+      "errors": [
+        "Extra data: line 1 column 54 (char 53)"
+      ],
+      "duration_ms": {
+        "count": 3,
+        "min": 64786.45,
+        "mean": 91024.37,
+        "p50": 86287.77,
+        "p95": 118427.78,
+        "max": 121998.9
+      }
+    },
+    "tool_call": {
+      "attempts": 2,
+      "successes": 1,
+      "errors": [
+        "unexpected tool: ToolCall(tool='tool_name', arguments={'param': 'value'}, id=None)"
+      ],
+      "duration_ms": {
+        "count": 2,
+        "min": 48447.07,
+        "mean": 84587.68,
+        "p50": 84587.68,
+        "p95": 117114.23,
+        "max": 120728.3
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T01:04:42+00:00",
+    "attempts": 2,
+    "tasks": {
+      "summary": {
+        "attempts": 2,
+        "cases": 2,
+        "scores": [
+          0.7400000000000001,
+          0.9,
+          0.7000000000000001,
+          0.7000000000000001
+        ],
+        "mean": 0.76,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 2,
+        "cases": 2,
+        "scores": [
+          0.9058402599909137,
+          0.8863211320234425,
+          0.5182458993572961,
+          0.3759030485657844
+        ],
+        "mean": 0.6716,
+        "errors": []
+      },
+      "extraction": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          1.0,
+          0.3333333333333333
+        ],
+        "mean": 0.6667,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 2,
+        "cases": 1,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 2,
+        "scores": [
+          0.7400000000000001,
+          0.9
+        ],
+        "mean": 0.82,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 2,
+        "scores": [
+          0.7000000000000001,
+          0.7000000000000001
+        ],
+        "mean": 0.7,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 2,
+        "scores": [
+          0.9058402599909137,
+          0.8863211320234425
+        ],
+        "mean": 0.8961,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 2,
+        "scores": [
+          0.5182458993572961,
+          0.3759030485657844
+        ],
+        "mean": 0.4471,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 2,
+        "scores": [
+          1.0,
+          0.3333333333333333
+        ],
+        "mean": 0.6667,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 2,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 2,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 2,
+        "scores": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.3497
+  },
+  "last_tested_at": "2026-11-13T00:46:36+00:00",
+  "card_version": 1
+}

@@ -192,6 +192,16 @@ class BoxesConfig:
 
 
 @dataclass(slots=True)
+class BrokerConfig:
+    """Catalogo modelli e profili di task per il broker."""
+
+    enabled: bool = False
+    catalog: str = "models.yaml"
+    profiles: str = "profiles.yaml"
+    default_profile: str = "coding"
+
+
+@dataclass(slots=True)
 class FlowConfig:
     """Limiti del DSL ristretto hagar.flow."""
 
@@ -288,6 +298,10 @@ class AppConfig:
 
     boxes: BoxesConfig = field(
         default_factory=BoxesConfig
+    )
+
+    broker: BrokerConfig = field(
+        default_factory=BrokerConfig
     )
 
     flow: FlowConfig = field(

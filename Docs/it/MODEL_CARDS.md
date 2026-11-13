@@ -97,7 +97,125 @@ oppure `HAGAR_MODEL_CARDS`, o `$XDG_STATE_HOME/hagar/models`.
 - validità JSON;
 - scelta valida nell'insieme delle label;
 - tool calling con un tool di benchmark;
+- qualità deterministica su task testuali;
+- qualità vision su immagini sintetiche;
 - hardware al momento della prova.
+
+## Qualità per task
+
+`/models test` esegue anche una suite qualità deterministica:
+
+```text
+extraction   estrazione di campi in JSON
+instruction  rispetto di un'istruzione esatta
+reasoning    calcolo numerico semplice
+coding       lettura di un frammento Python
+summary      riassunto con punti chiave
+translation  traduzione IT→EN e EN→IT
+```
+
+Ogni caso viene eseguito due volte. Il punteggio è la media delle
+risposte, da 0 a 1. Non è un benchmark semantico: è un test compatto e
+ripetibile per dare al broker un segnale migliore della qualità
+dichiarata.
+
+La traduzione combina chrF con la conservazione di path, comandi e
+termini richiesti. I termini obbligatori pesano molto più di chrF; una
+traduzione tecnica sbagliata viene penalizzata esplicitamente. Il
+riassunto misura la presenza dei punti chiave e il rispetto della
+lunghezza.
+
+La scheda contiene:
+
+```json
+{
+  "quality": {
+    "suite_version": 3,
+    "overall": 0.75,
+    "tasks": {
+      "extraction": {"attempts": 2, "mean": 0.83},
+      "instruction": {"attempts": 2, "mean": 1.0},
+      "reasoning": {"attempts": 2, "mean": 1.0},
+      "coding": {"attempts": 2, "mean": 0.5},
+      "summary": {"attempts": 2, "cases": 2, "mean": 0.8},
+      "translation": {"attempts": 2, "cases": 2, "mean": 0.7}
+    }
+  }
+}
+```
+
+Il corpus è in `benchmarks/corpus/`:
+
+```text
+7 testi
+2 reference di traduzione
+10 immagini sintetiche
+manifest.yaml con SHA-256
+```
+
+La suite testuale è `quality_v3`; la suite vision è `vision_v2`.
+
+Un `quality_task` nel TaskProfile seleziona il task da usare; se manca,
+il broker usa il nome del profilo. Se la scheda non ha qualità misurata,
+usa la qualità dichiarata nel catalogo.
+
+## Vision
+
+Solo su richiesta:
+
+```text
+/models test vision
+```
+
+Usa un pool sintetico e fisso di immagini:
+
+```text
+colore dominante
+conteggio di oggetti
+relazione spaziale
+OCR
+grafico a barre
+campo UI
+OCR con testo piccolo
+grafico con etichette
+UI a più campi
+descrizione di una scena
+```
+
+Ogni immagine ha un id e uno SHA-256 nel run. Il punteggio è la media
+dei casi. Un modello senza capacità vision non deve essere testato con
+questo comando.
+
+## Storico dei run
+
+Ogni `/models test` salva anche un run separato:
+
+```text
+%LOCALAPPDATA%/Hagar/benchmark-runs/<run_id>.json
+```
+
+oppure `HAGAR_BENCHMARK_RUNS`.
+
+Comandi:
+
+```text
+/models runs
+/models runs 5
+```
+
+La scheda contiene l'ultimo risultato; lo storico conserva i run per i
+confronti nel tempo. Le schede non vengono cancellate.
+
+Ogni run contiene anche `suite_manifest`, con:
+
+```text
+versione della suite
+casi qualità e prompt
+immagini vision, id e SHA-256
+```
+
+In questo modo un risultato resta interpretabile anche quando le suite
+vengono estese.
 
 Non misura ancora:
 
@@ -106,7 +224,9 @@ Non misura ancora:
 - accuratezza su un dataset specifico;
 - TTFT in streaming;
 - carico concorrente;
-- consumo energetico.
+- consumo energetico;
+- audio;
+- preferenza umana.
 
 ## Comandi
 
@@ -114,10 +234,13 @@ Non misura ancora:
 /models list
 /models show <provider> <model>
 /models test
+/models test vision
+/models runs [n]
 /models hardware
 ```
 
 `/models test` prova il modello LLM corrente e salva la scheda.
+`/models test vision` esegue la suite vision.
 
 ## Hardware
 

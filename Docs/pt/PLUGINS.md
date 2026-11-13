@@ -4,21 +4,21 @@ O Hagar descobre dois grupos de plugins através dos entry point Python:
 
 | Grupo | Conteúdo |
 |---|---|
-| `hagar.tools` | ferramentas adicionais |
+| `hagar.tools` | tool adicionais |
 | `hagar.llm` | providers LLM adicionais |
 
 Os plugins built-in (`local_tools/plugins.py` e `llm/plugins.py`) usam o
 mesmo contrato e são registados antes dos externos.
 
 > **Segurança:** os plugins Python correm no mesmo processo do Hagar e
-> são considerados *trusted*. Podem usar a API do processo e não são
-> isolados da sandbox. Para extensões não fidedignas usar MCP ou um processo
-> separado. Política, sandbox, confirmações e auditoria permanecem no host: um plugin
-> não pode conceder permissões.
+> são considerados *trusted*. Podem usar a API do processo e não estão
+> isolados da sandbox. Para extensões não fidedignas, usar MCP ou um
+> processo separado. Policy, sandbox, confirmações e audit permanecem no
+> host: um plugin não pode conceder permissões.
 
-## Tool plugin
+## Plugin de tool
 
-Um plugin de ferramenta é um objeto `ToolPlugin` com uma função
+Um plugin de tool é um objeto `ToolPlugin` com uma função
 `register(registry, context)`:
 
 ```python
@@ -55,11 +55,11 @@ Entry point no pacote do plugin:
 acme = "acme_hagar:PLUGIN"
 ```
 
-O campo `origin` deveria identificar o plugin, por exemplo
-`plugin.acme`, para tornar a auditoria legível. As capability são
-obrigatórias quando o registry tem políticas ativas.
+O campo `origin` deve identificar o plugin, por exemplo `plugin.acme`,
+para tornar o audit legível. As capability são obrigatórias quando o
+registry tem policy ativas.
 
-`PluginContext` expõe, se necessários:
+`PluginContext` expõe, se forem necessários:
 
 ```text
 config
@@ -70,10 +70,9 @@ project_store
 project_state
 ```
 
-Um plugin avariado é ignorado, registado como `plugin.error` e não
-impede o arranque dos outros. Se registar algumas ferramentas e depois falhar,
-essas ferramentas permanecem registadas: o plugin deveria registar tudo ou
-nada.
+Um plugin com falha é ignorado, registado como `plugin.error` e não
+impede o arranque dos outros. Se registar alguns tool e depois falhar,
+esses tool permanecem registados: o plugin deve registar tudo ou nada.
 
 ## Provider LLM plugin
 
@@ -107,7 +106,7 @@ Entry point:
 acme = "acme_hagar:PROVIDER"
 ```
 
-Depois em `hagar.yaml`:
+Depois, em `hagar.yaml`:
 
 ```yaml
 model:
@@ -125,9 +124,8 @@ reasoning
 streaming
 ```
 
-O provider não deve conceder permissões: recebe apenas a configuração e
-a auditoria. `native_tools` é aplicado pelo host com
-`model.native_tools`.
+O provider não deve conceder permissões: recebe apenas a configuração e o
+audit. `native_tools` é aplicado pelo host com `model.native_tools`.
 
 ## Descoberta e prioridade
 
@@ -135,16 +133,17 @@ a auditoria. `native_tools` é aplicado pelo host com
 - Um plugin externo não pode substituir um nome built-in: o duplicado
   é recusado e registado.
 - Os providers externos aparecem em `available_providers()`.
-- Os erros de carregamento são isolados; a auditoria registra
-  `plugin.loaded` para os plugins externos e `plugin.error` para as falhas.
+- Os erros de carregamento são isolados; o audit regista
+  `plugin.loaded` para os plugins externos e `plugin.error` para as
+  falhas.
 
 ## Testes
 
 O contrato é coberto por `tests/test_plugins.py`:
 
-- registo de um plugin de ferramenta;
+- registo de um plugin de tool;
 - descoberta a partir do entry point;
-- isolamento de um plugin avariado;
+- isolamento de um plugin com falha;
 - carregamento de um provider LLM;
 - recusa de um nome built-in duplicado.
 

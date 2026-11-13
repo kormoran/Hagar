@@ -5,6 +5,120 @@
 
 ---
 
+# 0.7.0 — 2026-11-12
+
+## 概要
+
+本地编排版本：`dev.run` 配方、boxed transform、
+Hagar Flow DSL 和 list comprehension。container 模式不在
+本版本范围内。
+
+## dev.run 配方
+
+- 新增 `dev.list` 和 `dev.run`，用于可信的测试、调试和
+  构建配方；`DEV_EXEC` 默认为 DENY。
+- `recipes.yaml` 位于 sandbox 之外，仅在启动时加载一次，
+  不支持热重载；每次修改都需要重启。
+- 类型化参数、`cwd`、超时、显式环境、exit code、
+  受限输出和审计。
+- 在项目的临时副本上执行宿主运行，不使用 shell，
+  也不使用 container。
+
+## Boxed transform
+
+- 新增 `box.list` 和 `box.run`，用于 `summarize`、`translate` 和
+  `extract_json`；`BOX_EXEC` 默认为 DENY。
+- 输入/输出位于 sandbox 内，prompt 固定，不使用记忆或 tool，
+  长文档分块，并进行 JSON 校验。
+- 输出通过 read-before-write 门控写入。
+
+## Hagar Flow
+
+- 新增 `flow.reference`、`flow.validate` 和 `flow.run`；`FLOW_EXEC`
+  默认为 DENY。
+- 受限的 Python DSL，带 AST 校验器和解释器，不使用
+  `eval`/`exec`；不支持 import、class、def、lambda、try、dict/set
+  comprehension 或访问 Python 对象。
+- list comprehension 支持一个可选的 `for` 和 `if`，具有
+  局部作用域和迭代预算。
+- 原语 `fs.*`、`box.*`、`memory.search`、`memory.context`、
+  `memory.skill` 和 `project.context`，带 step、tool call、
+  迭代和超时的预算；错误会给出行号和列号。
+
+## 显式修复
+
+- 新增 `flow.repair`：提出一个有效的修正，但不执行它。
+- `flow.run` 从不修改代码，也从不调用模型来
+  修复代码。
+- `flow.repair` 不修复运行时、policy、确认或超时
+  错误。
+- 每次尝试都会记录在审计和结果中。
+
+# 0.6.0 — 2026-11-09
+
+## 概要
+
+运行时安全与受控交互版本：Hi-Fi、原子 edit、read-before-write、
+checkpoint、超时、repeat guard、spill、
+compaction、AIsh 和 text.transform。
+
+## 破坏性变更
+
+- `write_file`、`edit_file`、`delete_file` 和 `rename` 需要在同一
+  sandbox 中先进行一次读取，并拒绝已更改的文件。
+- `filesystem.write_file`、`write_bytes`、`create_file` 和 `edit_file`
+  使用原子写入。
+- `tools.timeout` 默认为 120 秒；`tools.repeat_limit`
+  阻止同一轮次中第三次完全相同的调用。
+- AIsh 已存在，但 `AISH` 被默认 policy 拒绝。
+
+## Hi-Fi 模式
+
+- 新增预处理 `core/hifi.py`：模型给出带概率的
+  解释，如果差距超过阈值，Hagar 选择最可能的解释，
+  否则请求澄清。
+- 通过 `--hifi` 或 `hifi.enabled: true` 启用；`hifi.margin` 和
+  `hifi.interpretations` 可配置。
+- 审计事件 `hifi.interpretations`、`hifi.resolved`、
+  `hifi.clarification` 和 `hifi.failed`。
+
+## Filesystem edit 与观察
+
+- 新增 `filesystem.edit_file`：字面替换，要求唯一匹配
+  （或 `replace_all`），通过临时文件原子写入，
+  并使用 `os.replace`。
+- `read_file`、`read_chunk` 和 `read_bytes` 记录观察到的
+  版本；`write_file`、`edit_file`、`delete_file` 和 `rename`
+  需要先前读取，并拒绝已更改的文件。
+- `write_file`、`write_bytes`、`create_file` 和 `edit_file` 使用
+  原子写入。
+
+## Checkpoint、超时、spill 与 compaction
+
+- 按轮次为已修改文件创建 checkpoint，带 `/undo` 和
+  `workspace.undo`。
+- 针对单个 tool call 的 `tools.timeout` 和 `tool.timeout`；超时是
+  尽力而为。
+- 基于 `tool + 参数` 的 hash 的 repeat guard `tools.repeat_limit`，
+  审计事件 `tool.repeat`。
+- 输出超过 12,000 个字符时 spill 到 `ArtifactStore`，带
+  `tool.spilled`。
+- 上下文超过 24,000 个字符时进行确定性 compaction，带
+  `context.compacted`。
+
+## AIsh
+
+- 新增 `aish.exec`：白名单语言（`pwd`、`ls`、`cat`、
+  `grep`、文本管道、单文件变更），它把每条
+  命令编译为 Hagar tool；没有 subprocess，也没有宿主路径。
+- capability `AISH`，默认规则为 `DENY`；用户必须
+  在 `policy.yaml` 中显式启用它。
+- 审计 `aish.command`；内部命令保留底层 tool 的 policy、
+  checkpoint 和审计。
+- 新增只读 `text.transform`，支持操作 `grep`、`sort`、
+  `uniq`、`cut`、`tr`、`wc`、`head`、`tail`、`sed_replace`；AIsh 对
+  文本命令使用该 tool，并加入受限的 `sed`。
+
 # 0.5.2 — 2026-11-08
 
 ## 概要
@@ -86,7 +200,7 @@
   ledger。
 - 工具和 LLM provider 都是插件：内置在 `local_tools/plugins.py`
   和 `llm/plugins.py`，外部通过 entry point `hagar.tools`/`hagar.llm`。
-- 插件错误被隔离并记录到审计；策略和 sandbox
+- 插件错误被隔离并记录到审计；policy 和 sandbox
   留在 host 中。
 - 在 `DOCUMENT_TOOL.md` 中记录了 document tool 的设计：
   结构/语义图、CSV MVP、`FormatPlugin` 契约、C ABI 和
@@ -98,7 +212,7 @@
 - spawn 时强制的 `reason` 和独立的 `AGENT_SPAWN` capability：
   child 不能创建其他 child；`permissions.agents` 控制系统
   上限。
-- 子智能体策略严格严于父级；相同或不再受限的策略
+- 子智能体 policy 严格严于父级；相同或不再受限的 policy
   会被拒绝。
 - 每个子智能体 5 分钟墙钟超时，协作式，状态
   `timed_out`；所有审计事件中都有 `agent_id`。
@@ -130,7 +244,7 @@
   `AGENT_DATA`、配额和轮次结束时清理。
 - `artifact.save_to` 把整个 artifact 复制到父级
   sandbox 中可写的路径；需要 `AGENT_DATA`、`FILESYSTEM_WRITE` 和
-  `FILESYSTEM_CREATE`，并可能需要策略确认。
+  `FILESYSTEM_CREATE`，并可能需要 policy 确认。
 - 轮次结束时对未导出的 artifact 记录 `artifact.discarded` 审计，
   原因为 `unread` 或 `read_but_not_saved`；持久化仍
   推迟。
@@ -204,7 +318,7 @@
 - 新 capability `COMPUTE`（本地计算，始终在上限中）和
   `NETWORK`（由 `permissions.network: true` 启用）；`feed.read`
   需要 `NETWORK`。
-- 配置中的 `permissions.network`；策略：calculator/statistics/units 的 `COMPUTE` 为 allow，
+- 配置中的 `permissions.network`；policy：calculator/statistics/units 的 `COMPUTE` 为 allow，
   feed 的 `NETWORK` 为 ask。
 - `feedparser` 在依赖中；feed 用
   `requests` 下载，带超时和 5 MB 限制，且只从 http/https URL 下载。
@@ -233,7 +347,7 @@
   `max_write_bytes` 按操作、`min_free_bytes` 作为储备、
   `session_write_bytes` 累计、`ask_over_bytes` 用于确认。
   前三项是不变式；`ask_over_bytes` 经过 `ToolRegistry` 的预检，
-  只询问一次，即使策略是 `ASK`。
+  只询问一次，即使 policy 是 `ASK`。
 - 对 sandbox 而言 symlink 不存在：它们不会被显示、读取、
   跟随或删除；对链接执行 `chdir` 会回答
   "Directory not found"。项目决定：即使宿主文件系统支持它们，
@@ -251,7 +365,7 @@
   恶意场景或被攻陷的环境，而不是
   正常使用。作为用户责任关闭；要实现完全隔离，
   需要专用卷、独立用户、mount namespace 或
-  容器。
+  container。
 - `filesystem.allowed` 被 `filesystem.sandbox` 取代：每个条目都有
   `alias`、`path` 和 `R`/`W`/`X` 权限。agent 看到
   `/home/ai/<alias>/...`；没有 `hdN`，没有合成的卷或中间
@@ -406,7 +520,7 @@
   prompt，并做截断；记忆错误不会使轮次失败；
 - 工具 `memory.create_skill`（来源信息和 `candidate` 状态）、
   `memory.list_skills`、`memory.get_context`（按关键词搜索）；
-- capability `MEMORY_READ`/`MEMORY_WRITE`、面向策略的命名空间 `chat`/`skills`；
+- capability `MEMORY_READ`/`MEMORY_WRITE`、面向 policy 的命名空间 `chat`/`skills`；
 - `memory.*` 配置，以及 vault 缺失时带警告的
   停用；
 - 审计事件 `memory.enabled`、`memory.disabled`、`memory.context`、
@@ -419,12 +533,12 @@
   tool、path 和 namespace，`Subject`、`Resource`、`Decision` 和
   纯 evaluator；
 - 独立的 `policy.yaml`，在构建 LLM 之前读取：出错时
-  所有策略变为 `DENY`，带 `policy.failed` 事件和
+  所有 policy 变为 `DENY`，带 `policy.failed` 事件和
   聊天中的警告；
 - 由 `permissions.read/write/shell` 导出的系统上限；
 - `ASK`，带控制台确认（`lo faccio? (y/N)`，默认 N）和
   面向未来 GUI 的 `ConfirmationProvider`；
-- `ToolRegistry.execute` 应用策略并记录
+- `ToolRegistry.execute` 应用 policy 并记录
   `permission.decision` 和 `permission.confirmation`；
 - 所有工具（filesystem 和 MCP）的 `ToolDefinition.capabilities`；
 - `requires_confirmation` 现在作为 ASK 底线应用；
@@ -690,8 +804,8 @@ Ollama 模型对比（4 个任务，临时 sandbox，每轮最多 4 个工具）
 |---|---|---|---|---|---|
 | `llama3.1:latest` | ok 10.9 s | ok 7.8 s | ok 8.1 s | ok 8.4 s | 1 |
 | `qwen3:8b` | ok 34.2 s | ok 27.5 s | ok 15.9 s | ok 13.8 s | 1 |
-| `hermes3:8b` | ok 13.6 s | loop, 4 tool | ok 8.0 s | ok 5.2 s | 2 |
-| `gemma:latest` | tool errato | file errato | contenuto errato | ok 6.4 s | 3 |
+| `hermes3:8b` | ok 13.6 s | 循环，4 个 tool | ok 8.0 s | ok 5.2 s | 2 |
+| `gemma:latest` | 工具错误 | 文件错误 | 内容错误 | ok 6.4 s | 3 |
 
 ---
 

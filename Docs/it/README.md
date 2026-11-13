@@ -303,6 +303,7 @@ sono: italiano, inglese, spagnolo, portoghese, cinese, russo. Ogni lingua ha la 
 - [FLOW.md](FLOW.md) — DSL ristretto e interprete.
 - [DECISIONS.md](DECISIONS.md) — tool decisionali e provider.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — schede, benchmark e hardware.
+- [BROKER.md](BROKER.md) — catalogo modelli e futuro broker LLM.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — specifica del document tool,
   grafo semantico, plugin di formato e host nativo.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP subagenti, isolamento e limiti.

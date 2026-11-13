@@ -1,6 +1,6 @@
 # HAGAR — Архитектура
 
-Версия: 0.5.2
+Версия: 0.7.0
 Последнее обновление: 2026-11-03
 
 ---
@@ -298,6 +298,7 @@ filesystem:
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -335,6 +336,19 @@ filesystem.stat
 `write_file` перезаписывает только существующие файлы; создание идёт через
 `create_file`, который требует разрешение `create`. Обойти запрет на
 создание, записав новый путь, невозможно.
+
+`read_file`, `read_chunk` и `read_bytes` регистрируют наблюдённую версию
+файла. `write_file`, `edit_file`, `delete_file` и `rename` требуют,
+чтобы файл был прочитан в той же песочнице и чтобы версия не изменилась
+за это время. Версия — это `(st_mtime_ns, st_size)`: кооперативная
+защита от слепой перезаписи, а не CAS против гонки TOCTOU.
+
+`edit_file` буквально заменяет `old_string` на `new_string`. По
+умолчанию строка должна встречаться ровно один раз; `replace_all` допускает
+несколько замен. Запись использует временный файл в той же
+директории и `os.replace`, поэтому содержимое никогда не видно
+наполовину записанным. Тот же атомарный механизм используют `write_file`, `write_bytes` и
+`create_file`.
 
 ### Ограничения записи
 
@@ -876,11 +890,152 @@ Capability `DECISION` отделена от `COMPUTE`, `NETWORK` и
 `FILESYSTEM_*`; подробности и формат модели — в
 `DECISIONS.md`. Jev/Kev пока не имеют нативных адаптеров.
 
+## 3.11.8 Hi-Fi (`core/hifi.py`)
+
+`HiFiResolver` выполняет pre-pass перед агентным циклом:
+
+1. запрашивает у модели интерпретации с вероятностями;
+2. нормализует и сортирует вероятности;
+3. если разрыв между первой и второй превышает `hifi.margin`, заменяет
+   запрос выбранной интерпретацией плюс исходный текст;
+4. иначе задаёт модели уточняющий вопрос.
+
+Событие `hifi.interpretations` регистрирует вероятности и возможное
+уточнение. Невалидный JSON порождает `hifi.failed`, и ход
+продолжается без pre-pass.
+
+## 3.11.9 Checkpoint (`core/checkpoints.py`)
+
+`HarnessService.ask` открывает `WorkspaceCheckpoint` на песочнице. Checkpoint
+не копирует workspace: он только отмечает файлы, которые собирается
+изменить мутация. `delete_file`, `rename` и `copy_file` также регистрируют
+назначение. `/undo` восстанавливает последний завершённый checkpoint.
+
+Ограничение: 32 MB снимка, только обычные файлы, только последний ход.
+Если checkpoint неполон, undo отклоняется.
+
+## 3.11.10 Runtime-защиты и контекст (`core/tool_registry.py`, `core/context.py`)
+
+`ToolRegistry` применяет:
+
+- `tools.timeout` на отдельный вызов, через демонический worker;
+- `tools.repeat_limit` по хешу `tool + аргументы` на ход.
+
+Тайм-аут best effort: уже запущенный Python-handler не убивается. Repeat guard
+сбрасывает счётчик при каждом `Agent.ask`.
+
+`OutputSpiller` переносит выводы длиннее 12 000 символов в `ArtifactStore`
+и возвращает сводку с `artifact_id`. `ContextCompactor` заменяет более старые
+сообщения, когда контекст превышает 24 000 символов, сохраняя последние 8
+и системные сообщения.
+
+## 3.11.11 AIsh (`core/aish.py`, `local_tools/aish_tool.py`)
+
+`aish.exec` реализует язык команд, а не host shell. `AishExecutor`
+парсит через `shlex`, отвергает перенаправления, операторы, переменные
+и command substitution и переводит каждую команду в вызов
+`ToolRegistry`. Capability `AISH` запрещена политикой по умолчанию;
+чтобы включить её, нужно явное изменение:
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+Внутренние команды сохраняют правила нижележащих инструментов: включение
+`aish.exec` не включает `filesystem.delete_file`.
+
+## 3.11.12 `text.transform` (`local_tools/text_transform_tool.py`)
+
+Инструмент только для чтения с перечислимыми операциями: `grep`, `sort`, `uniq`, `cut`,
+`tr`, `wc`, `head`, `tail`, `sed_replace`. Принимает путь песочницы
+или inline-текст; применяет лимиты на вход, вывод, pattern и совпадения.
+
+Capability:
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+Не пишет файлы. AIsh использует его для текстовых команд; сохранение
+результата идёт через `filesystem.write_file`/`create_file` с gate
+read-before-write.
+
+## 3.11.13 `dev.run` (`core/dev_recipes.py`, `core/dev_runner.py`)
+
+`DevRecipeLoader` читает `recipes.yaml` один раз при запуске и
+сохраняет неизменяемый snapshot с хешем. Файл должен находиться вне
+записываемой песочницы.
+
+`DevRunner` выполняет рецепт:
+
+- проверяет типизированные параметры и `cwd`;
+- копирует проект во временный каталог;
+- выполняет один argv с `shell=False`;
+- использует минимальное окружение;
+- применяет timeout и kill process group;
+- разделяет stdout/stderr;
+- ограничивает вывод;
+- записывает аудит.
+
+Capability `DEV_EXEC` по умолчанию DENY. `dev.run` не принимает произвольные
+команды и не использует контейнеры: рецепты доверенные; песочница не
+изолирует host-процесс. Контейнер остаётся замороженным для будущего
+прямого доступа к реальным файловым системам/программам.
+
+## 3.11.14 Boxed transform (`core/boxes.py`)
+
+Box — это ограниченные LLM-функции с фиксированным промптом, вводом/выводом в файлы
+и без памяти, инструментов или автономности.
+
+Инструменты:
+
+```text
+box.list
+box.run
+```
+
+Начальные box:
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` читает input из песочницы, применяет chunking где нужно,
+вызывает LLM-клиент, проверяет выходной JSON и записывает результат с
+gate read-before-write. `BOX_EXEC` по умолчанию DENY.
+
+## 3.11.15 Hagar Flow (`core/flow/`)
+
+`validate()` парсит код через `ast.parse`, отвергает import, классы,
+функции, lambda, try, dict/set comprehension, comprehension с более чем
+одним `for`, dunder и динамические вызовы, а также проверяет доступные
+примитивы. List comprehension с одним `for` и необязательными `if`
+поддерживаются.
+
+`FlowRunner` интерпретирует проверенный AST без `eval`/`exec`:
+
+- линейная область видимости;
+- бюджет шагов, итераций, tool call и timeout;
+- примитивы `fs.*`, `box.*`, `memory.*` и `project.context`, переданные
+  из внутреннего registry;
+- policy и подтверждения для каждого примитива;
+- ошибки с строкой и столбцом.
+
+`FLOW_EXEC` по умолчанию DENY. `flow.run` никогда не исправляет код:
+`flow.repair` предлагает валидного кандидата без его выполнения, максимум
+`flow.repair_attempts` попыток. Ошибки runtime, policy, подтверждения
+и timeout не исправляются. HIR пока отсутствует:
+проверенный AST — это IR MVP.
+
 ## 3.12 Запуск и упаковка
 
 Проект устанавливается через `pip install -e .` и объявляет пакеты в
 `pyproject.toml`. Entry point — `hagar = "hagar:main"`. Текущая версия —
-`0.5.2`.
+`0.7.0`.
 
 Пример конфигурации — `hagar.example.yaml`; `hagar.yaml` — это локальный
 файл, игнорируемый git. Vault по умолчанию в примере —
@@ -1041,9 +1196,9 @@ Policy и песочница остаются в registry: плагин не м�
 # 5. Разработка
 
 - Набор тестов: `./tools/run_tests.sh` (Linux/macOS) или
-  `.\tools\run_tests.ps1` (Windows). В Windows: 832 пройдено, 2 пропущено
+  `.\tools\run_tests.ps1` (Windows). В Windows: 892 пройдено, 2 пропущено
   (symlink недоступны без Developer Mode). В Debian Linux
-  (2026-11-06): все тесты зелёные, включая symlink (743 пройдено, 0
+  (2026-11-12): все тесты зелёные, включая symlink (894 пройдено, 0
   пропущено). Подробности и обоснование shim — в README §3.1.
 - Живые тесты: `./tools/run_tests.sh --live` (Linux/macOS) или
   `.\tools\run_tests.ps1 --live` (Windows) — 9 дополнительных тестов (Ollama;

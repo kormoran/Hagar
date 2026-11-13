@@ -5,7 +5,7 @@ riferimento al commit quando utile.
 
 ---
 
-# Non rilasciato — 0.7.0
+# 0.7.0 — 2026-11-12
 
 ## Riepilogo
 

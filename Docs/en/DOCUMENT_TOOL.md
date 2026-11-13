@@ -1,8 +1,8 @@
 # Document tool — architecture specification
 
-**Status:** accepted
-**Date:** 2026-11-07
-**Scope:** document analysis tool, format plugins, native host
+**Status:** accepted  
+**Date:** 2026-11-07  
+**Scope:** document analysis tool, format plugins, native host  
 **MVP:** CSV
 
 ## 1. Decision

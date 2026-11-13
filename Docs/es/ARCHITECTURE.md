@@ -1,6 +1,6 @@
 # HAGAR — Arquitectura
 
-Versión: 0.5.2
+Versión: 0.7.0
 Última actualización: 2026-11-03
 
 ---
@@ -11,7 +11,7 @@ Hagar es un harness para LLM escrito en Python, diseñado para la ejecución
 resiliente de modelos lingüísticos.
 
 El objetivo no es un chat con un modelo, sino un entorno operativo
-**seguro** en el que un LLM pueda usar herramientas, consultar una memoria
+**seguro** en el que un LLM pueda usar tool, consultar una memoria
 persistente e interactuar con sistemas externos sin acceder directamente
 a los recursos reales de la máquina anfitriona.
 
@@ -24,10 +24,9 @@ Ergonomics al diseño del entorno en el que opera el modelo.
 No porque sea malo o inútil: porque es probabilístico. Toda afirmación suya
 debe verificarse y toda acción suya debe limitarse.
 
-**Segunda ley — Las herramientas son más fiables que el LLM.**
-Si el sistema de archivos dice que un archivo existe, existe. Si la herramienta devuelve
-un tamaño, ese tamaño es real. El LLM interpreta, las herramientas
-miden.
+**Segunda ley — Los tool son más fiables que el LLM.**
+Si el sistema de archivos dice que un archivo existe, existe. Si el tool
+devuelve un tamaño, ese tamaño es real. El LLM interpreta, los tool miden.
 
 **Tercera ley — El estado debe existir fuera de la mente del LLM.**
 ToolRegistry, MCP, FileSystemSandbox y (en perspectiva)
@@ -35,9 +34,9 @@ PermissionEvaluator trasladan conocimiento y control fuera del modelo,
 como en los sistemas safety-critical.
 
 **Cuarta ley — Toda acción debe poder explicarse después.**
-El registro de auditoría responde a la pregunta correcta: no "¿por qué se volvió loco el LLM?"
-sino "¿qué supuesto ha hecho?", "¿qué herramienta ha usado?", "¿qué dato era
-erróneo?". Investigación de incidentes, como en aviación.
+El registro de auditoría responde a la pregunta correcta: no "¿por qué se
+volvió loco el LLM?" sino "¿qué supuesto ha hecho?", "¿qué tool ha usado?",
+"¿qué dato era erróneo?". Investigación de incidentes, como en aviación.
 
 ## 1.2 Prohibiciones absolutas
 
@@ -48,8 +47,8 @@ El modelo nunca debe:
 - obtener privilegios superiores a los definidos por la configuración;
 - conocer la organización efectiva del sistema operativo.
 
-Todas las operaciones pasan exclusivamente a través de herramientas registradas y
-controladas por el harness.
+Todas las operaciones pasan exclusivamente a través de tool registrados y
+controlados por el harness.
 
 ## 1.3 Principios arquitectónicos
 
@@ -57,7 +56,7 @@ controladas por el harness.
 - seguridad por defecto;
 - arquitectura de plugins;
 - independencia del proveedor LLM;
-- extensibilidad mediante herramientas y protocolo MCP.
+- extensibilidad mediante tool y protocolo MCP.
 
 ---
 
@@ -139,8 +138,8 @@ respecto al archivo de configuración.
 
 `LLMClient` tiene dos rutas:
 
-- **calling nativo** (predeterminado): `native_step()` envía los esquemas de las
-  herramientas en el formato del proveedor y lee las llamadas de la respuesta;
+- **calling nativo** (predeterminado): `native_step()` envía los esquemas de
+  los tool en el formato del proveedor y lee las llamadas de la respuesta;
 - **protocolo JSON textual** (fallback): `request_tool_call()` pide un
   JSON con `tool`/`arguments`, con parsing robusto y un intento de
   reparación.
@@ -298,6 +297,7 @@ permisos globales `permissions.read`/`write` siguen siendo un techo: un alias
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -335,6 +335,20 @@ los tratan como archivos inexistentes.
 `write_file` sobrescribe solo archivos existentes; la creación pasa por
 `create_file`, que requiere el permiso `create`. No es posible
 eludir la prohibición de creación escribiendo una ruta nueva.
+
+`read_file`, `read_chunk` y `read_bytes` registran una versión observada
+del archivo. `write_file`, `edit_file`, `delete_file` y `rename` requieren
+que el archivo se haya leído en la misma sandbox y que la versión no haya
+cambiado entretanto. La versión es `(st_mtime_ns, st_size)`: es una
+protección cooperativa contra la sobrescritura ciega, no un CAS contra race
+TOCTOU.
+
+`edit_file` sustituye literalmente `old_string` por `new_string`. Por
+defecto la cadena debe aparecer una sola vez; `replace_all` permite
+varias sustituciones. La escritura usa un archivo temporal en el mismo
+directorio y `os.replace`, por lo que el contenido nunca se ve a medias.
+El mismo mecanismo atómico lo usan `write_file`, `write_bytes` y
+`create_file`.
 
 ### Límites de escritura
 
@@ -442,25 +456,25 @@ Archivo JSON Lines append-only. Cada línea tiene timestamp UTC, `session` y
 `event`; los eventos de una misma pregunta comparten un id `turn`.
 
 ```text
-harness.start      proveedor, modelo, raíces, permisos, herramientas, vault
-turn.start         pregunta, límite de herramientas, modo nativo
+harness.start      proveedor, modelo, raíces, permisos, tool, vault
+turn.start         pregunta, límite de tool, modo nativo
 llm.tool_choice    elección del modelo, argumentos, mode=native
-llm.native_fallback proveedor sin herramientas nativas, paso al texto
+llm.native_fallback proveedor sin tool nativos, paso al texto
 llm.protocol_error respuesta no conforme (texto íntegro, truncado)
 llm.repaired       reparación realizada con éxito
 llm.repair_failed  reparación fallida
-tool.call          herramienta, argumentos, índice
+tool.call          tool, argumentos, índice
 tool.result        resultado, output/error, duración en ms
-turn.answer        respuesta final, número de herramientas usadas
+turn.answer        respuesta final, número de tool usados
 turn.error         fase y mensaje
 turn.stop          límite alcanzado
-mcp.loaded         namespace y herramientas importadas
+mcp.loaded         namespace y tool importados
 mcp.failed         namespace y error
 llm.failed         proveedor no construible (p. ej. clave ausente)
 harness.stop       salida limpia (si falta, el proceso ha sido matado)
 memory.enabled     raíz, subdir, turnos de contexto
 memory.disabled    motivo de la desactivación
-memory.context     turnos y skills inyectados en el prompt
+memory.context     turnos y skill inyectados en el prompt
 memory.turn        turno guardado en el vault
 memory.failed      fase y error
 ```
@@ -878,11 +892,153 @@ La capability `DECISION` está separada de `COMPUTE`, `NETWORK` y
 `FILESYSTEM_*`; los detalles y el formato del modelo están en
 `DECISIONS.md`. Jev/Kev aún no son adapter nativos.
 
+## 3.11.8 Hi-Fi (`core/hifi.py`)
+
+`HiFiResolver` ejecuta un pre-pass antes del bucle agéntico:
+
+1. pide al modelo las interpretaciones con probabilidad;
+2. normaliza y ordena las probabilidades;
+3. si el margen entre la primera y la segunda supera `hifi.margin`,
+   sustituye la petición por la interpretación elegida más el texto
+   original;
+4. en caso contrario pide al modelo una pregunta de aclaración.
+
+El evento `hifi.interpretations` registra las probabilidades y la eventual
+aclaración. Un JSON no válido produce `hifi.failed` y el turno
+continúa sin pre-pass.
+
+## 3.11.9 Checkpoint (`core/checkpoints.py`)
+
+`HarnessService.ask` abre un `WorkspaceCheckpoint` sobre el sandbox. El
+checkpoint no copia el workspace: anota solo los archivos que una mutación
+está a punto de cambiar. `delete_file`, `rename` y `copy_file` registran también
+el destino. `/undo` restaura el último checkpoint completado.
+
+Límite: 32 MB de snapshot, solo archivos regulares, solo el último turno.
+Si el checkpoint está incompleto, el undo se rechaza.
+
+## 3.11.10 Guardias runtime y contexto (`core/tool_registry.py`, `core/context.py`)
+
+`ToolRegistry` aplica:
+
+- `tools.timeout` por llamada individual, mediante worker demonio;
+- `tools.repeat_limit` sobre el hash `tool + argumentos` por turno.
+
+El timeout es best effort: un handler Python ya iniciado no se
+mata. El repeat guard pone a cero el contador en cada `Agent.ask`.
+
+`OutputSpiller` mueve los output de más de 12.000 caracteres
+al `ArtifactStore` y devuelve un resumen con `artifact_id`.
+`ContextCompactor` sustituye los mensajes más antiguos cuando el contexto
+supera 24.000 caracteres, preservando los últimos 8 y los mensajes system.
+
+## 3.11.11 AIsh (`core/aish.py`, `local_tools/aish_tool.py`)
+
+`aish.exec` implementa un lenguaje de comandos, no un shell del anfitrión.
+`AishExecutor` hace parsing con `shlex`, rechaza redirecciones, operadores,
+variables y command substitution, y traduce cada comando en una llamada
+al `ToolRegistry`. La capability `AISH` está denegada por la policy predeterminada;
+habilitarla requiere una modificación explícita:
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+Los comandos internos conservan las reglas de los tool subyacentes: habilitar
+`aish.exec` no habilita `filesystem.delete_file`.
+
+## 3.11.12 `text.transform` (`local_tools/text_transform_tool.py`)
+
+Tool read-only con operaciones enumeradas: `grep`, `sort`, `uniq`, `cut`,
+`tr`, `wc`, `head`, `tail`, `sed_replace`. Acepta una ruta de la sandbox
+o texto inline; aplica límites de input, output, pattern y match.
+
+Capability:
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+No escribe archivos. AIsh lo usa para los comandos textuales; el guardado del
+resultado pasa por `filesystem.write_file`/`create_file` con el gate
+read-before-write.
+
+## 3.11.13 `dev.run` (`core/dev_recipes.py`, `core/dev_runner.py`)
+
+`DevRecipeLoader` lee `recipes.yaml` una sola vez al arranque y
+conserva un snapshot inmutable con hash. El archivo debe estar fuera de la
+sandbox escribible.
+
+`DevRunner` ejecuta una receta:
+
+- valida parámetros tipados y `cwd`;
+- copia el proyecto en un directorio temporal;
+- ejecuta un solo argv con `shell=False`;
+- usa un entorno mínimo;
+- aplica timeout y kill del process group;
+- separa stdout/stderr;
+- limita el output;
+- registra auditoría.
+
+La capability `DEV_EXEC` es DENY por defecto. `dev.run` no acepta comandos
+arbitrarios y no usa contenedores: las recetas son de confianza; la sandbox no
+aísla el proceso del anfitrión. El contenedor queda congelado para un futuro
+acceso directo a filesystem/programas reales.
+
+## 3.11.14 Boxed transform (`core/boxes.py`)
+
+Las box son funciones LLM bounded con prompt fijo, input/output en archivo
+y sin memoria, tool ni autonomía.
+
+Tool:
+
+```text
+box.list
+box.run
+```
+
+Box iniciales:
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` lee el input de la sandbox, aplica chunking donde hace falta,
+llama al cliente LLM, valida el output JSON y escribe el resultado con el
+gate read-before-write. `BOX_EXEC` es DENY por defecto.
+
+## 3.11.15 Hagar Flow (`core/flow/`)
+
+`validate()` parsea el código con `ast.parse`, rechaza import, clases,
+funciones, lambda, try, dict/set comprehension, comprehension con más de
+un `for`, dunder y llamadas dinámicas, y verifica las primitivas
+disponibles. Las list comprehension con un solo `for` e `if` opcionales
+están soportadas.
+
+`FlowRunner` interpreta el AST validado sin `eval`/`exec`:
+
+- scope lineal;
+- presupuesto de step, iteraciones, tool call y timeout;
+- primitivas `fs.*`, `box.*`, `memory.*` y `project.context` pasadas por
+  un registry interno;
+- policy y confirmaciones por cada primitiva;
+- errores con línea y columna.
+
+`FLOW_EXEC` es DENY por defecto. `flow.run` nunca repara el código:
+`flow.repair` propone un candidato válido sin ejecutarlo, con un
+máximo de `flow.repair_attempts` intentos. Los errores de runtime, policy,
+confirmación y timeout no se reparan. El HIR aún no está presente:
+el AST validado es el IR del MVP.
+
 ## 3.12 Inicio y packaging
 
 El proyecto se instala con `pip install -e .` y declara los package en
 `pyproject.toml`. El entry point es `hagar = "hagar:main"`. La versión
-actual es `0.5.2`.
+actual es `0.7.0`.
 
 La configuración de ejemplo es `hagar.example.yaml`; `hagar.yaml` es un
 archivo local ignorado por git. El Vault predeterminado del ejemplo es
@@ -1043,9 +1199,9 @@ GUI dedicada. Los detalles están en `SUBAGENTS.md`.
 # 5. Desarrollo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) o bien
-  `.\tools\run_tests.ps1` (Windows). En Windows: 832 superados, 2 skip
+  `.\tools\run_tests.ps1` (Windows). En Windows: 892 superados, 2 skip
   (symlink no disponibles sin Developer Mode). En Debian Linux
-  (2026-11-06): todos los test en verde, incluidos los symlink (743 superados, 0
+  (2026-11-12): todos los test en verde, incluidos los symlink (894 superados, 0
   skip). Detalles y motivación del shim en README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) o bien
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test más (Ollama;

@@ -1,8 +1,8 @@
 # HAGAR — 用户手册
 
-版本：**0.5.2**
+版本：**0.7.0**
 
-本手册描述 Hagar 可观察到的行为：命令、
+本手册描述 Hagar 的可观察行为：命令、
 选项、配置、策略以及错误情形。关于内部设计
 请参见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
 
@@ -65,6 +65,7 @@ hagar --config hagar.yaml
 | `/usage` | 显示会话中消耗的 token |
 | `/models ...` | 供 broker 使用的卡片、基准测试和硬件信息 |
 | `/models hardware` | 检测本机的 CPU、RAM 和 GPU |
+| `/undo` | 撤销上一轮次的修改 |
 | `/mcp` | 列出 MCP 服务器、端点和导入的工具 |
 | `/audit [n]` | 显示最近 `n` 个事件；默认 10，最多 50 |
 | `exit` | 退出 |
@@ -73,7 +74,7 @@ hagar --config hagar.yaml
 | `Ctrl-C` | 中断；在 OAuth 期间以代码 130 退出 |
 
 `/status` 和 `/audit` 是面向人的命令：它们不经过模型，也不
-消耗 tool call。
+消耗工具调用。
 
 ## 2.2 项目
 
@@ -153,6 +154,7 @@ hagar web [opzioni]
 | `--free` | 以自由活动启动 |
 | `--no-memory` | 为本会话停用记忆和项目 |
 | `--no-native-tools` | 强制使用文本 JSON 协议 |
+| `--hifi` | 启用解释与澄清的预扫描 |
 | `--host HOST` | web GUI 的主机（默认 `127.0.0.1`） |
 | `--port PORT` | web GUI 的端口（默认 `8765`） |
 | `--version` | 打印版本 |
@@ -171,7 +173,7 @@ hagar --config hagar.yaml web --port 8765
 - 该服务器面向单个本地用户：默认为 `127.0.0.1`。
 - 浏览器会在页面中收到一个随机 token；API 要求在
   `X-Hagar-Token` 头中提供它。
-- 聊天显示轮次、tool call、结果和 ASK 确认。
+- 聊天显示轮次、工具调用、结果和 ASK 确认。
 - 顶部有 **Chat**、**Chat history**、**Tool output**、
   **Audit** 和 **Thinking** 标签页。
 - **Chat history** 列出过去的聊天，每条聊天一行；点击
@@ -181,7 +183,7 @@ hagar --config hagar.yaml web --port 8765
   上下文；先前的聊天仍保留在历史中。
 - **Memories** 是对已索引笔记（skill、项目、决策）的只读
   浏览器；它支持搜索和打开文本。
-- **Tool output** 显示本会话的 tool call 与结果。
+- **Tool output** 显示本会话的工具调用与结果。
 - **Audit** 显示日志事件；如果审计被停用，该标签页会被
   禁用并显示 `audit off`。
 - **Thinking** 显示 provider 暴露的推理内容（若有）；否则
@@ -547,6 +549,90 @@ dynamic registration。使用 `offline_access` 时会添加
 - 其他服务器和 harness 的其余部分继续运行；
 - `/mcp` 对该命名空间显示零个工具。
 
+## 4.10 `hifi`
+
+```yaml
+hifi:
+  enabled: true
+  margin: 0.20
+  interpretations: 3
+```
+
+`margin` 是第一种与第二种解释之间的最小距离（以百分点计）。
+低于该阈值时 Hagar 会请求澄清。
+`interpretations` 是向模型请求的解释数量。
+该模式会为每个轮次增加一次 LLM 调用。
+
+## 4.11 `tools`
+
+```yaml
+tools:
+  timeout: 120
+  repeat_limit: 3
+```
+
+`timeout` 是单次工具调用的秒数上限；`0` 表示停用。
+`repeat_limit` 会在同一轮次中阻止第三次相同的调用；`0` 表示停用
+该阻止。对已在执行的 Python handler 的超时是 best effort：
+worker 可能在超过限制后才结束。
+
+## 4.12 `dev`
+
+```yaml
+dev:
+  enabled: false
+  recipes: recipes.yaml
+  copy_workspace: true
+  max_output_chars: 100000
+```
+
+启用 `dev.list` 和 `dev.run`，它们执行用于测试、
+调试和构建的可信 recipe。`recipes.yaml` 必须位于 sandbox 之外，
+并且只在启动时读取。策略中还需要 `DEV_EXEC` capability。
+详情见 `DEV_RUN.md`。
+
+## 4.13 `boxes`
+
+```yaml
+boxes:
+  enabled: false
+  max_input_chars: 200000
+  max_output_chars: 20000
+  chunk_chars: 8000
+  max_calls: 20
+```
+
+启用 `box.list` 和 `box.run`，即对 sandbox 中文件的有界
+LLM 变换。它们没有记忆、工具或自由 prompt。
+策略中需要 `BOX_EXEC`。详情见 `BOXES.md`。
+
+## 4.14 `flow`
+
+```yaml
+flow:
+  enabled: false
+  max_source_chars: 20000
+  max_steps: 10000
+  max_tool_calls: 50
+  max_loop_iterations: 1000
+  timeout: 120
+  max_output_chars: 20000
+  repair_attempts: 2
+```
+
+启用 `flow.reference`、`flow.validate` 和 `flow.run`，即线性
+DSL `Hagar Flow`。它不是完整的 Python：不允许 import、class、def、
+lambda、try、dict/set comprehension 或访问 Python 对象；允许
+带单个 `for` 的 list comprehension。策略中需要 `FLOW_EXEC`；
+`fs.*` 原语使用 filesystem capability。
+
+`repair_attempts` 是 `flow.repair` 的最大尝试次数；
+`0` 表示停用修复。`flow.run` 从不自行修复代码：
+它返回错误，由调用方决定是否使用 `flow.repair`。
+记忆启用时可用 `memory.search`、`memory.context`
+和 `memory.skill`；有活动项目时可用 `project.context`。
+详情见 `FLOW.md`。
+
 ---
 
 # 5. `policy.yaml`
@@ -613,6 +699,10 @@ subjects:
 | `NETWORK` | 网络访问 |
 | `MCP_CALL` | 调用 MCP 工具 |
 | `COMPUTE` | 无网络/文件系统的本地计算 |
+| `AISH` | 执行 AIsh 语言 |
+| `DEV_EXEC` | 执行 dev.run recipe |
+| `BOX_EXEC` | 执行 boxed transform |
+| `FLOW_EXEC` | 执行 Hagar Flow DSL |
 
 ## 5.3 规则与特异性
 
@@ -625,6 +715,10 @@ subjects:
 最具体的规则胜出：先比较过滤器的数量，再比较
 前缀长度。若相同，则更严格的效果胜出。
 没有规则时适用该主体的 `default`；安全的默认值是 `deny`。
+
+`AISH` 默认被预定义规则 `aish.*` 拒绝。要启用 AIsh，
+用户必须把该规则改为 `allow`；内部命令仍然
+受各自工具规则的约束。
 
 `paths` 作用域比较的是**模型所写的**路径，而不是在 `chdir` 之后
 解析出的路径：绝对路径或目录切换可能对不上，并
@@ -661,6 +755,10 @@ subjects:
 | 工具处于 `ASK` 且无确认 | 拒绝 |
 | 超出写入限制 | 工具错误，不写入 |
 | 用 `read_file` 读取超过 4096 字节的文件 | 错误，应使用 `read_chunk` |
+| `write_file`/`edit_file`/`delete_file`/`rename` 作用于未读取的文件 | 错误：应先读取该文件 |
+| 读取后文件发生变化 | 错误：修改前应重新读取 |
+| `edit_file` 的 `old_string` 有歧义 | 错误：应使用 `replace_all` 或更具体的字符串 |
+| `edit_file` 的 `old_string` 不存在 | 错误，不做任何修改 |
 | 页面超过限制 | `has_more`/`next_offset` |
 | Symlink | 不可见；操作如同路径不存在 |
 | 硬链接/mount/junction | 不检测；由用户负责 |

@@ -1,0 +1,226 @@
+{
+  "tested_at": "2026-11-13T02:20:58+00:00",
+  "provider": "lmstudio",
+  "model": "mamba-codestral-7b-v0.1",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 33918328832,
+      "total_gib": 47.91,
+      "available_gib": 31.59
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": true,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 25810.3,
+        "mean": 25810.3,
+        "p50": 25810.3,
+        "p95": 25810.3,
+        "max": 25810.3
+      },
+      "output_tokens_per_second": 0.077
+    },
+    "structured": {
+      "attempts": 1,
+      "valid_json": 1,
+      "valid_choice": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 4849.91,
+        "mean": 4849.91,
+        "p50": 4849.91,
+        "p95": 4849.91,
+        "max": 4849.91
+      }
+    },
+    "tool_call": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 6680.84,
+        "mean": 6680.84,
+        "p50": 6680.84,
+        "p95": 6680.84,
+        "max": 6680.84
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T02:22:18+00:00",
+    "attempts": 1,
+    "tasks": {
+      "summary": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.8400000000000001,
+          0.30000000000000004
+        ],
+        "mean": 0.57,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.9708357482385417,
+          0.2103662929266894
+        ],
+        "mean": 0.5906,
+        "errors": []
+      },
+      "extraction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 1,
+        "scores": [
+          0.8400000000000001
+        ],
+        "mean": 0.84,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 1,
+        "scores": [
+          0.30000000000000004
+        ],
+        "mean": 0.3,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 1,
+        "scores": [
+          0.9708357482385417
+        ],
+        "mean": 0.9708,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 1,
+        "scores": [
+          0.2103662929266894
+        ],
+        "mean": 0.2104,
+        "errors": []
+      },
+      {
+        "name": "extraction",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 1,
+        "scores": [
+          1.0
+        ],
+        "mean": 1.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.5268
+  },
+  "last_tested_at": "2026-11-13T02:20:58+00:00",
+  "card_version": 1
+}

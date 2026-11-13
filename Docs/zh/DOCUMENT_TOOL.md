@@ -1,13 +1,13 @@
 # Document tool — 架构规范
 
-**状态：** accepted
-**日期：** 2026-11-07
-**范围：** 文档分析工具、格式插件、原生宿主
+**状态：** accepted  
+**日期：** 2026-11-07  
+**范围：** 文档分析工具、格式插件、原生宿主  
 **MVP：** CSV
 
 ## 1. 决定
 
-document tool 把三个层次分开：
+document tool 将三个层次分离：
 
 ```text
 模型
@@ -25,17 +25,17 @@ document tool
 
 > 原生格式插件**不会被加载进 Hagar 的进程**。
 
-它们由一个独立的原生宿主执行，该宿主加载 DLL 并通过 JSON
+它们由一个独立的原生宿主执行，该宿主加载 DLL，并通过 JSON
 协议与 Hagar 通信。DLL 的崩溃或内存损坏会杀死该宿主，
 而不是 Hagar。
 
-逻辑契约 `FormatPlugin` 只有一份；变化的只是 runtime。
+逻辑契约 `FormatPlugin` 只有一份；改变的只是 runtime。
 
 ## 2. 为什么这样选择
 
 ### 2.1 进程内 DLL：为什么不行
 
-用 `ctypes` 把 DLL 载入 Python 进程意味着：
+用 `ctypes` 将 DLL 载入 Python 进程意味着：
 
 - 一次 segmentation fault 可能终止 Hagar；
 - DLL 可能破坏进程内存；
@@ -59,7 +59,7 @@ document tool
 
 ### 2.3 没有解决什么
 
-独立进程**不是安全 sandbox**。恶意 DLL 仍可以：
+独立进程**不是安全 sandbox**。一个恶意 DLL 仍然可以：
 
 - 读取用户可访问的文件；
 - 打开网络连接；
@@ -72,7 +72,7 @@ document tool
 - **不受信** DLL：独立宿主**加上**操作系统 sandbox，
   或者根本不用 DLL。
 
-Hagar 不得把该宿主宣传为抵御恶意代码的安全保证。
+Hagar 不得将该宿主宣传为抵御恶意代码的安全保证。
 
 ### 2.4 为什么不用 LibreOffice 或其他转换器
 
@@ -97,9 +97,9 @@ document tool 可以使用 Python 库或 DLL，但不能使用打开并转换文
 
 ### 非目标
 
-- 把文档转换为另一种格式；
+- 将文档转换为另一种格式；
 - 重建原始文件；
-- 把图保存为永久记忆；
+- 将图保存为永久记忆；
 - 执行宏、JavaScript 或文档中包含的代码；
 - 保证能识别"任何"格式；
 - 向模型暴露宿主路径。
@@ -137,8 +137,8 @@ document.close(handle) -> ok
 ```
 
 `document.structure` 只返回所请求的子节点；不返回整个
-树。`document.semantics` 返回与某个
-结构节点关联的语义节点。
+树。`document.semantics` 返回与某个结构节点
+关联的语义节点。
 
 `document.read` 是获取内容的唯一方式：
 
@@ -171,7 +171,7 @@ document.close(handle) -> ok
 - `length` 为必填，或由默认值限制；
 - 响应不得超过配置的限制；
 - `truncated` 是显式的；
-- 不写入、没有 `save`、没有 `rebuild`。
+- 不写入，没有 `save`，没有 `rebuild`。
 
 ### 4.2 Handle
 
@@ -319,7 +319,7 @@ Hagar 进程加载。
 
 - 最大深度；
 - 最大解压字节数；
-- 不允许无限递归；
+- 没有无限递归；
 - 每个新空间都有一个 `pack_id`；
 - 超过限制的 pack 变为 `opaque`，不会阻塞其余部分。
 
@@ -461,7 +461,7 @@ anchored_to
 
 ### 6.7 惰性数组
 
-一个数组不会具体化所有元素：
+数组不会具体化所有元素：
 
 ```json
 {

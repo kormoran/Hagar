@@ -1,6 +1,6 @@
 # Hagar plugins
 
-Hagar discovers two groups of plugins through the Python entry points:
+Hagar discovers two groups of plugins through Python entry points:
 
 | Group | Content |
 |---|---|
@@ -13,8 +13,8 @@ same contract and are registered before the external ones.
 > **Security:** Python plugins run in the same process as Hagar and
 > are considered *trusted*. They can use the process API and are not
 > isolated from the sandbox. For untrusted extensions use MCP or a
-> separate process. Policy, sandbox, confirmations and audit remain in the host: a plugin
-> cannot grant permissions.
+> separate process. Policy, sandbox, confirmations and audit remain in the
+> host: a plugin cannot grant permissions.
 
 ## Tool plugins
 
@@ -56,10 +56,10 @@ acme = "acme_hagar:PLUGIN"
 ```
 
 The `origin` field should identify the plugin, for example
-`plugin.acme`, to make the audit readable. The capabilities are
+`plugin.acme`, to make the audit readable. Capabilities are
 mandatory when the registry has active policies.
 
-`PluginContext` exposes, if needed:
+`PluginContext` exposes the following, if needed:
 
 ```text
 config
@@ -125,8 +125,8 @@ reasoning
 streaming
 ```
 
-The provider must not grant permissions: it receives only the configuration and
-the audit. `native_tools` is applied by the host with
+The provider must not grant permissions: it receives only the configuration
+and the audit. `native_tools` is applied by the host with
 `model.native_tools`.
 
 ## Discovery and priority
@@ -136,7 +136,8 @@ the audit. `native_tools` is applied by the host with
   is refused and recorded.
 - The external providers appear in `available_providers()`.
 - Loading errors are isolated; the audit records
-  `plugin.loaded` for the external plugins and `plugin.error` for the failures.
+  `plugin.loaded` for the external plugins and `plugin.error` for the
+  failures.
 
 ## Tests
 

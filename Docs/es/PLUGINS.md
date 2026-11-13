@@ -1,4 +1,4 @@
-# Plugin de Hagar
+# Plugins de Hagar
 
 Hagar descubre dos grupos de plugins mediante los entry point de Python:
 
@@ -10,13 +10,13 @@ Hagar descubre dos grupos de plugins mediante los entry point de Python:
 Los plugins built-in (`local_tools/plugins.py` y `llm/plugins.py`) usan el
 mismo contrato y se registran antes que los externos.
 
-> **Seguridad:** los plugins Python se ejecutan en el mismo proceso de Hagar y
-> se consideran *trusted*. Pueden usar la API del proceso y no están
-> aislados de la sandbox. Para extensiones no fiables usar MCP o un proceso
-> separado. Policy, sandbox, confirmaciones y auditoría permanecen en el host: un plugin
+> **Seguridad:** los plugins Python se ejecutan en el mismo proceso de Hagar
+> y se consideran *trusted*. Pueden usar la API del proceso y no están
+> aislados del sandbox. Para extensiones no fiables, usar MCP o un proceso
+> separado. Policy, sandbox, confirmaciones y audit permanecen en el host: un plugin
 > no puede conceder permisos.
 
-## Tool plugin
+## Plugin de tool
 
 Un plugin de tool es un objeto `ToolPlugin` con una función
 `register(registry, context)`:
@@ -56,7 +56,7 @@ acme = "acme_hagar:PLUGIN"
 ```
 
 El campo `origin` debería identificar el plugin, por ejemplo
-`plugin.acme`, para hacer legible la auditoría. Las capability son
+`plugin.acme`, para que el audit sea legible. Las capability son
 obligatorias cuando el registry tiene policy activas.
 
 `PluginContext` expone, si hacen falta:
@@ -71,11 +71,11 @@ project_state
 ```
 
 Un plugin defectuoso se omite, se registra como `plugin.error` y no
-impide el inicio de los demás. Si registra algunos tool y después falla,
+impide el arranque de los demás. Si registra algunos tool y después falla,
 esos tool siguen registrados: el plugin debería registrar todo o
 nada.
 
-## Proveedor LLM plugin
+## Plugin de proveedor LLM
 
 Un proveedor es un objeto `LLMProvider` con una factory:
 
@@ -107,7 +107,7 @@ Entry point:
 acme = "acme_hagar:PROVIDER"
 ```
 
-Luego en `hagar.yaml`:
+Luego, en `hagar.yaml`:
 
 ```yaml
 model:
@@ -125,8 +125,8 @@ reasoning
 streaming
 ```
 
-El proveedor no debe conceder permisos: recibe solo la configuración y
-la auditoría. `native_tools` lo aplica el host con
+El proveedor no debe conceder permisos: solo recibe la configuración y
+el audit. `native_tools` lo aplica el host con
 `model.native_tools`.
 
 ## Descubrimiento y prioridad
@@ -135,7 +135,7 @@ la auditoría. `native_tools` lo aplica el host con
 - Un plugin externo no puede sustituir un nombre built-in: el duplicado
   se rechaza y se registra.
 - Los proveedores externos aparecen en `available_providers()`.
-- Los errores de carga están aislados; la auditoría registra
+- Los errores de carga están aislados; el audit registra
   `plugin.loaded` para los plugins externos y `plugin.error` para los fallos.
 
 ## Test

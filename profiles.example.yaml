@@ -1,0 +1,43 @@
+version: 1
+
+profiles:
+  coding:
+    description: Scrittura e revisione di codice con tool.
+    required_capabilities:
+      - chat
+      - tool_calling
+    min_context: 16000
+    privacy: any
+    max_latency_ms: 30000
+    quality_floor: 0.70
+    quality_task: coding
+    prefer: quality
+
+  quick_chat:
+    description: Risposte brevi e veloci.
+    required_capabilities:
+      - chat
+    min_context: 4000
+    privacy: any
+    max_latency_ms: 8000
+    quality_task: instruction
+    prefer: latency
+
+  private_chat:
+    description: Conversazione solo con modelli locali.
+    required_capabilities:
+      - chat
+    min_context: 8000
+    privacy: local_only
+    quality_task: instruction
+    prefer: quality
+
+  structured_extraction:
+    description: Estrazione JSON da documenti.
+    required_capabilities:
+      - chat
+      - structured_json
+    min_context: 8000
+    quality_floor: 0.75
+    quality_task: extraction
+    prefer: quality

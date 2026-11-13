@@ -5,8 +5,8 @@
 
 ## 目的
 
-卡片用实测数据而非猜测来为未来的 LLM broker 提供依据。
-每个 provider/模型 一张卡片，以 JSON 保存到：
+卡片用实测数据而非猜测为未来的 LLM broker 提供输入。每个 provider/模型
+组合都以 JSON 形式保存到：
 
 ```text
 %LOCALAPPDATA%/Hagar/models/<provider>/<provider>-<model>.json
@@ -92,11 +92,11 @@
 
 ## 测量内容
 
-- 聊天延迟：min、平均、p50、p95、max；
-- 每秒输出 token；
+- 聊天延迟：min、平均值、p50、p95、max；
+- 每秒输出 token 数；
 - JSON 有效性；
 - 在 label 集合中的有效选择；
-- 用一个基准工具做 tool calling；
+- 使用一个基准 tool 进行 tool calling；
 - 测试时的硬件。
 
 尚不测量：
@@ -104,7 +104,7 @@
 - 回答的语义质量；
 - 概率的校准；
 - 在特定数据集上的准确率；
-- 流式下的 TTFT；
+- 流式模式下的 TTFT；
 - 并发负载；
 - 能耗。
 
@@ -132,7 +132,7 @@
 
 ## 未来在 broker 中的用途
 
-broker 将用卡片来过滤和排序：
+broker 将使用卡片来过滤和排序：
 
 ```text
 所需 capability
@@ -144,4 +144,4 @@ p50/p95 延迟
 最近一次测试
 ```
 
-旧卡片不应被删除：应标记为过期或重新测试。
+旧卡片不应删除：应标记为已过期或重新测试。

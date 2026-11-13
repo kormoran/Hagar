@@ -1,0 +1,232 @@
+{
+  "tested_at": "2026-11-13T04:22:39+00:00",
+  "provider": "lmstudio",
+  "model": "qwen3.5-35b-a3b",
+  "hardware": {
+    "platform": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.15.0",
+    "hostname": "DESKTOP-8UB1QQ7",
+    "cpu": {
+      "model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "physical_cores": null,
+      "logical_cores": 16,
+      "mhz_current": null,
+      "mhz_max": 3400,
+      "ghz_current": null,
+      "ghz_max": 3.4
+    },
+    "memory": {
+      "total_bytes": 51444142080,
+      "available_bytes": 23532462080,
+      "total_gib": 47.91,
+      "available_gib": 21.92
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4060",
+        "vendor": "NVIDIA",
+        "vram_bytes": 8585740288,
+        "driver": "610.47",
+        "api": "CUDA"
+      }
+    ]
+  },
+  "capabilities": {
+    "chat": true,
+    "structured_json": false,
+    "tool_calling": true,
+    "native_tools": true
+  },
+  "benchmarks": {
+    "chat": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 167335.0,
+        "mean": 167335.0,
+        "p50": 167335.0,
+        "p95": 167335.0,
+        "max": 167335.0
+      },
+      "output_tokens_per_second": 0.884
+    },
+    "structured": {
+      "attempts": 1,
+      "valid_json": 0,
+      "valid_choice": 0,
+      "errors": [
+        "Extra data: line 1 column 54 (char 53)"
+      ],
+      "duration_ms": {
+        "count": 1,
+        "min": 135662.44,
+        "mean": 135662.44,
+        "p50": 135662.44,
+        "p95": 135662.44,
+        "max": 135662.44
+      }
+    },
+    "tool_call": {
+      "attempts": 1,
+      "successes": 1,
+      "errors": [],
+      "duration_ms": {
+        "count": 1,
+        "min": 13537.63,
+        "mean": 13537.63,
+        "p50": 13537.63,
+        "p95": 13537.63,
+        "max": 13537.63
+      }
+    }
+  },
+  "quality": {
+    "suite_version": 3,
+    "corpus": "hagar-bench-2026-11",
+    "tested_at": "2026-11-13T04:38:32+00:00",
+    "attempts": 1,
+    "tasks": {
+      "summary": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.9,
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      "translation": {
+        "attempts": 1,
+        "cases": 2,
+        "scores": [
+          0.8188330943782876,
+          0.0
+        ],
+        "mean": 0.4094,
+        "errors": [
+          "HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=300)"
+        ]
+      },
+      "extraction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "instruction": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "reasoning": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      "coding": {
+        "attempts": 1,
+        "cases": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    },
+    "cases": [
+      {
+        "name": "summary_technical",
+        "attempts": 1,
+        "scores": [
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      {
+        "name": "summary_broker",
+        "attempts": 1,
+        "scores": [
+          0.9
+        ],
+        "mean": 0.9,
+        "errors": []
+      },
+      {
+        "name": "translation_it_en",
+        "attempts": 1,
+        "scores": [
+          0.8188330943782876
+        ],
+        "mean": 0.8188,
+        "errors": []
+      },
+      {
+        "name": "translation_en_it",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": [
+          "HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=300)"
+        ]
+      },
+      {
+        "name": "extraction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "instruction",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "reasoning",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      },
+      {
+        "name": "coding",
+        "attempts": 1,
+        "scores": [
+          0.0
+        ],
+        "mean": 0.0,
+        "errors": []
+      }
+    ],
+    "overall": 0.2182
+  },
+  "last_tested_at": "2026-11-13T04:22:39+00:00",
+  "card_version": 1
+}

@@ -94,9 +94,9 @@ ou `HAGAR_MODEL_CARDS`, ou `$XDG_STATE_HOME/hagar/models`.
 
 - latência de chat: min, média, p50, p95, max;
 - tokens de output por segundo;
-- validade JSON;
-- escolha válida no conjunto das label;
-- tool calling com uma ferramenta de benchmark;
+- validade do JSON;
+- escolha válida no conjunto de labels;
+- tool calling com uma tool de benchmark;
 - hardware no momento do teste.
 
 Ainda não mede:
@@ -117,7 +117,7 @@ Ainda não mede:
 /models hardware
 ```
 
-`/models test` testa o modelo LLM corrente e guarda a ficha.
+`/models test` testa o modelo LLM atual e guarda a ficha.
 
 ## Hardware
 
@@ -135,7 +135,7 @@ significa que o hardware não exista.
 O broker usará a ficha para filtrar e ordenar:
 
 ```text
-capabilities pedidas
+capabilities requeridas
 hardware disponível
 RAM/VRAM suficientes
 latência p50/p95
@@ -145,4 +145,4 @@ localidade
 ```
 
 Uma ficha antiga não deve ser apagada: deve ser marcada como expirada ou
-retestada.
+testada novamente.

@@ -1,130 +1,40 @@
 # HAGAR — Roadmap
 
-Current version: 0.5.2 (in preparation)
-Last updated: 2026-11-07
+Current version: 0.7.0 (in development)
+Last updated: 2026-11-09
 
 The decisions already made are marked as such; the points still open are
 listed at the end of each area. Sections 1–9 are the history up to
-0.5.2; the current operational plan is section 0.
+0.6.0; the current operational plan is section 0.
 
 ---
 
-# 0. Current plan (post-0.5.2)
+# 0. Current plan (post-0.6.0)
 
-## 0.1 Status
-
-Published:
-
-- GitHub release `v0.3.0`;
-- Linux/macOS/Windows CI with Python 3.11, 3.12 and 3.13;
-- actions updated to Node 24;
-- Italian documentation plus translations into English, Spanish, Chinese,
-  Russian, Portuguese and Arabic;
-- `lmstudio`, `openai`/`chatgpt` backends and `model.timeout`.
-
-Completed after the release, not yet released:
-
-- `HarnessService`: turns, status, projects, events and end of session without
-  `input()`/`stdout`;
-- `CommandService`: `/help`, `/tools`, `/status`, `/mcp`, `/audit`,
-  `/project`, `/memory` with a structured `CommandResult`;
-- event bridge `Agent`/`ToolRegistry` → `tool.call`, `tool.result`,
-  `permission.*`;
-- local web GUI `hagar web` with SSE, chat, projects, status and modal ASK
-  confirmations;
-- `QueueConfirmationProvider` with timeout and resolution from the GUI;
-- `core/usage.py`: token parsing for OpenAI/LM Studio/DeepSeek, Claude,
-  Gemini and Ollama; `UsageLedger` per session;
-- GUI sidebar with input/output/total tokens updated via
-  `usage.updated`;
-- `MemoryIndex`: incremental and rebuildable SQLite/FTS5 index;
-- SQLite memory as primary source: sessions, turns, skills and summaries;
-- `/memory sessions`, `/memory chat`, `/memory backup` commands;
-- `memory.search` tool, `/memory search`, `/memory reindex`,
-  `/memory stats`;
-- GUI assets separated into `web/index.html`, `web/style.css`, `web/app.js`.
-
-## 0.2 Order of the next releases
+## 0.1 Order of the next releases
 
 | Release | Goal | Status |
 |---|---|---|
-| **0.4.0** | SQLite index of the memories | merged into 0.5.2 |
-| **0.4.x** | GUI: turn stop, history, vision | merged into 0.5.2 |
-| **0.5.0** | Subagents | merged into 0.5.2 |
-| **0.5.2** | Current release | in preparation |
-| **0.6.0** | LLM broker | next |
-| **0.7.0** | Read-only SQL tool | frozen |
+| **0.6.0** | Runtime safety + AIsh | released |
+| **0.7.0** | dev.run + box + Hagar Flow | in development |
+| **0.8.0** | LLM broker | next |
+| **0.9.0** | Read-only SQL tool | frozen |
 
 The order may change, but the constraint is: **no subagents without usage and
 limits; no broker without subagents and model registry.**
 
-## 0.3 0.4.0 — SQLite index of the memories
+## 0.1.1 0.7.0 — Local orchestration
 
-Status: implemented; verification on the real Vault and the possible
-performance measurement remain.
+- `dev.run` with trusted recipes outside the sandbox;
+- `box.list` and `box.run` for bounded LLM transformations;
+- `flow.run`, `flow.validate` and `flow.reference`;
+- list comprehension with a single `for`;
+- read-only memory primitives: `memory.search`, `memory.context`,
+  `memory.skill` and `project.context`;
+- explicit repair with `flow.repair`;
+- no container mode in this release.
 
-- location: app local data, not inside the synced Vault;
-- schema: notes, skills, decisions, sessions, tags, FTS5;
-- incremental sync by path/hash/mtime;
-- atomic `rebuild()`, index that can be deleted and rebuilt;
-- fallback to lexical search if FTS5 is not available;
-- `memory.search` tool with project/kind/status filters;
-- `/memory reindex` and `/memory stats`;
-- no real path exposed to the model.
-
-Exit criterion: deleting the DB does not lose memory; rebuilding it
-returns the same results.
-
-## 0.4 0.4.x — GUI
-
-- **Stop** button for the turn — implemented;
-- vision: image upload in the composer, with adapters per provider —
-  implemented (OpenAI/LM Studio, Claude, Gemini);
-- chat history visible after a refresh — implemented as a list
-  of past chats with reload from the Vault, session resume and
-  **+ New chat**;
-- Chat, Chat history, Tool output, Audit, Thinking and Memories tabs —
-  implemented; Audit disables itself if the log is off, Thinking uses the
-  reasoning if available and otherwise the timeline;
-- read-only memories browser — implemented;
-- `/usage` command on the CLI side — implemented;
-- tools and LLM providers as plugins with entry points — implemented;
-  audit sink postponed.
-
-Vision must not enter the memory as base64: only hash and
-description.
-
-## 0.5 0.5.x — Subagents and consolidation
-
-- [x] Synchronous MVP: `AgentSpec`, `agent.run`, read-only tools, read-only
-  memory, denied confirmations, `agent.*` audit, separate usage;
-- [x] `agent.spawn/status/wait/result/cancel` with threads and up to two
-  concurrent subagents;
-- [x] private registry and workspace per child, copied inputs and cleanup;
-- [x] audit serialized with a lock;
-- [x] mandatory `reason` and separate `AGENT_SPAWN` capability;
-- [x] artifact store, mailbox and `artifact.put`/`mailbox.send` outbox,
-  with `AGENT_DATA` capability and cleanup;
-- [x] `artifact.discarded` audit for artifacts not exported;
-- [ ] persistence/orphan retention (only if necessary);
-- [x] projects and decisions in the same SQLite database;
-- [x] Markdown export from the database (`/memory export`);
-- [x] Markdown import into the database (`/memory import`);
-- [x] FTS5 in the primary database with ranking and snippet;
-- [x] 5-minute wall timeout per subagent;
-- [x] child policy strictly more restrictive than the parent's;
-- [x] `agent_id` in the events of parent, children and registry;
-- [x] children's ASKs forwarded to the user with 180-second timeout and DENY;
-- [x] `decision.choose` tool with LLM provider and linear classifier;
-- [ ] Jev/Kev adapters and automatic classifier training;
-- [ ] token/cost budget;
-- [ ] `parent_id` on every internal event of the child;
-- [ ] `audio.open`/`AudioInput`: the attachment channel is shared with the
-  images, but audio-native providers, formats and a different ASR semantics
-  are needed; no timeline;
-- [x] ASK confirmations from the console with input broker, F5/F8 and GUI fallback;
-
-## 0.6 0.6.0 — LLM broker
+## 0.2 0.8.0 — LLM broker
 
 - JSON technical cards and model benchmarks (`/models test`);
 - CPU/RAM/GPU hardware detection (`/models hardware`);
@@ -136,7 +46,7 @@ description.
 - the broker never grants permissions: it can only propose a subset;
 - human override and `broker.decision` audit.
 
-## 0.7 0.7.0 — SQL tool
+## 0.3 0.8.0 — SQL tool
 
 - read-only in the first version;
 - SQLite `mode=ro`, `PRAGMA query_only`, a single statement;
@@ -147,21 +57,74 @@ description.
 - writing and network databases only in a later phase, with
   `DATABASE_WRITE` and `NETWORK`.
 
-## 0.8 Open points
+## 0.4 Open points
 
 - release workflow idempotent if the release already exists;
-- PyPI: postponed, it does not block 0.4;
+- PyPI: postponed;
 - MCP OAuth Atlassian: Basic works, the OAuth flow remains to be
   validated;
 - MCP/OAuth and remote provider live tests;
 - translation maintenance: they are regenerated only at release, not on
   every commit;
-- Vault concurrency and atomic writes: to be evaluated before
-  subagents with shared memory;
 - document tool: contract and protocol defined in `DOCUMENT_TOOL.md`;
   CSV MVP still to be implemented.
 
-## 0.9 Documentation
+## 0.4.1 Complete filesystem version — frozen
+
+Implemented now:
+
+- `edit_file` with atomic write;
+- turn checkpoint and `/undo`;
+- per-tool timeout and repeat guard;
+- output spill and context compaction.
+
+The implemented MVP covers `edit_file`, atomic write,
+read-before-overwrite/delete/rename and `mtime_ns+size` versioning.
+The complete version is frozen; it does not enter the next release:
+
+- `edit_file` with multi-hunk patch and diff;
+- content hash in addition to `mtime_ns`/`size`;
+- atomic write with filesystem-level CAS check;
+- per-agent observation with explicit isolation between parent and
+  subagents;
+- audit `fs.observed`, `fs.guard_denied`, `fs.stale`;
+- coverage of directory rename/delete;
+- GUI integration and guided recovery messages.
+
+## 0.4.2 AIsh — implemented in 0.6.0
+
+`aish.exec` is a semantic shell on top of the Hagar tools, with a `DENY`
+policy by default. Implemented commands: navigation, reading, plain text,
+pipelines and single-file mutations. It does not execute host programs,
+redirections, variables or command substitution.
+`text.transform` provides the bounded text operations used by AIsh.
+
+## 0.4.3 dev.run — implemented
+
+`dev.list` and `dev.run` execute trusted recipes for tests, debugging and builds.
+`recipes.yaml` lives outside the sandbox, is read at start-up and has no
+hot reload. `DEV_EXEC` is DENY by default; the backend is host only.
+
+The container remains frozen for future direct access to
+real filesystems/programs, never inside the sandbox.
+
+## 0.4.4 Boxed transform — implemented
+
+`box.list` and `box.run` execute `summarize`, `translate` and
+`extract_json` with a fixed prompt, file input/output and no memory
+or tools. `BOX_EXEC` is DENY by default.
+
+They are the primitives of the future DSL.
+
+## 0.4.5 Hagar Flow — MVP
+
+`flow.run` executes a linear subset of Python with an AST validator and
+a Hagar interpreter, without `eval`/`exec`. Primitives `fs.*` and `box.*`, limits
+on steps and tool calls. `FLOW_EXEC` is DENY by default.
+
+HIR, parallelism and subagents remain outside the MVP.
+
+## 0.5 Documentation
 
 `Docs/it` is the only source maintained during development. The
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` and `Docs/ar` directories are
@@ -169,25 +132,7 @@ regenerated only when preparing a release.
 
 ---
 
-# 1. Direction
-
-Hagar has gone from "idea" to "working system" (v0.1) and then to a
-harness with audit, multiple backends and a test suite (v0.2 in progress). The
-next leap is not adding tools: it is giving the system a **memory** and
-a way of calling tools that is less fragile than textual JSON.
-
-Decided order:
-
-1. memory on Vault;
-2. native calling for the providers that support it;
-3. PermissionEvaluator — **v1 done** (policy.yaml, ASK, audit);
-4. hygiene (audit, MCP, packaging, live tests).
-
----
-
-# 2. Priority 1 — Memory on Vault
-
-## 2.0 Status: v2 implemented (2026-11-04)
+## 1.0 Status: v2 implemented (2026-11-04)
 
 Done:
 
@@ -220,7 +165,7 @@ Done:
 
 Remaining: chat retention, semantic search, GUI.
 
-## 2.1 Decisions made
+## 1.1 Decisions made
 
 - **Episodic written by the harness.** Chat turns are recorded
   by the harness by default: it is a mechanical record, not a judgement of the
@@ -247,7 +192,7 @@ Remaining: chat retention, semantic search, GUI.
 - **Archive, not deletion.** Archived transcripts and decisions
   remain in the Vault; archiving a project is reversible.
 
-## 2.2 Planned tools
+## 1.2 Planned tools
 
 Names implemented in the `memory.*` namespace:
 
@@ -282,7 +227,7 @@ Behaviours:
   it searches by keywords in the past turns; `limit` is clamped to
   1..50 so as not to pour the whole Vault into the context.
 
-## 2.3 Structure in the Vault
+## 1.3 Structure in the Vault
 
 ```text
 <Vault>/Hagar/
@@ -325,7 +270,7 @@ created_at: 2026-11-03T00:15:02+01:00
 Steps / content proposed by the model.
 ```
 
-## 2.4 Configuration
+## 1.4 Configuration
 
 ```yaml
 vault:
@@ -339,7 +284,7 @@ memory:
   max_skill_chars: 4000
 ```
 
-## 2.5 Harness behaviour
+## 1.5 Harness behaviour
 
 - At the end of the turn: adds question and answer to the session note (conversation
   only, **not** tool output: those remain in the audit).
@@ -353,7 +298,7 @@ memory:
 - Episodic memory is separate from the audit: the audit remains forensic and
   also contains the tool data.
 
-## 2.6 Open points
+## 1.6 Open points
 
 - **Chat retention**: how many sessions to keep, whether to summarize the
   old ones; 0.2.0 deletes nothing.
@@ -368,7 +313,7 @@ memory:
   `project_max_active`; today Hagar proposes archiving, not the
   merge of duplicate decisions.
 
-## 2.7 Non-goals (for now)
+## 1.7 Non-goals (for now)
 
 - writing memories to the real filesystem;
 - modifying existing notes of the user;
@@ -378,23 +323,13 @@ memory:
 
 ---
 
-# 3. Priority 2 — Native calling (v1, done)
-
-**Status:** implemented on 2026-11-03. `native_step()` for the four
-providers, parameter schema from `ToolDefinition`, canonical `tool`
-messages, multiple calls per turn, automatic fallback on HTTP 400/404/422
-and `--no-native-tools`. Verified live on Ollama and DeepSeek; Claude and
-Gemini remain to be tried. Measured with `tools/bench_native.py`: no
-protocol wins on all models (native faster, text sometimes more
-accurate). It remains to be refined for the local models that ignore the tools.
-
-## 3.1 Goal
+## 2 Goal
 
 Eliminate the fragility of the textual JSON protocol: no more
 repairs, arguments validated by the provider schema, structured
 results.
 
-## 3.2 Approach
+## 2.1 Approach
 
 - Keep the textual protocol as a **fallback** for the models that
   do not support native calling or do it badly.
@@ -405,7 +340,7 @@ results.
 - The benchmark measures the improvement (repairs per turn,
   correctness of the arguments).
 
-## 3.3 Transport per provider
+## 2.2 Transport per provider
 
 | provider | request | tool result |
 |---|---|---|
@@ -414,7 +349,7 @@ results.
 | `claude` | `tools` + `tool_use` blocks | `tool_result` block |
 | `gemini` | `tools.functionDeclarations` | `functionResponse` |
 
-## 3.4 Risks
+## 2.3 Risks
 
 - Small local models often do not use native calling well: the automatic
   fallback is needed.
@@ -425,26 +360,11 @@ results.
 
 ---
 
-# 4. Priority 3 — PermissionEvaluator
+# 3. Priority 3 — PermissionEvaluator
 
-## 4.1 Status: v1 implemented
+Status: v1 implemented
 
-Done:
-
-- `Capability`, `Effect`, `Rule`, `Subject`, `Resource`, `Decision` and
-  `PermissionEvaluator` in `core/permissions.py`;
-- `policy.yaml` read **before** the LLM, with fallback to total `DENY` and
-  warning on audit and chat;
-- system ceiling derived from `permissions.read/write/shell`;
-- scope by `tools` (glob), `paths` and `namespaces` (prefixes);
-- `ASK` with `ConsoleConfirmation` (`shall I do it? (y/N)`, default N);
-- enforcement in `ToolRegistry.execute` and audit of
-  `permission.decision` / `permission.confirmation`;
-- `ToolDefinition.capabilities` for all tools (filesystem and MCP);
-- `requires_confirmation` applied as an ASK floor;
-- 347 tests collected, 1 skipped.
-
-## 4.2 Still to do
+## 3.1 Still to do
 
 - `ConfirmationProvider` for the GUI (modal dialog) and for non-interactive
   execution (deny by default);
@@ -475,10 +395,6 @@ cat workspace://project/readme.md
 find *.py
 ```
 
-Virtual paths would also solve the exposure of the absolute paths
-of the sandbox.
-
----
 
 # 6. Hygiene and robustness
 
@@ -496,18 +412,12 @@ Done (2026-11-03):
   `include_outputs: false`.
 - **Audit retention**: timestamped backups and `audit.max_files` (default
   100, includes the active file) with pruning of the oldest.
-- **Live tests**: `live` marker, excluded by default, `--live` for Ollama
-  and remote providers (the latter skipped without a key).
-- **Packaging**: complete metadata, `hagar` entry point, `--config`,
-  `--model`, `--no-memory`, `--version`, single version.
 - **Base URL**: `model.host` applies to all providers.
-- **Legacy**: removed `tools/filesystem.py` and `llm/tool_result.py`.
 
 Remaining:
 
 - device flow / DPoP for MCP OAuth;
 - compaction of the audit sessions;
-- GUI confirmations for `ASK`;
 - continuous alignment of the documentation.
 
 ---
@@ -521,20 +431,6 @@ Remaining:
 - permanent personal agent;
 - additional providers (OpenAI is almost free: same client as DeepSeek
   with a different base URL).
-
----
-
-# 8. Work order
-
-1. Memory v2: done (lifecycle, CLI review, injection of confirmed ones);
-   chat retention, semantic search and GUI remain.
-2. PermissionEvaluator: v1 done; GUI confirmations and dynamic policies
-   remain.
-3. Hygiene: done (packaging, live tests, MCP auth/OAuth, audit with
-   retention, base URL, legacy).
-4. Native calling: v1 done; the benchmark measurement remains.
-5. Release 0.3.0: prepared for GitHub, with multi-platform CI and
-   release workflow.
 
 ---
 

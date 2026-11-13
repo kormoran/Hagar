@@ -6,12 +6,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.audit import read_entries
+from core.benchmark_runs import BenchmarkRunStore
+from core.benchmark_suite import manifest as benchmark_manifest
+from core.broker import BrokerError
 from core.hardware import detect_hardware
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardError
 from core.model_cards import ModelCardStore
+from core.model_cards import utc_now
 from core.permissions import capability_names
+from core.quality_bench import benchmark_quality
 from core.service import HarnessService
+from core.vision_bench import benchmark_vision
 from memory.export import MarkdownExporter
 from memory.import_markdown import MarkdownImporter
 from memory.projects import ProjectError
@@ -37,11 +43,30 @@ class CommandService:
         harness: Any,
         service: HarnessService,
         model_cards: ModelCardStore | None = None,
+        broker: Any = None,
+        default_profile: str | None = None,
+        run_store: BenchmarkRunStore | None = None,
     ) -> None:
 
         self.harness = harness
         self.service = service
         self.model_cards = model_cards or ModelCardStore()
+        self.run_store = run_store or BenchmarkRunStore()
+        self.broker = (
+            broker
+            if broker is not None
+            else getattr(harness, "broker", None)
+        )
+        configured_broker = getattr(
+            getattr(harness, "config", None),
+            "broker",
+            None,
+        )
+
+        if default_profile is None and configured_broker is not None:
+            default_profile = configured_broker.default_profile
+
+        self.default_profile = default_profile or "coding"
 
     def handle(
         self,
@@ -126,7 +151,7 @@ class CommandService:
             "  /audit [n]            ultimi n eventi",
             "  /project ...          gestione progetti",
             "  /memory ...           memoria, skill e archivio",
-            "  /models ...           schede e benchmark dei modelli",
+            "  /models ...           schede, benchmark e scelta modello",
             "  /undo                 annulla le modifiche dell'ultimo turno",
             "  exit | quit            esci",
             "",
@@ -225,6 +250,39 @@ class CommandService:
                 data={"cards": cards},
             )
 
+        if action in {"runs", "history"}:
+
+            limit = 20
+
+            if len(arguments) > 1:
+                try:
+                    limit = max(1, int(arguments[1]))
+                except ValueError:
+                    return CommandResult(
+                        command="/models runs",
+                        ok=False,
+                        error="invalid limit",
+                        lines=["Uso: /models runs [numero]"],
+                    )
+
+            runs = self.run_store.list(limit)
+            lines = [f"Run di benchmark: {len(runs)}"]
+
+            for run in runs:
+                lines.append(
+                    f"  {run.get('run_id')} "
+                    f"{run.get('provider')}/"
+                    f"{run.get('model')} "
+                    f"suite {run.get('suite_version')} "
+                    f"{run.get('saved_at', '')}"
+                )
+
+            return CommandResult(
+                command="/models runs",
+                lines=lines,
+                data={"runs": runs},
+            )
+
         if action == "hardware":
 
             info = detect_hardware()
@@ -293,6 +351,7 @@ class CommandService:
                     f"Ultima prova: {card.get('last_tested_at')}",
                     f"Capabilities: {card.get('capabilities')}",
                     f"Benchmarks: {card.get('benchmarks')}",
+                    f"Quality: {card.get('quality')}",
                 ],
                 data=card,
             )
@@ -309,10 +368,44 @@ class CommandService:
                     lines=["Nessun modello LLM disponibile."],
                 )
 
+            vision_only = any(
+                argument.lower() == "vision"
+                for argument in arguments[1:]
+            )
+
             try:
-                report = benchmark_model(llm)
+
+                if vision_only:
+
+                    report = {
+                        "provider": llm.provider,
+                        "model": llm.model,
+                        "tested_at": utc_now(),
+                        "hardware": detect_hardware(),
+                        "vision": benchmark_vision(llm),
+                    }
+
+                else:
+                    report = benchmark_model(llm)
+                    report["quality"] = benchmark_quality(llm)
+
+                existing = self.model_cards.load(
+                    report["provider"],
+                    report["model"],
+                ) or {}
+                existing.update(report)
+                report = existing
                 report["last_tested_at"] = report["tested_at"]
                 path = self.model_cards.save(report)
+                run_path = None
+                run_error = None
+
+                try:
+                    run_report = dict(report)
+                    run_report["suite_manifest"] = benchmark_manifest()
+                    run_path = self.run_store.save(run_report)
+                except Exception as exc:
+                    run_error = str(exc)
 
             except Exception as exc:
 
@@ -323,20 +416,37 @@ class CommandService:
                     lines=[f"Errore benchmark: {exc}"],
                 )
 
-            chat = report["benchmarks"]["chat"]
-            structured = report["benchmarks"]["structured"]
-            tools = report["benchmarks"]["tool_call"]
             lines = [
                 f"Modello: {report['provider']}/{report['model']}",
                 f"Scheda: {path}",
-                f"Chat: {chat['successes']}/{chat['attempts']} "
-                f"(p50 {chat['duration_ms']['p50']} ms)",
-                f"JSON: {structured['valid_json']}/"
-                f"{structured['attempts']} "
-                f"(choice {structured['valid_choice']})",
-                f"Tool: {tools['successes']}/{tools['attempts']}",
-                f"Ultima prova: {report['last_tested_at']}",
+                (
+                    f"Run: {run_path}"
+                    if run_path is not None
+                    else f"Run non salvato: {run_error}"
+                ),
             ]
+
+            if vision_only:
+                vision = report["vision"]
+                lines.extend([
+                    f"Vision: {vision['overall']:.4f}",
+                    f"Immagini: {len(vision['images'])}",
+                    f"Ultima prova: {report['last_tested_at']}",
+                ])
+            else:
+                chat = report["benchmarks"]["chat"]
+                structured = report["benchmarks"]["structured"]
+                tools = report["benchmarks"]["tool_call"]
+                lines.extend([
+                    f"Chat: {chat['successes']}/{chat['attempts']} "
+                    f"(p50 {chat['duration_ms']['p50']} ms)",
+                    f"JSON: {structured['valid_json']}/"
+                    f"{structured['attempts']} "
+                    f"(choice {structured['valid_choice']})",
+                    f"Tool: {tools['successes']}/{tools['attempts']}",
+                    f"Qualità: {report['quality']['overall']:.4f}",
+                    f"Ultima prova: {report['last_tested_at']}",
+                ])
 
             audit = getattr(self.harness, "audit", None)
             if audit is not None:
@@ -345,9 +455,8 @@ class CommandService:
                     provider=report["provider"],
                     model=report["model"],
                     card=str(path),
-                    chat_p50_ms=chat["duration_ms"]["p50"],
-                    structured_valid=structured["valid_json"],
-                    tool_successes=tools["successes"],
+                    run=str(run_path),
+                    kind="vision" if vision_only else "text",
                 )
 
             return CommandResult(
@@ -356,12 +465,171 @@ class CommandService:
                 data=report,
             )
 
+        if action == "use":
+
+            if len(arguments) < 2:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error="missing profile",
+                    lines=["Uso: /models use <profilo>"],
+                )
+
+            llm = getattr(self.harness, "llm", None)
+            switch = getattr(llm, "switch_profile", None)
+
+            if switch is None:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error="broker client not configured",
+                    lines=[
+                        "Il broker non è attivo: "
+                        "abilita broker.enabled e riavvia Hagar."
+                    ],
+                )
+
+            profile = arguments[1]
+
+            try:
+                selection = switch(profile)
+            except BrokerError as exc:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Cambio profilo non riuscito: {exc}"],
+                    data={"excluded": exc.excluded},
+                )
+            except Exception as exc:
+                return CommandResult(
+                    command="/models use",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Cambio profilo non riuscito: {exc}"],
+                )
+
+            lines = [
+                f"Profilo attivo: {profile}",
+                f"Modello: {selection.entry.id}",
+                f"Score: {selection.score:.4f}",
+            ]
+
+            return CommandResult(
+                command="/models use",
+                lines=lines,
+                data=selection.as_dict(),
+            )
+
+        if action in {"route", "explain"}:
+
+            if self.broker is None:
+
+                detail = getattr(
+                    self.harness,
+                    "broker_error",
+                    None,
+                )
+                lines = [
+                    "Broker non configurato: "
+                    "abilita broker.enabled e crea "
+                    "models.yaml e profiles.yaml."
+                ]
+
+                if detail:
+                    lines.append(f"Dettaglio: {detail}")
+
+                return CommandResult(
+                    command=f"/models {action}",
+                    ok=False,
+                    error="broker not configured",
+                    lines=lines,
+                )
+
+            profile = (
+                arguments[1]
+                if len(arguments) > 1
+                else self.default_profile
+            )
+
+            try:
+
+                if action == "explain":
+
+                    report = self.broker.explain(profile)
+                    selected = report.get("selected")
+                    lines = [
+                        f"Profilo: {profile}",
+                    ]
+
+                    if selected is None:
+                        lines.append("Nessun modello eleggibile.")
+                    else:
+                        lines.append(
+                            f"Scelto: {selected['model_id']} "
+                            f"(score {selected['score']:.4f})"
+                        )
+
+                    lines.append(
+                        f"Esclusi: {len(report['excluded'])}"
+                    )
+
+                    for item in report["excluded"]:
+                        lines.append(
+                            f"  {item['model_id']}: "
+                            + "; ".join(item["reasons"])
+                        )
+
+                    return CommandResult(
+                        command="/models explain",
+                        lines=lines,
+                        data=report,
+                    )
+
+                selection = self.broker.select(profile)
+                lines = [
+                    f"Profilo: {profile}",
+                    f"Modello: {selection.entry.id}",
+                    f"Provider: {selection.entry.provider}",
+                    f"Modello provider: {selection.entry.model}",
+                    f"Score: {selection.score:.4f}",
+                    "Motivi:",
+                ]
+
+                for reason in selection.reasons:
+                    lines.append(f"  - {reason}")
+
+                return CommandResult(
+                    command="/models route",
+                    lines=lines,
+                    data=selection.as_dict(),
+                )
+
+            except BrokerError as exc:
+
+                return CommandResult(
+                    command=f"/models {action}",
+                    ok=False,
+                    error=str(exc),
+                    lines=[
+                        str(exc),
+                        *[
+                            f"  {item['model_id']}: "
+                            + "; ".join(item["reasons"])
+                            for item in exc.excluded
+                        ],
+                    ],
+                    data={"excluded": exc.excluded},
+                )
+
         return CommandResult(
             command="/models",
             ok=False,
             error="unknown models action",
             lines=[
-                "Uso: /models [list|show|test|hardware]",
+                "Uso: /models "
+                "[list|show|test|test vision|hardware|"
+                "runs|route|explain|use]",
             ],
         )
 

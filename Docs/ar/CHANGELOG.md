@@ -1,9 +1,123 @@
 # HAGAR — سجل التغييرات
 
-الصيغة حرة لكنها ثابتة: الإصدارات بترتيب تنازلي، مع
+الصيغة حرة لكنها مستقرة: الإصدارات بترتيب تنازلي، مع
 إشارة إلى الـ commit عند الحاجة.
 
 ---
+
+# 0.7.0 — 2026-11-12
+
+## ملخص
+
+إصدار التنسيق المحلي: وصفات `dev.run`، والـ boxed transform،
+ولغة Hagar Flow، وlist comprehension. ويبقى container mode خارج
+هذا الإصدار.
+
+## وصفات dev.run
+
+- `dev.list` و`dev.run` جديدان لوصفات موثوقة للاختبار والتنقيح
+  والبناء؛ و`DEV_EXEC` هي DENY افتراضيًا.
+- `recipes.yaml` خارج صندوق الرمل، ويُحمَّل مرة واحدة فقط عند الإقلاع،
+  بلا hot reload؛ وكل تعديل يتطلب إعادة التشغيل.
+- معاملات مُنمَّطة، و`cwd`، ومهلة، وبيئة صريحة، وexit code،
+  ومخرجات محدودة، وتدقيق.
+- تنفيذ على المضيف على نسخة مؤقتة من المشروع، بلا shell وبلا
+  حاوية.
+
+## Boxed transform
+
+- `box.list` و`box.run` جديدان لـ `summarize` و`translate` و
+  `extract_json`؛ و`BOX_EXEC` هي DENY افتراضيًا.
+- الإدخال/الإخراج في صندوق الرمل، وprompt ثابت، وبلا ذاكرة أو أدوات،
+  وتقسيم إلى أجزاء للمستندات الطويلة، والتحقق من JSON.
+- يُكتب الإخراج عبر بوابة read-before-write.
+
+## Hagar Flow
+
+- `flow.reference` و`flow.validate` و`flow.run` جديدة؛ و`FLOW_EXEC` هي
+  DENY افتراضيًا.
+- لغة DSL Python مقيَّدة بمُحقِّق AST ومُفسِّر بلا
+  `eval`/`exec`؛ لا import ولا class ولا def ولا lambda ولا try ولا
+  dict/set comprehension ولا وصول إلى كائنات Python.
+- List comprehension بـ `for` واحد و`if` اختياري، مع نطاق
+  محلي وميزانية تكرارات.
+- البدائيات `fs.*` و`box.*` و`memory.search` و`memory.context`
+  و`memory.skill` و`project.context`، مع ميزانية steps وtool calls
+  وتكرارات ومهلة؛ وأخطاء مع السطر والعمود.
+
+## Repair صريح
+
+- `flow.repair` جديد: يقترح تصحيحًا صالحًا دون تنفيذه.
+- `flow.run` لا يعدّل الكود أبدًا ولا يستدعي النموذج
+  لإصلاحه.
+- `flow.repair` لا يصلح أخطاء الـ runtime ولا السياسة ولا التأكيد ولا
+  المهلة.
+- كل محاولة تُسجَّل في التدقيق وفي النتيجة.
+
+# 0.6.0 — 2026-11-09
+
+## ملخص
+
+إصدار أمان الـ runtime والتفاعل المضبوط: Hi-Fi، والتحرير الذرّي،
+وread-before-write، ونقاط التحقق، والمهلة، وrepeat guard، وspill،
+وcompaction، وAIsh، وtext.transform.
+
+## تغييرات كاسرة
+
+- `write_file` و`edit_file` و`delete_file` و`rename` تتطلب
+  قراءة سابقة في صندوق الرمل نفسه وترفض الملفات المتغيّرة.
+- `filesystem.write_file` و`write_bytes` و`create_file` و`edit_file`
+  تستخدم الكتابة الذرّية.
+- `tools.timeout` قيمته 120 ثانية افتراضيًا؛ و`tools.repeat_limit`
+  يحجب ثالث استدعاء مطابق في الدور نفسه.
+- AIsh موجودة لكن `AISH` مرفوضة بالسياسة الافتراضية.
+
+## وضع Hi-Fi
+
+- pre-pass جديد `core/hifi.py`: يقترح النموذج تفسيرات
+  باحتمالات، ويختار Hagar الأكثر احتمالًا إذا تجاوز الهامش
+  العتبة أو يطلب توضيحًا.
+- التفعيل بـ `--hifi` أو `hifi.enabled: true`؛ و`hifi.margin` و
+  `hifi.interpretations` قابلان للإعداد.
+- أحداث التدقيق `hifi.interpretations` و`hifi.resolved`
+  و`hifi.clarification` و`hifi.failed`.
+
+## تحرير نظام الملفات والمراقبة
+
+- `filesystem.edit_file` جديد: استبدال حرفي بمطابقة واحدة
+  (أو `replace_all`)، وكتابة ذرّية عبر ملف مؤقت و
+  `os.replace`.
+- `read_file` و`read_chunk` و`read_bytes` تسجّل النسخة
+  المراقَبة؛ و`write_file` و`edit_file` و`delete_file` و`rename`
+  تتطلب قراءة سابقة وترفض الملفات المتغيّرة.
+- `write_file` و`write_bytes` و`create_file` و`edit_file` تستخدم
+  الكتابة الذرّية.
+
+## نقاط التحقق والمهلة والـ spill والـ compaction
+
+- نقطة تحقق لكل دور للملفات المعدَّلة، مع `/undo` و
+  `workspace.undo`.
+- `tools.timeout` لكل استدعاء أداة و`tool.timeout`؛ والمهلة
+  best effort.
+- Repeat guard `tools.repeat_limit` على بصمة `tool + argomenti`، مع
+  تدقيق `tool.repeat`.
+- spill للمخرجات إلى `ArtifactStore` فوق 12.000 حرف، مع
+  `tool.spilled`.
+- compaction حتمي للسياق فوق 24.000 حرف، مع
+  `context.compacted`.
+
+## AIsh
+
+- `aish.exec` جديد: لغة بقائمة مسموحة (`pwd` و`ls` و`cat`
+  و`grep`، وخطوط أنابيب نصية، وتعديلات ملفات مفردة) تُصرِّف كل
+  أمر إلى أدوات Hagar؛ بلا subprocess وبلا مسار مضيف.
+- القدرة `AISH` بقاعدة `DENY` افتراضية؛ ويجب على المستخدم
+  تفعيلها صراحة في `policy.yaml`.
+- تدقيق `aish.command`؛ وتحتفظ الأوامر الداخلية بالسياسة ونقطة التحقق
+  والتدقيق الخاص بالأدوات الأساسية.
+- `text.transform` جديد للقراءة فقط بعمليات `grep` و`sort`
+  و`uniq` و`cut` و`tr` و`wc` و`head` و`tail` و`sed_replace`؛ ويستخدم AIsh
+  الأداة للأوامر النصية ويضيف `sed` مقيَّدة.
 
 # 0.5.2 — 2026-11-08
 
@@ -76,7 +190,7 @@
 - سجل المحادثات في التبويب المخصص: قائمة `chat/` و
   `archive/chat/`؛ ونقرة تستأنف الجلسة نفسها وتواصل الأدوار الجديدة
   النص نفسه.
-- زر **+ Nuova chat** مع `MemoryStore.new_session()` وتصفير
+- زر **+ محادثة جديدة** مع `MemoryStore.new_session()` وتصفير
   السياق؛ وتبقى النصوص السابقة في الـ Vault.
 - تبويبات الواجهة الرسومية: Chat وChat history وTool output وAudit وThinking وMemories.
 - `SessionLog` في الذاكرة لاستدعاءات/نتائج الأدوات والخط الزمني؛
@@ -687,7 +801,7 @@ Commit: `137c985` — *Debug, suite di test, audit log e backend multipli*
 مقارنة نماذج Ollama (4 مهام، وصندوق رمل مؤقت، وبحد أقصى 4 أدوات لكل
 دور):
 
-| modello | read | stat | create | chat | الإصلاحات |
+| النموذج | read | stat | create | chat | الإصلاحات |
 |---|---|---|---|---|---|
 | `llama3.1:latest` | ok 10.9 s | ok 7.8 s | ok 8.1 s | ok 8.4 s | 1 |
 | `qwen3:8b` | ok 34.2 s | ok 27.5 s | ok 15.9 s | ok 13.8 s | 1 |

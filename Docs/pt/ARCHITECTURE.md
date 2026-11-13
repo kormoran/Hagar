@@ -1,6 +1,6 @@
 # HAGAR — Arquitetura
 
-Versão: 0.5.2
+Versão: 0.7.0
 Última atualização: 2026-11-03
 
 ---
@@ -300,6 +300,7 @@ permissões globais `permissions.read`/`write` continuam a ser um teto: um alias
 ```text
 filesystem.read_file
 filesystem.write_file
+filesystem.edit_file
 filesystem.create_file
 filesystem.delete_file
 filesystem.mkdir
@@ -337,6 +338,20 @@ tratam-nos como ficheiros inexistentes.
 `write_file` sobrescreve apenas ficheiros existentes; a criação passa por
 `create_file`, que exige a permissão `create`. Não é possível
 contornar a proibição de criação escrevendo um percurso novo.
+
+`read_file`, `read_chunk` e `read_bytes` registam uma versão observada
+do ficheiro. `write_file`, `edit_file`, `delete_file` e `rename` exigem
+que o ficheiro tenha sido lido na mesma sandbox e que a versão não tenha
+mudado entretanto. A versão é `(st_mtime_ns, st_size)`: é uma
+proteção cooperativa contra overwrite cego, não um CAS contra race
+TOCTOU.
+
+`edit_file` substitui literalmente `old_string` por `new_string`. Por
+predefinição a string tem de aparecer uma única vez; `replace_all` permite
+várias substituições. A escrita usa um ficheiro temporário na mesma
+diretoria e `os.replace`, pelo que o conteúdo nunca é visto a meio.
+O mesmo mecanismo atómico é usado por `write_file`, `write_bytes` e
+`create_file`.
 
 ### Limites de escrita
 
@@ -880,11 +895,152 @@ A capability `DECISION` é separada de `COMPUTE`, `NETWORK` e
 `FILESYSTEM_*`; os detalhes e o formato do modelo estão em
 `DECISIONS.md`. Jev/Kev ainda não são adapter nativos.
 
+## 3.11.8 Hi-Fi (`core/hifi.py`)
+
+`HiFiResolver` executa um pré-passo antes do ciclo agêntico:
+
+1. pede ao modelo as interpretações com probabilidades;
+2. normaliza e ordena as probabilidades;
+3. se a margem entre a primeira e a segunda ultrapassar `hifi.margin`,
+   substitui o pedido pela interpretação escolhida mais o texto original;
+4. caso contrário, pede ao modelo uma pergunta de esclarecimento.
+
+O evento `hifi.interpretations` registra as probabilidades e o eventual
+esclarecimento. Um JSON inválido produz `hifi.failed` e o turno
+prossegue sem pré-passo.
+
+## 3.11.9 Checkpoint (`core/checkpoints.py`)
+
+`HarnessService.ask` abre um `WorkspaceCheckpoint` na sandbox. O
+checkpoint não copia o workspace: anota apenas os ficheiros que uma mutação
+está prestes a alterar. `delete_file`, `rename` e `copy_file` registam também
+o destino. `/undo` restaura o último checkpoint concluído.
+
+Limite: 32 MB de snapshot, apenas ficheiros regulares, apenas o último turno.
+Se o checkpoint estiver incompleto, o undo é recusado.
+
+## 3.11.10 Guardas de runtime e contexto (`core/tool_registry.py`, `core/context.py`)
+
+`ToolRegistry` aplica:
+
+- `tools.timeout` por chamada individual, através de worker daemon;
+- `tools.repeat_limit` sobre o hash `tool + argumentos` por turno.
+
+O timeout é best effort: um handler Python já iniciado não é
+morto. O repeat guard repõe a zero a contagem em cada `Agent.ask`.
+
+`OutputSpiller` move os outputs acima de 12.000 caracteres
+para o `ArtifactStore` e devolve um resumo com `artifact_id`.
+`ContextCompactor` substitui as mensagens mais antigas quando o contexto
+ultrapassa 24.000 caracteres, preservando as últimas 8 e as mensagens system.
+
+## 3.11.11 AIsh (`core/aish.py`, `local_tools/aish_tool.py`)
+
+`aish.exec` implementa uma linguagem de comando, não uma shell host.
+`AishExecutor` faz parsing com `shlex`, recusa redirecionamentos, operadores,
+variáveis e command substitution, e traduz cada comando numa chamada
+ao `ToolRegistry`. A capability `AISH` é negada pela política predefinida;
+ativá-la exige uma modificação explícita:
+
+```yaml
+- capabilities: [AISH]
+  effect: allow
+  tools: ["aish.*"]
+```
+
+Os comandos internos conservam as regras das ferramentas subjacentes: ativar
+`aish.exec` não ativa `filesystem.delete_file`.
+
+## 3.11.12 `text.transform` (`local_tools/text_transform_tool.py`)
+
+Ferramenta read-only com operações enumeradas: `grep`, `sort`, `uniq`, `cut`,
+`tr`, `wc`, `head`, `tail`, `sed_replace`. Aceita um path da sandbox
+ou texto inline; aplica limites de input, output, pattern e match.
+
+Capability:
+
+```text
+FILESYSTEM_READ | COMPUTE
+```
+
+Não escreve ficheiros. AIsh usa-a para os comandos textuais; o salvamento do
+resultado passa por `filesystem.write_file`/`create_file` com o gate
+read-before-write.
+
+## 3.11.13 `dev.run` (`core/dev_recipes.py`, `core/dev_runner.py`)
+
+`DevRecipeLoader` lê `recipes.yaml` uma única vez no arranque e
+conserva um snapshot imutável com hash. O ficheiro tem de estar fora da
+sandbox escrevível.
+
+`DevRunner` executa uma receita:
+
+- valida parâmetros tipados e `cwd`;
+- copia o projeto para uma diretoria temporária;
+- executa um único argv com `shell=False`;
+- usa um ambiente mínimo;
+- aplica timeout e kill do process group;
+- separa stdout/stderr;
+- limita o output;
+- registra auditoria.
+
+A capability `DEV_EXEC` é DENY por predefinição. `dev.run` não aceita comandos
+arbitrários e não usa containers: as receitas são fidedignas; a sandbox não
+isola o processo host. O container fica congelado para um futuro
+acesso direto a filesystem/programas reais.
+
+## 3.11.14 Boxed transform (`core/boxes.py`)
+
+As box são funções LLM bounded com prompt fixo, input/output em ficheiro
+e nenhuma memória, ferramenta ou autonomia.
+
+Ferramentas:
+
+```text
+box.list
+box.run
+```
+
+Box iniciais:
+
+```text
+summarize
+translate
+extract_json
+```
+
+`BoxRunner` lê o input da sandbox, aplica chunking onde é necessário,
+chama o cliente LLM, valida o output JSON e escreve o resultado com o
+gate read-before-write. `BOX_EXEC` é DENY por predefinição.
+
+## 3.11.15 Hagar Flow (`core/flow/`)
+
+`validate()` faz parsing do código com `ast.parse`, recusa imports, classes,
+funções, lambda, try, dict/set comprehension, comprehension com mais de
+um `for`, dunder e chamadas dinâmicas, e verifica as primitivas
+disponíveis. As list comprehension com um único `for` e `if` opcionais
+são suportadas.
+
+`FlowRunner` interpreta a AST validada sem `eval`/`exec`:
+
+- scope linear;
+- budget de steps, iterações, tool call e timeout;
+- primitivas `fs.*`, `box.*`, `memory.*` e `project.context` passadas por
+  um registry interno;
+- política e confirmações para cada primitiva;
+- erros com linha e coluna.
+
+`FLOW_EXEC` é DENY por predefinição. `flow.run` nunca repara o código:
+`flow.repair` propõe um candidato válido sem o executar, com um
+máximo de `flow.repair_attempts` tentativas. Erros de runtime, política,
+confirmação e timeout não são reparados. O HIR ainda não existe:
+a AST validada é o IR do MVP.
+
 ## 3.12 Arranque e packaging
 
 O projeto instala-se com `pip install -e .` e declara os pacotes em
 `pyproject.toml`. O entry point é `hagar = "hagar:main"`. A versão
-corrente é `0.5.2`.
+corrente é `0.7.0`.
 
 A configuração de exemplo é `hagar.example.yaml`; `hagar.yaml` é um
 ficheiro local ignorado pelo git. O Vault predefinido do exemplo é
@@ -1045,9 +1201,9 @@ GUI dedicada. Os detalhes estão em `SUBAGENTS.md`.
 # 5. Desenvolvimento
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) ou
-  `.\tools\run_tests.ps1` (Windows). No Windows: 832 passed, 2 skipped
+  `.\tools\run_tests.ps1` (Windows). No Windows: 892 passed, 2 skipped
   (symlink não disponíveis sem Developer Mode). Em Debian Linux
-  (2026-11-06): todos os testes verdes, incluindo os symlink (743 passed, 0
+  (2026-11-12): todos os testes verdes, incluindo os symlink (894 passed, 0
   skipped). Detalhes e motivação do shim em README §3.1.
 - Testes live: `./tools/run_tests.sh --live` (Linux/macOS) ou
   `.\tools\run_tests.ps1 --live` (Windows) — mais 9 testes (Ollama;
@@ -1111,7 +1267,7 @@ GUI dedicada. Os detalhes estão em `SUBAGENTS.md`.
 ## 6.1 Responsabilidade do utilizador: hard link, mount e TOCTOU
 
 **O Hagar não controla os hard link, os mount/junction e as race TOCTOU
-dentro das diretorias allowed.** Não é um defeito do Hagar: a sandbox é
+dentro das diretorias permitidas.** Não é um defeito do Hagar: a sandbox é
 path-based e não usa handle/file descriptor para toda a operação.
 
 Um hard link é um segundo nome do mesmo inode, não tem um target de

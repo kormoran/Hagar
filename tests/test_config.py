@@ -78,6 +78,50 @@ def test_load_valid_config():
     assert cfg.filesystem.sandbox[0].permissions == "R"
 
 
+def test_broker_config_resolves_relative_paths(tmp_path):
+    data = base_config(tmp_path)
+    data["broker"] = {
+        "enabled": True,
+        "catalog": "models.yaml",
+        "profiles": "config/profiles.yaml",
+        "default_profile": "quick_chat",
+    }
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.broker.enabled is True
+    assert Path(cfg.broker.catalog) == tmp_path / "models.yaml"
+    assert Path(cfg.broker.profiles) == tmp_path / "config" / "profiles.yaml"
+    assert cfg.broker.default_profile == "quick_chat"
+
+
+def test_broker_config_defaults(tmp_path):
+    cfg = ConfigLoader.load(
+        write_yaml(tmp_path, base_config(tmp_path))
+    )
+
+    assert cfg.broker.enabled is False
+    assert Path(cfg.broker.catalog) == tmp_path / "models.yaml"
+    assert Path(cfg.broker.profiles) == tmp_path / "profiles.yaml"
+    assert cfg.broker.default_profile == "coding"
+
+
+@pytest.mark.parametrize(
+    "broker",
+    [
+        {"enabled": "yes"},
+        {"catalog": ""},
+        {"profiles": ""},
+        {"default_profile": ""},
+    ],
+)
+def test_broker_config_rejects_invalid(tmp_path, broker):
+    data = base_config(tmp_path)
+    data["broker"] = broker
+
+    with pytest.raises(ConfigError):
+        ConfigLoader.load(write_yaml(tmp_path, data))
+
+
 def test_missing_file():
     with pytest.raises(ConfigError, match="not found"):
         ConfigLoader.load("does_not_exist.yaml")

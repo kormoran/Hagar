@@ -1,7 +1,7 @@
 # Subagentes — fase asíncrona
 
 **Estado:** implementado
-**Data:** 2026-11-07
+**Fecha:** 2026-11-07
 **Tool:** `agent.spawn`, `agent.status`, `agent.wait`, `agent.result`,
 `agent.cancel`, `agent.run` (compatibilidad síncrona), `artifact.*`,
 `mailbox.*`
@@ -12,20 +12,20 @@ El modelo puede iniciar hasta dos subagentes concurrentes:
 
 ```text
 agent.spawn(task, reason, context?, inputs?) -> agent_id
-agent.status(agent_id) -> stato
-agent.wait(agent_id, timeout?) -> risultato
-agent.result(agent_id) -> risultato
+agent.status(agent_id) -> estado
+agent.wait(agent_id, timeout?) -> resultado
+agent.result(agent_id) -> resultado
 agent.cancel(agent_id) -> ok
 ```
 
-`spawn` vuelve enseguida. El padre puede seguir trabajando y recoger
-los resultados cuando hacen falta. `agent.run` sigue como atajo
+`spawn` retorna de inmediato. El padre puede seguir trabajando y recoger
+los resultados cuando los necesita. `agent.run` permanece como atajo
 `spawn + wait` por compatibilidad.
 
-`reason` es obligatorio: se registra en la auditoría y es la motivación
+`reason` es obligatorio: se registra en el audit y es la motivación
 por la que el padre delega el trabajo. El tool requiere la capability
 `AGENT_SPAWN`; el hijo no la recibe, por lo que no puede crear otros.
-`permissions.agents: true` es el techo del sistema necesario.
+`permissions.agents: true` es el techo de sistema necesario.
 
 La policy del hijo debe ser **estrictamente más restrictiva** que
 la del padre. El manager calcula:
@@ -36,25 +36,25 @@ child_ceiling = parent_ceiling
 ```
 
 Si el resultado es igual al techo del padre, `agent.spawn` falla con
-`SubagentPolicyError`. Por tanto también se rechazan policy idénticas.
+`SubagentPolicyError`. Por lo tanto, también se rechazan policy idénticas.
 Si el padre no tiene un evaluator, el spawn se rechaza.
 
 Cada agente tiene un timeout de reloj de **5 minutos** (`300` segundos). El
-límite es cooperativo: se controla en los checkpoints del ciclo agente;
-no interrumpe una llamada HTTP ya en curso. Al expirar el estado del
-hijo es `timed_out` y la auditoría registra `agent.timed_out`.
+límite es cooperativo: se comprueba en los checkpoints del ciclo del agente;
+no interrumpe una llamada HTTP ya en curso. Al expirar, el estado del
+hijo es `timed_out` y el audit registra `agent.timed_out`.
 
 Cada hijo:
 
 - usa el mismo modelo local que el padre, pero un cliente LLM separado;
 - tiene un registry separado;
-- ve solo los tool con capability `FILESYSTEM_READ`,
+- solo ve los tool con capability `FILESYSTEM_READ`,
   `MEMORY_READ` y `COMPUTE`, más `AGENT_DATA`;
 - puede usar `vision.open` en su propio workspace, pero no
   `agent.*` ni `filesystem.chdir`;
 - lee solo su propio workspace;
 - no escribe en la memoria;
-- reenvía las peticiones ASK al usuario mediante un bridge, con timeout de
+- reenvía las peticiones ASK al usuario mediante un bridge, con un timeout de
   180 segundos y DENY al expirar.
 
 El padre LLM no puede aprobar un ASK: la petición va siempre al canal
@@ -88,7 +88,7 @@ agent.spawn(
 
 Reglas:
 
-- los input deben ser archivos en la sandbox del padre;
+- los input deben ser archivos dentro del sandbox del padre;
 - el padre debe tener el permiso de lectura;
 - el nombre del archivo se conserva;
 - dos input con el mismo nombre son un error;
@@ -122,22 +122,22 @@ mailbox.read(message_id)
 mailbox.ack(message_id)
 ```
 
-`artifact.save_to` copia el artifact entero a una ruta escribible de la
+`artifact.save_to` copia el artifact completo a un path escribible del
 sandbox del padre sin hacer pasar el contenido por el contexto. Es
-la operación que usar para artifact más grandes que la ventana del modelo:
+la operación que hay que usar para artifact más grandes que la ventana del modelo:
 el modelo lee solo los chunk que necesita y guarda el archivo completo
 con `save_to`.
 
 `save_to` requiere `AGENT_DATA`, `FILESYSTEM_WRITE` y
 `FILESYSTEM_CREATE`; la policy lo trata como una escritura y puede
-pedir confirmación. No acepta rutas de host arbitrarias.
+pedir confirmación. No acepta path de host arbitrarios.
 
 Límites iniciales:
 
 | Elemento | Límite |
 |---|---|
 | artifact individual | 50 MB |
-| total artifact por turno | 256 MB |
+| total de artifact por turno | 256 MB |
 | artifact por turno | 200 |
 | lectura por llamada | 256 KB |
 | texto de un mensaje | 64 KB |
@@ -145,7 +145,7 @@ Límites iniciales:
 
 Los artifact son archivos temporales fuera del Vault, con hash SHA-256 y
 metadatos. La mailbox contiene solo texto y referencias `artifact_id`.
-Al final del turno store y mailbox se vacían.
+Al final del turno, el store y la mailbox se vacían.
 
 ## 3. Límites de la implementación
 
@@ -157,11 +157,11 @@ Al final del turno store y mailbox se vacían.
 - ningún presupuesto de token más allá de `max_tool_calls`;
 - ninguna GUI dedicada;
 - ninguna escritura de memoria;
-- ASK del hijo reenviadas al usuario con timeout 180 segundos; al
-  expirar DENY;
+- ASK del hijo reenviadas al usuario con timeout de 180 segundos; al
+  expirar, DENY;
 - artifact y mailbox son efímeros: desaparecen al final del turno;
 - los eventos internos del hijo (`turn.*`, `tool.*`) tienen `agent_id` en
-  la auditoría.
+  el audit.
 
 Al final del turno del padre:
 
@@ -174,14 +174,14 @@ Al final del turno del padre:
 
 | Componente | Padre | Hijo |
 |---|---|---|
-| LLM client | `harness.llm` | nueva instancia, mismo modelo |
+| Cliente LLM | `harness.llm` | nueva instancia, mismo modelo |
 | Tool registry | completo | filtrado de solo lectura |
 | Filesystem | workspace del padre | workspace privado de solo lectura |
 | Memoria | `MemoryStore` | `memory=None`, ninguna escritura |
 | Artifact/mailbox | lectura | outbox del hijo |
 | Confirmaciones | usuario | bridge hacia el usuario, timeout 180 |
 | Usage | ledger del padre | ledger separado |
-| Auditoría | compartido, con lock | eventos `agent.*` |
+| Audit | compartido, con lock | eventos `agent.*` |
 
 El hijo no tiene el contexto automático del padre: el padre debe pasar
 `context`.
@@ -189,7 +189,7 @@ El hijo no tiene el contexto automático del padre: el padre debe pasar
 ## 5. Tool admitidos
 
 El padre debe tener las capability `AGENT_SPAWN` y `COMPUTE`; el hijo
-no recibe `AGENT_SPAWN` y por tanto no puede crear otros agentes.
+no recibe `AGENT_SPAWN` y, por lo tanto, no puede crear otros agentes.
 
 El registry del hijo incluye los tool cuyas capability son un
 subconjunto de:
@@ -203,7 +203,7 @@ AGENT_DATA
 
 El hijo recibe `artifact.put`, `artifact.put_file` y `mailbox.send`.
 No recibe `artifact.read`, `artifact.list`, `mailbox.inbox`,
-`mailbox.read` o `mailbox.ack`: esos son del padre.
+`mailbox.read` ni `mailbox.ack`: esos son del padre.
 
 Se excluyen explícitamente:
 
@@ -214,14 +214,14 @@ agent.*
 
 Se excluyen por capability:
 
-- escritura de filesystem;
+- escritura en el filesystem;
 - creación, renombrado, copia, borrado;
-- escritura de memoria;
+- escritura en la memoria;
 - red;
 - MCP;
 - shell.
 
-## 6. Auditoría
+## 6. Audit
 
 Eventos registrados por el manager:
 
@@ -279,16 +279,16 @@ respuesta durante 180 segundos; el resultado es DENY. La GUI muestra la petició
 `agent_id`/`parent_id` y el padre no puede resolverla.
 
 Los artifact exportados no producen el evento: el archivo ya está en el
-workspace del padre. El contenido nunca se escribe en la auditoría.
+workspace del padre. El contenido nunca se escribe en el audit.
 
-`AuditLog.record` está protegido por lock, así las escrituras concurrentes no
+`AuditLog.record` está protegido por lock, de modo que las escrituras concurrentes no
 entrelazan la cadena de hash.
 
 ## 7. Concurrencia
 
 - hilos separados para los hijos;
 - límite `max_concurrent = 2`;
-- lock sobre el diccionario de los job;
+- lock sobre el diccionario de job;
 - ninguna condición de race sobre el filesystem: workspace separados;
 - ninguna compartición de `MemoryStore`, sandbox o cliente LLM;
 - proveedor local con peticiones concurrentes;
@@ -305,7 +305,7 @@ entrelazan la cadena de hash.
 - rechazo por encima de `max_concurrent`;
 - dos subagentes concurrentes;
 - error de construcción del proveedor;
-- eventos de auditoría.
+- eventos de audit.
 
 Test live ejecutado con LM Studio y `gemma-3-27b-it`: dos subagentes
 concurrentes completados, cada uno con usage separado.
