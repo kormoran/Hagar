@@ -14,6 +14,7 @@ from llm.base import (
     LLMReply,
     NativeToolsUnavailable,
 )
+from llm.reply_text import clean_text, reply_text
 
 
 class OpenAICompatibleClient(LLMClient):
@@ -125,10 +126,11 @@ class OpenAICompatibleClient(LLMClient):
         value = (
             message.get("reasoning_content")
             or message.get("reasoning")
+            or message.get("thinking")
             or ""
         )
 
-        return str(value).strip()
+        return clean_text(value)
 
     def chat(
         self,
@@ -171,9 +173,24 @@ class OpenAICompatibleClient(LLMClient):
 
         self.last_reasoning = self._reasoning(message)
 
-        content = message.get("content")
+        text, fallback = reply_text(
+            message.get("content"),
+            self.last_reasoning,
+        )
 
-        return content or ""
+        if fallback:
+            self._record(
+                "llm.reasoning_fallback",
+                chars=len(text),
+            )
+
+        if text != clean_text(message.get("content")):
+            self._record(
+                "llm.text_cleaned",
+                chars=len(text),
+            )
+
+        return text
 
     # ==================================================
     # Native tool calling
@@ -248,7 +265,12 @@ class OpenAICompatibleClient(LLMClient):
 
         message = choices[0].get("message") or {}
 
-        text = message.get("content") or ""
+        reasoning = self._reasoning(message)
+        raw_text = clean_text(message.get("content"))
+        text, fallback = reply_text(
+            message.get("content"),
+            reasoning,
+        )
 
         reverse = {
             native: original
@@ -284,6 +306,24 @@ class OpenAICompatibleClient(LLMClient):
                 )
             )
 
+        if calls and fallback:
+            text = raw_text
+            fallback = False
+
+        self.last_reasoning = reasoning
+
+        if fallback:
+            self._record(
+                "llm.reasoning_fallback",
+                chars=len(text),
+            )
+
+        if text != raw_text:
+            self._record(
+                "llm.text_cleaned",
+                chars=len(text),
+            )
+
         return LLMReply(
             text=text,
             tool_calls=calls,
@@ -291,7 +331,7 @@ class OpenAICompatibleClient(LLMClient):
                 self._assistant_message(text, calls)
             ),
             usage=usage_from_openai(data),
-            reasoning=self._reasoning(message),
+            reasoning=reasoning,
         )
 
     # ==================================================

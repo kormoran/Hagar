@@ -13,6 +13,7 @@ from llm.base import (
 )
 from core.tool_call import ToolCall
 from core.usage import usage_from_ollama
+from llm.reply_text import clean_text, reply_text
 
 
 class OllamaClient(LLMClient):
@@ -111,7 +112,24 @@ class OllamaClient(LLMClient):
 
         self._set_usage(usage_from_ollama(response))
 
-        return response["message"]["content"]
+        message = response["message"]
+        self.last_reasoning = clean_text(
+            message.get("thinking")
+            or message.get("reasoning")
+            or ""
+        )
+        text, fallback = reply_text(
+            message.get("content"),
+            self.last_reasoning,
+        )
+
+        if fallback:
+            self._record(
+                "llm.reasoning_fallback",
+                chars=len(text),
+            )
+
+        return text
 
     # ==================================================
     # Native tool calling
@@ -170,7 +188,16 @@ class OllamaClient(LLMClient):
 
         message = data.get("message", {})
 
-        text = message.get("content") or ""
+        reasoning = clean_text(
+            message.get("thinking")
+            or message.get("reasoning")
+            or ""
+        )
+        raw_text = clean_text(message.get("content"))
+        text, fallback = reply_text(
+            message.get("content"),
+            reasoning,
+        )
 
         reverse = {
             native: original
@@ -206,6 +233,18 @@ class OllamaClient(LLMClient):
                 )
             )
 
+        if calls and fallback:
+            text = raw_text
+            fallback = False
+
+        self.last_reasoning = reasoning
+
+        if fallback:
+            self._record(
+                "llm.reasoning_fallback",
+                chars=len(text),
+            )
+
         return LLMReply(
             text=text,
             tool_calls=calls,
@@ -213,6 +252,7 @@ class OllamaClient(LLMClient):
                 self._assistant_message(text, calls)
             ),
             usage=usage_from_ollama(data),
+            reasoning=reasoning,
         )
 
     @staticmethod

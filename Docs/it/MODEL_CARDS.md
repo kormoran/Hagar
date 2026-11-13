@@ -203,6 +203,34 @@ Esempio:
 }
 ```
 
+## Risposte e reasoning
+
+LM Studio può mettere il testo della risposta in:
+
+```text
+message.content
+message.reasoning_content
+message.reasoning
+message.thinking
+```
+
+Hagar usa `content` come risposta principale. Se è vuoto, usa il
+reasoning ripulito come fallback e registra `llm.reasoning_fallback`.
+Se il modello ha anche tool call, il reasoning non sostituisce mai il
+testo: la chiamata al tool resta prioritaria.
+
+Alcuni modelli restituiscono wrapper di chat template:
+
+```text
+<|im_start|>assistant ... <|im_end|>
+<start_of_turn>model ... <end_of_turn>
+<answer> ... </answer>
+<thinking> ... </thinking>
+```
+
+Hagar rimuove questi wrapper noti, ma non HTML generico come
+`<b>...</b>`. Le risposte ripulite registrano `llm.text_cleaned`.
+
 ## Vision
 
 Solo su richiesta:

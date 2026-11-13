@@ -165,6 +165,84 @@ def test_openai_native_tool_call(monkeypatch):
     assert reply.tool_calls[0].id == "call_1"
 
 
+def test_lmstudio_reasoning_fallback(monkeypatch):
+    install(
+        monkeypatch,
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "reasoning_content": "OK",
+                    }
+                }
+            ]
+        },
+    )
+
+    client = LMStudioClient(model="local")
+
+    assert client.chat([user_message()]) == "OK"
+    assert client.last_reasoning == "OK"
+
+
+def test_lmstudio_wrapped_content(monkeypatch):
+    install(
+        monkeypatch,
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": (
+                            "<|im_start|>assistant\n"
+                            "OK<|im_end|>"
+                        )
+                    }
+                }
+            ]
+        },
+    )
+
+    client = LMStudioClient(model="local")
+
+    assert client.chat([user_message()]) == "OK"
+
+
+def test_native_reasoning_does_not_replace_tool_call(monkeypatch):
+    install(
+        monkeypatch,
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "reasoning_content": "sto pensando",
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "function": {
+                                    "name": "demo__echo",
+                                    "arguments": "{}",
+                                },
+                            }
+                        ],
+                    }
+                }
+            ]
+        },
+    )
+
+    client = LMStudioClient(model="local")
+    reply = client.native_step(
+        [user_message()],
+        make_registry(),
+    )
+
+    assert reply.text == ""
+    assert reply.tool_calls[0].tool == "demo.echo"
+    assert reply.reasoning == "sto pensando"
+
+
 def test_openai_native_fallback_on_400(monkeypatch):
     monkeypatch.setattr(
         requests,
