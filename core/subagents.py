@@ -328,6 +328,9 @@ class SubagentManager:
             audit=self.audit,
             agent_id=agent_id,
             parent_id=self.parent_id,
+            compact_descriptions=(
+                self.parent_registry.compact_descriptions
+            ),
         )
 
         FileSystemToolProvider(filesystem).register_tools(registry)

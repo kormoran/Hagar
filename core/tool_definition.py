@@ -23,6 +23,8 @@ class ToolParameter:
 
     default: Any = None
 
+    short_description: str | None = None
+
 
 @dataclass(slots=True)
 class ToolDefinition:
@@ -45,6 +47,8 @@ class ToolDefinition:
     category: str
 
     handler: Callable[..., Any]
+
+    short_description: str | None = None
 
     parameters: list[ToolParameter] = field(
         default_factory=list

@@ -169,6 +169,7 @@ class ToolsConfig:
     timeout: float | None = 120.0
     repeat_limit: int = 3
     timeouts: dict[str, float] = field(default_factory=dict)
+    compact: bool = True
 
 
 @dataclass(slots=True)

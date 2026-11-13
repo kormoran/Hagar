@@ -165,11 +165,15 @@ class GeminiClient(LLMClient):
                         {
                             "name": names[tool.name],
                             "description": (
-                                tool.description
+                                tool.short_description
+                                or tool.description
                             ),
                             "parameters": (
                                 self._parameters_schema(
-                                    tool
+                                    tool,
+                                    compact=(
+                                        registry.compact_descriptions
+                                    ),
                                 )
                             ),
                         }

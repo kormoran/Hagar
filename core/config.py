@@ -156,6 +156,21 @@ def _tool_timeouts(
     return result
 
 
+def _bool(
+    section: dict[str, Any],
+    key: str,
+    name: str,
+    default: bool,
+) -> bool:
+
+    value = section.get(key, default)
+
+    if not isinstance(value, bool):
+        raise ConfigError(f"{name} must be a boolean")
+
+    return value
+
+
 def _positive_float(
     section: dict[str, Any],
     key: str,
@@ -1264,6 +1279,12 @@ class ConfigLoader:
                 3,
             ),
             timeouts=_tool_timeouts(tools_data),
+            compact=_bool(
+                tools_data,
+                "compact",
+                "tools.compact",
+                True,
+            ),
         )
 
         # -------------------------

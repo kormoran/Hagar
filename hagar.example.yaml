@@ -63,6 +63,8 @@ tools:
   timeout: 120
   # Blocca la terza chiamata identica nello stesso turno; 0 disabilita.
   repeat_limit: 3
+  # Descrizioni brevi per ridurre il prompt dei modelli piccoli.
+  compact: true
   # Eccezioni per tool lenti (es. OCR di PDF).
   timeouts:
     # document.ocr_pdf: 900

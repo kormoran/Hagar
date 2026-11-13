@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.tool_definition import ToolDefinition
+from core.tool_definition import ToolDefinition, ToolParameter
 from core.tool_registry import ToolRegistry
 
 
@@ -57,6 +57,24 @@ def test_tool_names_are_sorted():
     registry.register(make_tool("a.tool"))
 
     assert registry.tool_names() == ["a.tool", "b.tool"]
+
+
+def test_compact_descriptions_are_applied():
+    registry = ToolRegistry(compact_descriptions=True)
+    tool = make_tool("filesystem.read_file")
+    tool.description = "Read a UTF-8 file from the sandbox."
+    tool.parameters = [
+        ToolParameter(
+            name="path",
+            param_type="string",
+            description="Path of the file to read.",
+        )
+    ]
+
+    registry.register(tool)
+
+    assert tool.short_description == "Read a UTF-8 file."
+    assert tool.parameters[0].short_description == "File path."
 
 
 def test_tool_timeout_override_is_applied():

@@ -158,9 +158,17 @@ class ClaudeClient(LLMClient):
             "tools": [
                 {
                     "name": names[tool.name],
-                    "description": tool.description,
+                    "description": (
+                        tool.short_description
+                        or tool.description
+                    ),
                     "input_schema": (
-                        self._parameters_schema(tool)
+                        self._parameters_schema(
+                            tool,
+                            compact=(
+                                registry.compact_descriptions
+                            ),
+                        )
                     ),
                 }
                 for tool in registry.list_definitions()

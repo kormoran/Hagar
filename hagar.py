@@ -617,6 +617,7 @@ def build_harness(
         default_timeout=config.tools.timeout,
         repeat_limit=config.tools.repeat_limit,
         timeout_overrides=config.tools.timeouts,
+        compact_descriptions=config.tools.compact,
     )
 
     # ==========================================

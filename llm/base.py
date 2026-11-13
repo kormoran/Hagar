@@ -227,6 +227,7 @@ class LLMClient(ABC):
     @staticmethod
     def _parameters_schema(
         tool: ToolDefinition,
+        compact: bool = False,
     ) -> dict[str, Any]:
 
         properties: dict[str, Any] = {}
@@ -235,10 +236,17 @@ class LLMClient(ABC):
 
         for parameter in tool.parameters:
 
-            properties[parameter.name] = {
+            item = {
                 "type": parameter.param_type,
-                "description": parameter.description,
             }
+
+            if not compact:
+                item["description"] = (
+                    parameter.short_description
+                    or parameter.description
+                )
+
+            properties[parameter.name] = item
 
             if parameter.required:
                 required.append(parameter.name)
@@ -503,7 +511,10 @@ class LLMClient(ABC):
         ):
 
             sections.append(
-                self._render_tool(tool)
+                self._render_tool(
+                    tool,
+                    compact=registry.compact_descriptions,
+                )
             )
 
         if not sections:
@@ -516,6 +527,7 @@ class LLMClient(ABC):
     def _render_tool(
         self,
         tool: ToolDefinition,
+        compact: bool = False,
     ) -> str:
 
         lines = [
@@ -523,7 +535,7 @@ class LLMClient(ABC):
             f"Category: {tool.category}",
             (
                 f"Description: "
-                f"{tool.description}"
+                f"{tool.short_description or tool.description}"
             ),
         ]
 
@@ -539,7 +551,8 @@ class LLMClient(ABC):
 
                 lines.append(
                     self._render_parameter(
-                        param
+                        param,
+                        compact=compact,
                     )
                 )
 
@@ -548,6 +561,7 @@ class LLMClient(ABC):
     @staticmethod
     def _render_parameter(
         param: ToolParameter,
+        compact: bool = False,
     ) -> str:
 
         required = (
@@ -556,12 +570,22 @@ class LLMClient(ABC):
             else "optional"
         )
 
-        return (
+        line = (
             f"- {param.name} "
             f"({param.param_type}) "
-            f"[{required}] "
-            f": {param.description}"
+            f"[{required}]"
         )
+
+        if not compact:
+            line += (
+                ": "
+                + (
+                    param.short_description
+                    or param.description
+                )
+            )
+
+        return line
 
     # ==================================================
     # JSON parsing

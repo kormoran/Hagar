@@ -148,9 +148,13 @@ class OllamaClient(LLMClient):
                 "type": "function",
                 "function": {
                     "name": names[tool.name],
-                    "description": tool.description,
+                    "description": (
+                        tool.short_description
+                        or tool.description
+                    ),
                     "parameters": self._parameters_schema(
-                        tool
+                        tool,
+                        compact=registry.compact_descriptions,
                     ),
                 },
             }

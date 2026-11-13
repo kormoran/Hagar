@@ -924,7 +924,12 @@ Se il checkpoint è incompleto, l'undo viene rifiutato.
 
 - `tools.timeout` per singola chiamata, tramite worker demone;
 - `tools.timeouts.<nome>` per eccezioni su tool lenti;
+- `tools.compact` per usare descrizioni brevi e omettere le
+  descrizioni dei parametri dallo schema nativo;
 - `tools.repeat_limit` sull'hash `tool + argomenti` per turno.
+
+Le descrizioni brevi vivono in `core/tool_short.py`; i `ToolDefinition`
+conservano comunque la descrizione completa.
 
 Le chiamate LLM usano un timeout adattivo (`core/timeouts.py`):
 p95 della scheda, dimensione del prompt, `max_tokens`, fattore di
@@ -1214,9 +1219,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1105 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1106 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-13): tutti i test verdi, inclusi i
-  symlink (1107 superati, 0 skip). Dettagli e motivazione dello shim in README §3.1.
+  symlink (1108 superati, 0 skip). Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).

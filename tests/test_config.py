@@ -942,6 +942,7 @@ def test_tools_timeouts_and_adaptive_defaults(tmp_path):
     )
 
     assert cfg.tools.timeouts == {}
+    assert cfg.tools.compact is True
     assert cfg.timeouts.adaptive is True
     assert cfg.timeouts.floor_seconds == 30.0
 
@@ -950,6 +951,7 @@ def test_tools_timeouts_and_adaptive_values(tmp_path):
     data = base_config(tmp_path)
     data["tools"] = {
         "timeout": 120,
+        "compact": False,
         "timeouts": {"ocr.pdf": 900},
     }
     data["timeouts"] = {
@@ -964,6 +966,7 @@ def test_tools_timeouts_and_adaptive_values(tmp_path):
     cfg = ConfigLoader.load(write_yaml(tmp_path, data))
 
     assert cfg.tools.timeouts == {"ocr.pdf": 900.0}
+    assert cfg.tools.compact is False
     assert cfg.timeouts.adaptive is False
     assert cfg.timeouts.floor_seconds == 45.0
     assert cfg.timeouts.ceiling_seconds == 600.0

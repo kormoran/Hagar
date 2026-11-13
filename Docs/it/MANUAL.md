@@ -593,11 +593,19 @@ La modalità aggiunge una chiamata LLM per ogni turno.
 tools:
   timeout: 120
   repeat_limit: 3
+  compact: true
+  timeouts:
+    document.ocr_pdf: 900
 ```
 
 `timeout` è il limite in secondi per una singola tool call; `0` lo
 disabilita. `repeat_limit` blocca la terza chiamata identica nello stesso
-turno; `0` disabilita il blocco. Il timeout di un handler Python già in
+turno; `0` disabilita il blocco. `compact` usa descrizioni brevi e
+omette le descrizioni dei parametri dallo schema nativo: riduce il
+prompt per i modelli piccoli. Le descrizioni complete restano nei
+`ToolDefinition`. `timeouts` imposta eccezioni per singolo tool.
+
+Il timeout di un handler Python già in
 esecuzione è best effort: il worker può terminare dopo il limite.
 
 ## 4.12 `dev`

@@ -20,6 +20,7 @@ from .permissions import (
     capability_names,
 )
 from .tool_definition import ToolDefinition
+from .tool_short import short_description, short_parameter
 
 
 class ToolTimeoutError(RuntimeError):
@@ -55,6 +56,7 @@ class ToolRegistry:
         default_timeout: float | None = None,
         repeat_limit: int = 3,
         timeout_overrides: dict[str, float] | None = None,
+        compact_descriptions: bool = False,
     ) -> None:
 
         self._tools: dict[
@@ -75,6 +77,7 @@ class ToolRegistry:
             str(name): float(value)
             for name, value in (timeout_overrides or {}).items()
         }
+        self.compact_descriptions = compact_descriptions
         self._repeat_counts: dict[str, int] = {}
 
     # ==================================================
@@ -110,6 +113,19 @@ class ToolRegistry:
 
         if tool.name in self.timeout_overrides:
             tool.timeout = self.timeout_overrides[tool.name]
+
+        if self.compact_descriptions:
+            tool.short_description = short_description(
+                tool.name,
+                tool.description,
+            )
+
+            for parameter in tool.parameters:
+                parameter.short_description = short_parameter(
+                    tool.name,
+                    parameter.name,
+                    parameter.description,
+                )
 
         self._tools[tool.name] = tool
 
