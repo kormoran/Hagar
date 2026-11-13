@@ -16,6 +16,7 @@ from core.model_cards import ModelCardError
 from core.model_cards import ModelCardStore
 from core.model_cards import utc_now
 from core.permissions import capability_names
+from core.provider_models import ProviderModelError, discover
 from core.quality_bench import benchmark_quality
 from core.service import HarnessService
 from core.vision_bench import benchmark_vision
@@ -358,6 +359,60 @@ class CommandService:
                 data=card,
             )
 
+        if action == "discover":
+
+            provider = (
+                arguments[1].lower()
+                if len(arguments) > 1
+                else "lmstudio"
+            )
+            host = None
+            config = getattr(self.harness, "config", None)
+            model_config = getattr(config, "model", None)
+
+            if (
+                model_config is not None
+                and getattr(model_config, "provider", None)
+                == provider
+            ):
+                host = getattr(model_config, "host", None)
+
+            try:
+                models = discover(provider, host)
+            except ProviderModelError as exc:
+                return CommandResult(
+                    command="/models discover",
+                    ok=False,
+                    error=str(exc),
+                    lines=[f"Discovery non riuscita: {exc}"],
+                )
+
+            lines = [
+                f"Provider: {provider}",
+                f"Modelli: {len(models)}",
+            ]
+
+            for item in models:
+                lines.append(
+                    f"  {item.model} "
+                    f"[{item.model_type}] "
+                    f"ctx={item.context_window or '?'} "
+                    f"quant={item.quantization or '?'} "
+                    f"cap={','.join(sorted(item.capabilities)) or '-'}"
+                )
+
+            return CommandResult(
+                command="/models discover",
+                lines=lines,
+                data={
+                    "provider": provider,
+                    "models": [
+                        item.as_dict()
+                        for item in models
+                    ],
+                },
+            )
+
         if action in {"test", "benchmark"}:
 
             llm = getattr(self.harness, "llm", None)
@@ -634,7 +689,7 @@ class CommandService:
             lines=[
                 "Uso: /models "
                 "[list|show|test|test vision|hardware|"
-                "runs|route|explain|use]",
+                "runs|discover|route|explain|use]",
             ],
         )
 
