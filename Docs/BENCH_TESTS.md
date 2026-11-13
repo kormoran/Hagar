@@ -13,6 +13,7 @@ Completato: `2026-11-13T06:51:39+00:00`
 - I due modelli `text-embedding-*` sono esclusi: non sono agenti chat.
 - I punteggi sono indicativi: una sola esecuzione per la maggior parte dei modelli.
 - Questa run è precedente al capability layer: i modelli code/tool-only come `qwen3-coder-next` vanno letti con `chat=false`, `coding=true`, `tool_calling=true`; la suite chat non è applicabile.
+- `google/gemma-4-12b-qat` e `google/gemma-4-26b-a4b-qat` non sono caricabili in modo stabile da LM Studio: i loro risultati vanno considerati non validi, non come qualità del modello.
 
 ## Politica
 
