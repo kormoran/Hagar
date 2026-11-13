@@ -44,6 +44,28 @@ OLD = {
 }
 
 
+def _errors(item: dict[str, Any]) -> list[str]:
+
+    errors = list(item.get("errors") or [])
+    benchmarks = item.get("benchmarks") or {}
+
+    for section in ("chat", "structured", "tool_call"):
+
+        value = benchmarks.get(section) or {}
+
+        for error in value.get("errors") or []:
+            errors.append(f"{section}: {error}")
+
+    quality = item.get("quality") or {}
+
+    for task, value in quality.get("tasks", {}).items():
+
+        for error in value.get("errors") or []:
+            errors.append(f"{task}: {error}")
+
+    return errors
+
+
 def write_report(results: list[dict[str, Any]], current=None) -> None:
 
     lines = [
@@ -82,7 +104,7 @@ def write_report(results: list[dict[str, Any]], current=None) -> None:
                     for name, enabled in verified.items()
                     if enabled
                 ) or "n/d",
-                str(len(item.get("errors") or [])),
+                str(len(_errors(item))),
             ])
             + " |"
         )
@@ -120,9 +142,9 @@ def write_report(results: list[dict[str, Any]], current=None) -> None:
         else:
             lines.append("- chat: fallita")
 
-        if item.get("errors"):
+        if _errors(item):
             lines.append("- errori:")
-            for error in item["errors"]:
+            for error in _errors(item):
                 lines.append(f"  - `{error}`")
 
         lines.append("")

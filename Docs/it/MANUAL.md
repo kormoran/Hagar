@@ -67,6 +67,7 @@ modello**: Hagar risponde `Comando sconosciuto` e suggerisce `/help`.
 | `/models test` | benchmark testo e qualità del modello corrente |
 | `/models test vision` | benchmark vision su immagini sintetiche |
 | `/models runs [n]` | ultimi run di benchmark salvati |
+| `/models discover [provider]` | capacità dichiarate da LM Studio o Ollama |
 | `/models hardware` | rileva CPU, RAM e GPU della macchina |
 | `/undo` | annulla le modifiche dell'ultimo turno |
 | `/mcp` | elenca server MCP, endpoint e tool importati |

@@ -159,6 +159,43 @@ Un `quality_task` nel TaskProfile seleziona il task da usare; se manca,
 il broker usa il nome del profilo. Se la scheda non ha qualità misurata,
 usa la qualità dichiarata nel catalogo.
 
+## Discovery del provider
+
+Comando:
+
+```text
+/models discover lmstudio
+/models discover ollama
+```
+
+Legge i metadati del runtime e li normalizza in `ProviderModelInfo`:
+
+```text
+provider
+model
+model_type
+context_window
+quantization
+state
+capabilities
+hagar_capabilities
+```
+
+Mapping:
+
+```text
+LM Studio tool_use     → tool_calling
+LM Studio type vlm     → vision
+Ollama tools           → tool_calling
+Ollama thinking        → reasoning
+Ollama vision          → vision
+Ollama completion      → text_generation
+```
+
+`completion` non viene mappato automaticamente su `chat`: un modello
+può completare testo senza essere conversazionale. `chat` resta una
+capability da verificare.
+
 ## Capability verificate
 
 La scheda distingue:
