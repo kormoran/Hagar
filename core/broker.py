@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import time
+
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from core.model_registry import ModelEntry, ModelRegistry
 from core.task_profile import TaskProfile, TaskProfileStore
@@ -84,16 +86,77 @@ class Broker:
         self,
         registry: ModelRegistry,
         profiles: TaskProfileStore,
+        *,
+        loaded_only: bool = False,
+        refresh: Callable[[], None] | None = None,
+        refresh_interval: float = 2.0,
     ) -> None:
 
         self.registry = registry
         self.profiles = profiles
+        self.loaded_only = loaded_only
+        self.refresh_interval = max(0.0, float(refresh_interval))
+        self._refresh_callback = refresh
+        self._loaded: dict[str, set[str]] = {}
+        self._last_refresh = 0.0
+
+    def set_loaded_models(
+        self,
+        provider: str,
+        models: Iterable[str],
+    ) -> None:
+
+        key = provider.casefold()
+        self._loaded[key] = {
+            str(model).casefold()
+            for model in models
+        }
+
+    def set_refresh(
+        self,
+        callback: Callable[[], None] | None,
+    ) -> None:
+        self._refresh_callback = callback
+
+    def refresh(self) -> None:
+
+        if self._refresh_callback is not None:
+            self._refresh_callback()
+
+        self._last_refresh = time.monotonic()
+
+    def _refresh_if_needed(self) -> None:
+
+        if self._refresh_callback is None:
+            return
+
+        now = time.monotonic()
+
+        if (
+            self._last_refresh == 0.0
+            or now - self._last_refresh >= self.refresh_interval
+        ):
+            self.refresh()
+
+    def loaded_state(self, entry: ModelEntry) -> bool | None:
+        """True/False se il provider espone lo stato, None se ignoto."""
+
+        if not self.loaded_only:
+            return None
+
+        provider = entry.provider.casefold()
+
+        if provider not in self._loaded:
+            return None
+
+        return entry.model.casefold() in self._loaded[provider]
 
     def select(
         self,
         profile: str | TaskProfile,
     ) -> Selection:
 
+        self._refresh_if_needed()
         task = self._profile(profile)
         eligible: list[tuple[ModelEntry, float, list[str]]] = []
         excluded: list[dict[str, Any]] = []
@@ -145,6 +208,7 @@ class Broker:
         profile: str | TaskProfile,
     ) -> dict[str, Any]:
 
+        self._refresh_if_needed()
         task = self._profile(profile)
         ranked = []
         excluded = []
@@ -219,6 +283,9 @@ class Broker:
     ) -> list[str]:
 
         reasons = []
+
+        if self.loaded_state(entry) is False:
+            reasons.append("model not loaded")
 
         missing = (
             task.required_capabilities

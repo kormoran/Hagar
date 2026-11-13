@@ -212,6 +212,7 @@ class BrokerConfig:
     catalog: str = "models.yaml"
     profiles: str = "profiles.yaml"
     default_profile: str = "coding"
+    loaded_only: bool = True
 
 
 @dataclass(slots=True)

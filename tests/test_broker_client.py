@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from core.broker import BrokerError
 from core.models import ModelConfig
 from core.task_profile import TaskProfile, TaskProfileStore
@@ -159,6 +161,27 @@ def test_falls_back_when_selected_client_fails():
     assert "provider down" in client.fallback_reason
     assert attempts == ["coder", "base"]
     assert any(event == "broker.fallback" for event, _ in audit.events)
+
+
+def test_strict_loaded_mode_does_not_fallback():
+    broker = FakeBroker(
+        error=BrokerError(
+            "no eligible model",
+            excluded=[{"model_id": "x", "reasons": ["model not loaded"]}],
+        )
+    )
+
+    def factory(config, audit=None):
+        return FakeLLM(config.name)
+
+    with pytest.raises(BrokerError):
+        BrokerLLMClient(
+            broker,
+            ModelConfig(provider="lmstudio", name="base"),
+            profile="coding",
+            llm_factory=factory,
+            allow_fallback=False,
+        )
 
 
 def test_missing_audit_is_allowed():

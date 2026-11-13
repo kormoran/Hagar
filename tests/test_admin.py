@@ -119,6 +119,7 @@ def write_config(
             "catalog": str(catalog),
             "profiles": str(profiles),
             "default_profile": "coding",
+            "loaded_only": False,
         }
 
     path = tmp_path / "hagar.yaml"

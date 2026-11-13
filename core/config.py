@@ -1425,11 +1425,19 @@ class ConfigLoader:
                     f"broker.{name} must be a non-empty string"
                 )
 
+        loaded_only = broker_data.get("loaded_only", True)
+
+        if not isinstance(loaded_only, bool):
+            raise ConfigError(
+                "broker.loaded_only must be a boolean"
+            )
+
         broker = BrokerConfig(
             enabled=broker_enabled,
             catalog=broker_catalog,
             profiles=broker_profiles,
             default_profile=broker_default,
+            loaded_only=loaded_only,
         )
 
         # -------------------------

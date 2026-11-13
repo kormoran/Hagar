@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import requests
@@ -240,6 +240,34 @@ def discover_lmstudio(
     ]
 
 
+def _ollama_loaded(
+    base: str,
+    timeout: float,
+) -> set[str] | None:
+
+    try:
+        response = requests.get(
+            base + "/api/ps",
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return None
+
+    items = payload.get("models") if isinstance(payload, dict) else None
+
+    if not isinstance(items, list):
+        return set()
+
+    return {
+        str(item.get("name") or item.get("model") or "").casefold()
+        for item in items
+        if isinstance(item, dict)
+        and (item.get("name") or item.get("model"))
+    }
+
+
 def discover_ollama(
     host: str = "http://localhost:11434",
     *,
@@ -267,6 +295,7 @@ def discover_ollama(
             "Ollama response without model data"
         )
 
+    loaded = _ollama_loaded(base, timeout)
     result = []
 
     for tag in items:
@@ -290,9 +319,19 @@ def discover_ollama(
         except Exception:
             show = {}
 
-        result.append(
-            from_ollama(tag, show)
-        )
+        info = from_ollama(tag, show)
+
+        if loaded is not None:
+            info = replace(
+                info,
+                state=(
+                    "loaded"
+                    if info.model.casefold() in loaded
+                    else "not-loaded"
+                ),
+            )
+
+        result.append(info)
 
     return result
 

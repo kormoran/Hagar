@@ -36,6 +36,7 @@ from local_tools.text_transform_tool import TextTransformToolProvider
 from core.input_broker import ConsoleInputBroker
 from core.models import AppConfig
 from core.model_registry import ModelRegistry, ModelRegistryError
+from core.provider_models import ProviderModelError, discover
 from core.task_profile import TaskProfileStore, TaskProfileError
 from core.timeouts import TimeoutPolicy
 from core.plugins import PluginContext
@@ -223,6 +224,54 @@ class Harness:
     broker_error: str | None = None
 
 
+def _refresh_loaded_models(
+    broker: Broker,
+    config: AppConfig,
+    audit: AuditLog,
+) -> None:
+    """Aggiorna i modelli caricati dai runtime locali."""
+
+    providers = sorted({
+        entry.provider
+        for entry in broker.registry.entries
+    })
+
+    for provider in providers:
+
+        if provider not in {"lmstudio", "ollama"}:
+            continue
+
+        host = (
+            config.model.host
+            if provider == config.model.provider
+            else None
+        )
+
+        try:
+            infos = discover(
+                provider,
+                host,
+                timeout=2.0,
+            )
+        except ProviderModelError as exc:
+            audit.record(
+                "broker.availability_failed",
+                provider=provider,
+                error=str(exc),
+            )
+            broker.set_loaded_models(provider, [])
+            continue
+
+        broker.set_loaded_models(
+            provider,
+            [
+                info.model
+                for info in infos
+                if info.state == "loaded"
+            ],
+        )
+
+
 def _load_broker(
     config: AppConfig,
     audit: AuditLog,
@@ -242,7 +291,17 @@ def _load_broker(
         broker_service = Broker(
             broker_registry,
             broker_profiles,
+            loaded_only=config.broker.loaded_only,
         )
+
+        if config.broker.loaded_only:
+            broker_service.set_refresh(
+                lambda: _refresh_loaded_models(
+                    broker_service,
+                    config,
+                    audit,
+                )
+            )
     except (ModelRegistryError, TaskProfileError) as exc:
 
         error = str(exc)
@@ -798,6 +857,7 @@ def build_harness(
                 timeout_policy=TimeoutPolicy.from_config(
                     config.timeouts
                 ),
+                allow_fallback=not config.broker.loaded_only,
             )
 
     except Exception as exc:

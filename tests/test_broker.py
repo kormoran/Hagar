@@ -72,12 +72,55 @@ def coding_profile(**overrides):
     return TaskProfile(**values)
 
 
-def make_broker(entries, profiles=None):
+def make_broker(entries, profiles=None, **kwargs):
     registry = ModelRegistry(entries)
     store = TaskProfileStore(
         profiles or [coding_profile()]
     )
-    return Broker(registry, store)
+    return Broker(registry, store, **kwargs)
+
+
+def test_loaded_only_excludes_models_not_in_runtime():
+    broker = make_broker(
+        [
+            entry("loaded", quality=0.80),
+            entry("not-loaded", quality=0.99),
+        ],
+        loaded_only=True,
+    )
+    broker.set_loaded_models("lmstudio", ["loaded"])
+
+    selection = broker.select("coding")
+
+    assert selection.entry.id == "loaded"
+
+
+def test_refresh_sets_loaded_models():
+    calls = []
+
+    def refresh():
+        calls.append(True)
+
+    broker = make_broker(
+        [entry("loaded")],
+        loaded_only=True,
+        refresh=refresh,
+        refresh_interval=0,
+    )
+    broker.set_loaded_models("lmstudio", ["loaded"])
+
+    assert broker.select("coding").entry.id == "loaded"
+    assert calls
+
+
+def test_loaded_only_unknown_state_is_not_excluded():
+    broker = make_broker(
+        [entry("unknown")],
+        loaded_only=True,
+    )
+
+    assert broker.loaded_state(broker.registry.get("unknown")) is None
+    assert broker.select("coding").entry.id == "unknown"
 
 
 def test_select_prefers_quality():

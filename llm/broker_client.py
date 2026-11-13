@@ -29,6 +29,7 @@ class BrokerLLMClient(LLMClient):
         llm_factory: Callable[..., LLMClient] | None = None,
         local_only: bool = False,
         timeout_policy: TimeoutPolicy | None = None,
+        allow_fallback: bool = True,
     ) -> None:
 
         self.broker = broker
@@ -38,6 +39,7 @@ class BrokerLLMClient(LLMClient):
         self._factory = llm_factory or create_llm
         self.local_only = local_only
         self.timeout_policy = timeout_policy
+        self.allow_fallback = allow_fallback
         self.fallback_reason: str | None = None
         self.selection: Any = None
 
@@ -54,6 +56,9 @@ class BrokerLLMClient(LLMClient):
                 model=config.name,
                 error=str(exc),
             )
+
+            if not self.allow_fallback:
+                raise
 
         else:
 

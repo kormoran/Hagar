@@ -92,6 +92,7 @@ def test_broker_config_resolves_relative_paths(tmp_path):
     assert Path(cfg.broker.catalog) == tmp_path / "models.yaml"
     assert Path(cfg.broker.profiles) == tmp_path / "config" / "profiles.yaml"
     assert cfg.broker.default_profile == "quick_chat"
+    assert cfg.broker.loaded_only is True
 
 
 def test_broker_config_defaults(tmp_path):
@@ -103,6 +104,19 @@ def test_broker_config_defaults(tmp_path):
     assert Path(cfg.broker.catalog) == tmp_path / "models.yaml"
     assert Path(cfg.broker.profiles) == tmp_path / "profiles.yaml"
     assert cfg.broker.default_profile == "coding"
+    assert cfg.broker.loaded_only is True
+
+
+def test_broker_loaded_only_can_be_disabled(tmp_path):
+    data = base_config(tmp_path)
+    data["broker"] = {
+        "enabled": True,
+        "loaded_only": False,
+    }
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.broker.loaded_only is False
 
 
 @pytest.mark.parametrize(

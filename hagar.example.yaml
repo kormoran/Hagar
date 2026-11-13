@@ -100,6 +100,8 @@ broker:
   catalog: models.yaml
   profiles: profiles.yaml
   default_profile: coding
+  # Sceglie solo modelli già caricati nel runtime locale.
+  loaded_only: true
 
 flow:
   # DSL Hagar Flow: sottoinsieme lineare di Python.

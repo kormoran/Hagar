@@ -319,6 +319,37 @@ da `/models use <profilo>` oppure dalla configurazione del broker. Il
 pulsante di reset da `hagar.yaml` ricrea il `BrokerLLMClient` ma non
 ricarica catalogo e profili: per quelli serve un riavvio.
 
+## Modelli caricati
+
+Con `broker.loaded_only: true` il broker considera solo i modelli già
+caricati nel runtime locale. I modelli non caricati vengono esclusi con:
+
+```text
+model not loaded
+```
+
+Lo stato viene letto da:
+
+```text
+LM Studio  /api/v0/models  → state
+Ollama     /api/ps         → models
+```
+
+La disponibilità viene aggiornata prima della selezione, con cache breve
+(2 secondi). `/models explain` mostra anche questo motivo di esclusione.
+
+```yaml
+broker:
+  enabled: true
+  loaded_only: true
+```
+
+Se nessun modello è caricato, la selezione fallisce e Hagar non usa il
+fallback `config.model`: il fallback caricherebbe un modello non pronto.
+
+I provider remoti non espongono lo stato di caricamento e restano
+eleggibili.
+
 ## Capability verificate
 
 Il broker usa `capabilities_verified` dalla scheda, se presente; in
