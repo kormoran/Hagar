@@ -100,11 +100,6 @@ function renderStatus(data) {
     switchTab('chat');
   }
   renderUsage(data.usage);
-  if (Array.isArray(data.tools)) {
-    const box = document.getElementById('tools');
-    box.replaceChildren();
-    for (const name of data.tools) box.appendChild(el('div', '', name));
-  }
 }
 
 async function refreshStatus() {

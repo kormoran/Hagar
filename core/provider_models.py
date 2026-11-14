@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -268,6 +269,26 @@ def _ollama_loaded(
     }
 
 
+def _ollama_show(
+    base: str,
+    name: str,
+    timeout: float,
+) -> dict[str, Any]:
+
+    try:
+        response = requests.post(
+            base + "/api/show",
+            json={"model": name},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        candidate = response.json()
+    except Exception:
+        return {}
+
+    return candidate if isinstance(candidate, dict) else {}
+
+
 def discover_ollama(
     host: str = "http://localhost:11434",
     *,
@@ -296,30 +317,36 @@ def discover_ollama(
         )
 
     loaded = _ollama_loaded(base, timeout)
+
+    if not items:
+        return []
+
+    max_workers = min(8, len(items))
+    shows = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(
+                _ollama_show,
+                base,
+                str(tag["name"]),
+                timeout,
+            ): index
+            for index, tag in enumerate(items)
+            if isinstance(tag, dict) and tag.get("name")
+        }
+
+        for future, index in futures.items():
+            shows[index] = future.result()
+
     result = []
 
-    for tag in items:
+    for index, tag in enumerate(items):
 
         if not isinstance(tag, dict) or not tag.get("name"):
             continue
 
-        show = {}
-
-        try:
-            response = requests.post(
-                base + "/api/show",
-                json={"model": tag["name"]},
-                timeout=timeout,
-            )
-            response.raise_for_status()
-            candidate = response.json()
-
-            if isinstance(candidate, dict):
-                show = candidate
-        except Exception:
-            show = {}
-
-        info = from_ollama(tag, show)
+        info = from_ollama(tag, shows.get(index, {}))
 
         if loaded is not None:
             info = replace(

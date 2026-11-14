@@ -496,4 +496,14 @@ els.refresh.addEventListener('click', () => loadModels());
 els.filter.addEventListener('input', () => renderList());
 els.benchmarkButton.addEventListener('click', startBenchmark);
 
+window.addEventListener('focus', () => {
+  if (!state.loading) loadModels();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !state.loading) {
+    loadModels();
+  }
+});
+
 loadModels();

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -117,7 +118,7 @@ def list_local_models(
     errors = []
     seen = set()
 
-    for provider in DEFAULT_HOSTS:
+    def load_provider(provider: str) -> tuple[str, list[Any], str | None]:
 
         host = _provider_host(config, provider)
 
@@ -128,9 +129,21 @@ def list_local_models(
                 timeout=timeout,
             )
         except ProviderModelError as exc:
+            return provider, [], str(exc)
+
+        return provider, infos, None
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        provider_results = list(
+            pool.map(load_provider, DEFAULT_HOSTS)
+        )
+
+    for provider, infos, error in provider_results:
+
+        if error:
             errors.append({
                 "provider": provider,
-                "error": str(exc),
+                "error": error,
             })
             infos = []
 
