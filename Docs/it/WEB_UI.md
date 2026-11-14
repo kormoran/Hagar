@@ -102,7 +102,16 @@ scheda e benchmark a destra
 
 L’elenco unisce runtime LM Studio/Ollama e schede già registrate.
 Mostra tipo, contesto, quantizzazione, stato caricato e presenza di
-benchmark.
+benchmark. Le schede vengono lette da:
+
+```text
+%LOCALAPPDATA%/Hagar/models     (schede runtime e Web UI)
+benchmarks/live-cards           (runner live)
+benchmarks/retest-cards         (retest mirati)
+```
+
+Se lo stesso modello compare in più raccolte, vince la scheda con
+`last_tested_at` più recente.
 
 Per il modello selezionato la scheda mostra:
 

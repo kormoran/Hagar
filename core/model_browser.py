@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 
+from pathlib import Path
 from typing import Any
 
 from core.benchmark_runs import BenchmarkRunStore
@@ -41,8 +42,36 @@ def _provider_host(config: Any, provider: str) -> str:
     )
 
 
-def _clean_card(card: dict[str, Any]) -> dict[str, Any]:
+def _card_stores(
+    cards: ModelCardStore | list[ModelCardStore] | None,
+) -> list[ModelCardStore]:
 
+    if isinstance(cards, ModelCardStore):
+        return [cards]
+
+    if isinstance(cards, list):
+        return cards
+
+    root = Path(__file__).resolve().parent.parent
+    candidates = [
+        ModelCardStore(),
+        ModelCardStore(root / "benchmarks" / "live-cards"),
+        ModelCardStore(root / "benchmarks" / "retest-cards"),
+    ]
+    unique = []
+    seen = set()
+
+    for store in candidates:
+        key = str(store.root.resolve())
+
+        if key not in seen:
+            seen.add(key)
+            unique.append(store)
+
+    return unique
+
+
+def _clean_card(card: dict[str, Any]) -> dict[str, Any]:
     return {
         key: copy.deepcopy(value)
         for key, value in card.items()
@@ -54,22 +83,35 @@ def list_local_models(
     config: Any,
     *,
     timeout: float = 2.0,
-    cards: ModelCardStore | None = None,
+    cards: ModelCardStore | list[ModelCardStore] | None = None,
 ) -> dict[str, Any]:
 
-    store = cards or ModelCardStore()
+    store_list = _card_stores(cards)
     card_map = {}
 
-    try:
-        for card in store.list():
+    for store in store_list:
+        try:
+            for card in store.list():
 
-            provider = str(card.get("provider") or "")
-            model = str(card.get("model") or "")
+                provider = str(card.get("provider") or "")
+                model = str(card.get("model") or "")
 
-            if provider and model:
-                card_map[(provider, model)] = card
-    except Exception:
-        pass
+                if not provider or not model:
+                    continue
+
+                key = (provider.casefold(), model.casefold())
+                previous = card_map.get(key)
+                current_date = str(
+                    card.get("last_tested_at", "")
+                )
+                previous_date = str(
+                    (previous or {}).get("last_tested_at", "")
+                )
+
+                if previous is None or current_date >= previous_date:
+                    card_map[key] = card
+        except Exception:
+            continue
 
     items = []
     errors = []
@@ -94,7 +136,7 @@ def list_local_models(
 
         for info in infos:
 
-            key = (provider, info.model)
+            key = (provider.casefold(), info.model.casefold())
             seen.add(key)
             card = card_map.get(key)
 
