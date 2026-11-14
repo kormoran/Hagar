@@ -59,7 +59,16 @@ hagar = "hagar:main"
 
 [tool.setuptools]
 py-modules = ["hagar"]
-packages = ["core", "llm", "memory", "local_tools", "web", "benchmarks"]
+
+[tool.setuptools.packages.find]
+include = [
+    "core*",
+    "llm*",
+    "memory*",
+    "local_tools*",
+    "web*",
+    "benchmarks*",
+]
 
 [tool.setuptools.package-data]
 web = ["*.html", "*.css", "*.js"]

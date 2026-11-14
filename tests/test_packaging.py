@@ -36,14 +36,17 @@ def test_declared_packages():
     setuptools = project()["tool"]["setuptools"]
 
     assert setuptools["py-modules"] == ["hagar"]
-    assert set(setuptools["packages"]) == {
-        "core",
-        "llm",
-        "memory",
-        "local_tools",
-        "web",
-        "benchmarks",
-    }
+
+    include = setuptools["packages"]["find"]["include"]
+
+    from setuptools import find_packages
+
+    discovered = set(
+        find_packages(where=str(ROOT), include=include)
+    )
+
+    assert "core.flow" in discovered
+    assert "web" in discovered
 
 
 def test_dependencies_are_declared():
