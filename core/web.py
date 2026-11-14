@@ -7,6 +7,7 @@ import queue
 import secrets
 import sys
 import threading
+import time
 
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
@@ -28,6 +29,10 @@ from core.events import make_event
 from core.images import MAX_IMAGES
 from core.images import ImageInput
 from core.images import ImageInputError
+from core.model_browser import (
+    list_local_models,
+    run_model_benchmark,
+)
 from core.service import HarnessService
 from core.session_log import SessionLog
 from memory.projects import ProjectError
@@ -36,8 +41,10 @@ from memory.projects import ProjectError
 STATIC_TYPES = {
     "style.css": "text/css; charset=utf-8",
     "admin.css": "text/css; charset=utf-8",
+    "models.css": "text/css; charset=utf-8",
     "app.js": "application/javascript; charset=utf-8",
     "admin.js": "application/javascript; charset=utf-8",
+    "models.js": "application/javascript; charset=utf-8",
     "control.js": "application/javascript; charset=utf-8",
     "sandbox.js": "application/javascript; charset=utf-8",
 }
@@ -161,6 +168,9 @@ class WebSession:
         self._lock = threading.Lock()
         self._busy = False
         self._closed = False
+        self._bench_lock = threading.Lock()
+        self._bench_jobs: dict[str, dict[str, Any]] = {}
+        self._bench_active: str | None = None
 
     def _publish(
         self,
@@ -169,6 +179,96 @@ class WebSession:
 
         self.log.record(event)
         self.bus.publish(event)
+
+    # ==================================================
+    # Modelli locali
+    # ==================================================
+
+    def models(self) -> dict[str, Any]:
+
+        return list_local_models(self.harness.config)
+
+    def start_model_benchmark(
+        self,
+        provider: str,
+        model: str,
+    ) -> dict[str, Any]:
+
+        if self.is_busy():
+            raise RuntimeError("a turn is running")
+
+        with self._bench_lock:
+
+            if self._bench_active is not None:
+                raise RuntimeError("a benchmark is already running")
+
+            job_id = secrets.token_urlsafe(12)
+            job = {
+                "id": job_id,
+                "provider": provider,
+                "model": model,
+                "status": "running",
+                "error": None,
+                "result": None,
+                "started_at": time.time(),
+                "finished_at": None,
+            }
+            self._bench_jobs[job_id] = job
+            self._bench_active = job_id
+
+        thread = threading.Thread(
+            target=self._run_model_benchmark,
+            args=(job_id, provider, model),
+            name="hagar-model-benchmark",
+            daemon=True,
+        )
+        thread.start()
+
+        return dict(job)
+
+    def _run_model_benchmark(
+        self,
+        job_id: str,
+        provider: str,
+        model: str,
+    ) -> None:
+
+        try:
+            agent = getattr(self.harness, "agent", None)
+            registry = getattr(agent, "tools", None)
+            result = run_model_benchmark(
+                self.harness.config,
+                provider,
+                model,
+                registry=registry,
+            )
+        except Exception as exc:
+            with self._bench_lock:
+                job = self._bench_jobs[job_id]
+                job["status"] = "failed"
+                job["error"] = str(exc)
+                job["finished_at"] = time.time()
+                self._bench_active = None
+            return
+
+        with self._bench_lock:
+            job = self._bench_jobs[job_id]
+            job["status"] = "completed"
+            job["result"] = result
+            job["finished_at"] = time.time()
+            self._bench_active = None
+
+    def model_benchmark(self, job_id: str) -> dict[str, Any] | None:
+
+        with self._bench_lock:
+            job = self._bench_jobs.get(job_id)
+
+            if job is None:
+                return None
+
+            result = dict(job)
+
+            return result
 
     # ==================================================
     # Turni
@@ -513,6 +613,7 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
 
         page = {
             "/control": "control.html",
+            "/models": "models.html",
             "/sandbox": "sandbox.html",
         }.get(parsed.path.rstrip("/"))
 
@@ -585,6 +686,32 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/status":
 
             self._json(self.session.status())
+            return
+
+        if parsed.path == "/api/models":
+
+            try:
+                self._json(self.session.models())
+            except Exception as exc:
+                self._error(str(exc), HTTPStatus.BAD_GATEWAY)
+            return
+
+        if parsed.path == "/api/models/benchmark":
+
+            params = parse_qs(parsed.query)
+            job_id = params.get("id", [""])[0]
+
+            if not job_id:
+                self._error("missing benchmark id")
+                return
+
+            job = self.session.model_benchmark(job_id)
+
+            if job is None:
+                self._error("benchmark not found", HTTPStatus.NOT_FOUND)
+                return
+
+            self._json(job)
             return
 
         if parsed.path == "/api/admin/control":
@@ -1008,6 +1135,32 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 return
 
             self._json({"tool": tool})
+            return
+
+        if parsed.path == "/api/models/benchmark":
+
+            if not self._admin_ready():
+                return
+
+            provider = str(
+                payload.get("provider", "")
+            ).strip()
+            model = str(payload.get("model", "")).strip()
+
+            if not provider or not model:
+                self._error("provider and model are required")
+                return
+
+            try:
+                job = self.session.start_model_benchmark(
+                    provider,
+                    model,
+                )
+            except RuntimeError as exc:
+                self._error(str(exc), HTTPStatus.CONFLICT)
+                return
+
+            self._json(job)
             return
 
         if parsed.path == "/api/admin/model":

@@ -91,6 +91,42 @@ catalogo/profili del broker: sono scelte che richiedono un riavvio.
 Le modifiche amministrative sono rifiutate con `409` mentre un turno è
 in corso. Le letture restano disponibili.
 
+## 2.4 Modelli locali
+
+Pagina `/models`:
+
+```text
+elenco a sinistra
+scheda e benchmark a destra
+```
+
+L’elenco unisce runtime LM Studio/Ollama e schede già registrate.
+Mostra tipo, contesto, quantizzazione, stato caricato e presenza di
+benchmark.
+
+Per il modello selezionato la scheda mostra:
+
+```text
+capability runtime
+chat, JSON, tool calling
+qualità per task
+memoria
+coding eseguibile
+prompt production
+vision, se disponibile
+```
+
+Il pulsante **Esegui benchmark ora** avvia un job in background:
+
+```text
+POST /api/models/benchmark
+GET  /api/models/benchmark?id=<job>
+```
+
+La pagina aggiorna lo stato con polling e ricarica la scheda al termine.
+Il benchmark usa il client diretto del provider, non il broker attivo, e
+salva una nuova scheda e un nuovo run.
+
 ## 3. Sandbox manager
 
 Mostra un albero dei file e delle directory nella sandbox. I nodi sono

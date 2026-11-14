@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hagar — Modelli locali</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/admin.css">
+<link rel="stylesheet" href="/static/models.css">
+</head>
+<body class="models-page">
+<header class="models-header">
+  <div class="models-brand">
+    <strong>Hagar</strong>
+    <span>Modelli locali</span>
+  </div>
+  <nav class="models-nav">
+    <a href="/control">Pannello</a>
+    <a href="/">Chat</a>
+  </nav>
+</header>
+
+<main class="models-layout">
+  <aside class="models-sidebar" aria-label="Elenco modelli">
+    <div class="sidebar-head">
+      <div>
+        <p class="eyebrow">Runtime locale</p>
+        <h1>Modelli</h1>
+      </div>
+      <button id="refresh-models" class="icon-button" type="button" title="Aggiorna elenco" aria-label="Aggiorna elenco">↻</button>
+    </div>
+
+    <label class="search-field">
+      <span class="sr-only">Filtra modelli</span>
+      <input id="model-filter" type="search" placeholder="Filtra per nome, provider o capability…" autocomplete="off">
+    </label>
+
+    <div id="models-status" class="models-status" role="status"></div>
+    <div id="model-list" class="model-list" role="list"></div>
+    <p id="models-errors" class="models-errors" hidden></p>
+  </aside>
+
+  <section class="models-detail" aria-live="polite">
+    <div id="detail-empty" class="detail-empty">
+      <p class="eyebrow">Scheda modello</p>
+      <h2>Seleziona un modello</h2>
+      <p>Scegli un modello dall’elenco per vedere capacità, stato e risultati dei benchmark.</p>
+    </div>
+
+    <article id="model-detail" class="model-detail" hidden>
+      <header class="detail-head">
+        <div class="detail-title">
+          <p class="eyebrow" id="detail-provider"></p>
+          <h2 id="detail-name"></h2>
+          <div id="detail-badges" class="badges"></div>
+        </div>
+        <button id="run-benchmark" class="primary benchmark-button" type="button">Esegui benchmark ora</button>
+      </header>
+
+      <div id="benchmark-status" class="benchmark-status" role="status" hidden></div>
+
+      <section class="facts" id="model-facts"></section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Capability</h3>
+        </div>
+        <div id="model-capabilities" class="chips"></div>
+        <p id="capabilities-empty" class="muted" hidden>Nessuna capability dichiarata dal runtime.</p>
+      </section>
+
+      <section class="panel" id="benchmark-panel">
+        <div class="panel-head">
+          <h3>Benchmark</h3>
+          <span id="benchmark-timestamp" class="muted"></span>
+        </div>
+        <div id="benchmark-empty" class="benchmark-empty" hidden>
+          <p>Nessun benchmark registrato per questo modello.</p>
+          <p class="muted">Avvia il benchmark per creare la scheda misurata.</p>
+        </div>
+        <div id="benchmark-content"></div>
+      </section>
+    </article>
+  </section>
+</main>
+
+<script>window.HAGAR_TOKEN = __HAGAR_TOKEN__;</script>
+<script src="/static/models.js"></script>
+</body>
+</html>
