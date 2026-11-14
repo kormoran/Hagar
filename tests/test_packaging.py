@@ -38,15 +38,27 @@ def test_declared_packages():
     assert setuptools["py-modules"] == ["hagar"]
 
     include = setuptools["packages"]["find"]["include"]
+    expected = {
+        "core",
+        "core.flow",
+        "llm",
+        "memory",
+        "local_tools",
+        "web",
+        "benchmarks",
+    }
 
-    from setuptools import find_packages
+    from fnmatch import fnmatchcase
 
-    discovered = set(
-        find_packages(where=str(ROOT), include=include)
-    )
+    for package in expected:
 
-    assert "core.flow" in discovered
-    assert "web" in discovered
+        path = ROOT / Path(*package.split(".")) / "__init__.py"
+
+        assert path.is_file(), f"missing package: {package}"
+        assert any(
+            fnmatchcase(package, pattern)
+            for pattern in include
+        ), f"package not included: {package}"
 
 
 def test_dependencies_are_declared():
