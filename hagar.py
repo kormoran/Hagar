@@ -290,7 +290,8 @@ def _load_broker(
 
     try:
         broker_registry = ModelRegistry.load(
-            config.broker.catalog
+            config.broker.catalog,
+            config_models=config.models,
         )
         broker_profiles = TaskProfileStore.load(
             config.broker.profiles

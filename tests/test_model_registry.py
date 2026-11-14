@@ -7,6 +7,7 @@ import yaml
 
 from core.model_cards import ModelCardStore
 from core.model_registry import ModelRegistry, ModelRegistryError
+from core.models import ModelConfig
 from core.provider_models import ProviderModelInfo
 
 
@@ -19,6 +20,70 @@ def write_catalog(path, models, version=1):
         encoding="utf-8",
     )
     return path
+
+
+def test_config_models_filter_and_enrich_registry(tmp_path):
+    catalog = write_catalog(
+        tmp_path / "models.yaml",
+        [
+            {
+                "id": "lmstudio/coder",
+                "provider": "lmstudio",
+                "model": "coder",
+                "context_window": 32768,
+                "capabilities": ["chat"],
+                "locality": "local",
+            },
+            {
+                "id": "deepseek/chat",
+                "provider": "deepseek",
+                "model": "deepseek-chat",
+                "context_window": 65536,
+                "capabilities": ["chat"],
+                "locality": "remote",
+            },
+            {
+                "id": "openai/unused",
+                "provider": "openai",
+                "model": "gpt",
+                "capabilities": ["chat"],
+                "locality": "remote",
+            },
+        ],
+    )
+
+    registry = ModelRegistry.load(
+        catalog,
+        cards=ModelCardStore(tmp_path / "cards"),
+        config_models=[
+            ModelConfig(
+                provider="lmstudio",
+                name="coder",
+                host="http://local:1234/v1",
+            ),
+            ModelConfig(
+                provider="deepseek",
+                name="deepseek-chat",
+                api_key_env="DEEPSEEK_API_KEY",
+            ),
+            ModelConfig(
+                id="extra",
+                provider="ollama",
+                name="extra-model",
+            ),
+        ],
+    )
+
+    assert registry.find("openai", "gpt") is None
+    assert registry.find("lmstudio", "coder").host == (
+        "http://local:1234/v1"
+    )
+    assert registry.find("deepseek", "deepseek-chat").api_key_env == (
+        "DEEPSEEK_API_KEY"
+    )
+    extra = registry.get("extra")
+    assert extra is not None
+    assert extra.has_capability("chat")
 
 
 def test_registry_merges_provider_models(tmp_path):

@@ -62,6 +62,33 @@ enabled               booleano
 
 Il catalogo può essere una lista o una mappa con id come chiave.
 
+### Modelli configurati in hagar.yaml
+
+Il registry unisce anche `AppConfig.models`:
+
+```text
+provider configurati → filtro: i provider non configurati non sono eleggibili
+modello configurato già nel catalogo → host e api_key_env dalla config
+modello configurato assente dal catalogo → aggiunto con capability chat
+```
+
+`models` può essere la lista multi-modello oppure la singola sezione
+`model`. In entrambi i casi il broker conosce i provider realmente
+disponibili.
+
+Per il broker, la fonte completa resta `models.yaml`; una voce può
+portare host e chiave propri:
+
+```yaml
+- id: deepseek/chat
+  provider: deepseek
+  model: deepseek-chat
+  host: https://api.deepseek.com
+  api_key_env: DEEPSEEK_API_KEY
+  locality: remote
+```
+
+
 ## Merge con le schede
 
 `ModelCardStore` contiene i dati **misurati**:

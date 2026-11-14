@@ -11,6 +11,7 @@ import yaml
 from core.capabilities import CAPABILITIES
 from core.capabilities import verified_capabilities as compute_verified
 from core.model_cards import ModelCardError, ModelCardStore
+from core.models import ModelConfig
 from core.provider_models import ProviderModelInfo
 
 
@@ -227,6 +228,7 @@ class ModelRegistry:
         *,
         cards: ModelCardStore | None = None,
         provider_models: list[ProviderModelInfo] | None = None,
+        config_models: list[ModelConfig] | None = None,
     ) -> "ModelRegistry":
 
         catalog_path = Path(path)
@@ -334,6 +336,11 @@ class ModelRegistry:
                 )
             )
 
+        merged = cls._merge_config_models(
+            merged,
+            config_models or [],
+        )
+
         merged = cls._merge_provider_models(
             merged,
             provider_models or [],
@@ -341,6 +348,95 @@ class ModelRegistry:
         )
 
         return cls(merged, catalog_path=catalog_path)
+
+    @classmethod
+    def _merge_config_models(
+        cls,
+        entries: list[ModelEntry],
+        models: list[ModelConfig],
+    ) -> list[ModelEntry]:
+
+        if not models:
+            return entries
+
+        local_providers = {"lmstudio", "ollama"}
+        by_model = {
+            (model.provider.casefold(), model.name.casefold()): model
+            for model in models
+        }
+        by_provider = {}
+
+        for model in models:
+            by_provider.setdefault(
+                model.provider.casefold(),
+                model,
+            )
+
+        providers = set(by_provider)
+        result = []
+        seen = set()
+
+        for entry in entries:
+
+            provider = entry.provider.casefold()
+
+            if provider not in providers:
+                continue
+
+            config = by_model.get(
+                (provider, entry.model.casefold())
+            ) or by_provider[provider]
+
+            result.append(
+                replace(
+                    entry,
+                    host=config.host or entry.host,
+                    api_key_env=(
+                        config.api_key_env
+                        or entry.api_key_env
+                    ),
+                )
+            )
+            seen.add(entry.key)
+
+        for config in models:
+
+            key = (
+                config.provider.casefold(),
+                config.name.casefold(),
+            )
+
+            if key in seen:
+                continue
+
+            capabilities = {"chat"}
+
+            if config.native_tools:
+                capabilities.add("native_tools")
+
+            result.append(
+                ModelEntry(
+                    id=(
+                        config.id
+                        or f"{config.provider}/{config.name}"
+                    ),
+                    provider=config.provider,
+                    model=config.name,
+                    context_window=None,
+                    capabilities=frozenset(capabilities),
+                    locality=(
+                        "local"
+                        if config.provider.casefold()
+                        in local_providers
+                        else "remote"
+                    ),
+                    enabled=True,
+                    host=config.host,
+                    api_key_env=config.api_key_env,
+                )
+            )
+
+        return result
 
     @classmethod
     def _merge_provider_models(
