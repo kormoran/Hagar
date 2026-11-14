@@ -8,6 +8,8 @@
 #
 # hagar.yaml is intentionally ignored by git: it contains local paths.
 
+# Modello attivo. Per più modelli usare la lista `models` e
+# `default_model`; non ripetere la chiave `model` due volte.
 model:
   # provider: ollama | lmstudio | deepseek | openai | chatgpt | claude | gemini
   # LM Studio:  provider: lmstudio, host: http://localhost:1234/v1
@@ -19,6 +21,18 @@ model:
   # timeout: 120
   # max_tokens: 1024
   # api_key_env: DEEPSEEK_API_KEY
+
+# Alternativa multi-modello:
+# models:
+#   - id: local
+#     provider: lmstudio
+#     host: http://localhost:1234/v1
+#     name: gemma-3-27b-it
+#   - id: remote
+#     provider: deepseek
+#     name: deepseek-chat
+#     api_key_env: DEEPSEEK_API_KEY
+# default_model: local
 
 audit:
   enabled: true

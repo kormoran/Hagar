@@ -48,6 +48,49 @@ class ConfigError(RuntimeError):
     pass
 
 
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader che rifiuta chiavi duplicate nello stesso mapping."""
+
+
+def _construct_unique_mapping(
+    loader: _UniqueKeyLoader,
+    node: yaml.MappingNode,
+    deep: bool = False,
+) -> dict[Any, Any]:
+
+    mapping = {}
+    seen = set()
+
+    for key_node, value_node in node.value:
+
+        key = loader.construct_object(
+            key_node,
+            deep=deep,
+        )
+
+        if key in seen:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                f"found duplicate key {key!r}",
+                key_node.start_mark,
+            )
+
+        seen.add(key)
+        mapping[key] = loader.construct_object(
+            value_node,
+            deep=deep,
+        )
+
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
+
+
 def _mapping(
     value: Any,
     name: str,
@@ -171,6 +214,67 @@ def _bool(
     return value
 
 
+def _parse_model_config(
+    raw: Any,
+    where: str,
+) -> ModelConfig:
+
+    data = _mapping(raw, where)
+    native_tools = data.get("native_tools", True)
+
+    if not isinstance(native_tools, bool):
+        raise ConfigError(
+            f"{where}.native_tools must be a boolean"
+        )
+
+    model_id = _optional_text(
+        data,
+        "id",
+        f"{where}.id",
+    )
+
+    return ModelConfig(
+        provider=_text(
+            data,
+            "provider",
+            f"{where}.provider",
+        ),
+        name=_text(
+            data,
+            "name",
+            f"{where}.name",
+        ),
+        host=_optional_text(
+            data,
+            "host",
+            f"{where}.host",
+        ),
+        max_tokens=_positive_int(
+            data,
+            "max_tokens",
+            f"{where}.max_tokens",
+            1024,
+        ),
+        timeout=_positive_int(
+            data,
+            "timeout",
+            f"{where}.timeout",
+            120,
+        ),
+        api_key_env=_optional_text(
+            data,
+            "api_key_env",
+            f"{where}.api_key_env",
+        ),
+        native_tools=native_tools,
+        id=model_id,
+    )
+
+
+def _model_key(model: ModelConfig) -> str:
+    return model.id or f"{model.provider}/{model.name}"
+
+
 def _positive_float(
     section: dict[str, Any],
     key: str,
@@ -278,7 +382,10 @@ class ConfigLoader:
                 encoding="utf-8",
             ) as fp:
 
-                data = yaml.safe_load(fp)
+                data = yaml.load(
+                    fp,
+                    Loader=_UniqueKeyLoader,
+                )
 
         except yaml.YAMLError as exc:
 
@@ -383,57 +490,77 @@ class ConfigLoader:
         # Model
         # -------------------------
 
-        model_data = _mapping(
-            data.get("model"),
-            "model",
-        )
+        raw_models = data.get("models")
 
-        native_tools = model_data.get(
-            "native_tools",
-            True,
-        )
+        if raw_models is not None:
 
-        if not isinstance(native_tools, bool):
+            if not isinstance(raw_models, list) or not raw_models:
+                raise ConfigError(
+                    "models must be a non-empty list"
+                )
 
-            raise ConfigError(
-                "model.native_tools must be a boolean"
+            models = [
+                _parse_model_config(
+                    raw,
+                    f"models[{index}]",
+                )
+                for index, raw in enumerate(raw_models)
+            ]
+
+            keys = [_model_key(model) for model in models]
+
+            if len(set(keys)) != len(keys):
+                raise ConfigError(
+                    "models contains duplicate ids"
+                )
+
+            if data.get("model") is not None:
+                model = _parse_model_config(
+                    data.get("model"),
+                    "model",
+                )
+                models.insert(0, model)
+                keys.insert(0, _model_key(model))
+
+            default_name = data.get("default_model")
+
+            if default_name is None:
+                model = models[0]
+            else:
+
+                if (
+                    not isinstance(default_name, str)
+                    or not default_name.strip()
+                ):
+                    raise ConfigError(
+                        "default_model must be a non-empty string"
+                    )
+
+                default_name = default_name.strip()
+                model = next(
+                    (
+                        item
+                        for item in models
+                        if _model_key(item) == default_name
+                        or item.name == default_name
+                    ),
+                    None,
+                )
+
+                if model is None:
+                    raise ConfigError(
+                        f"default_model not found: {default_name}"
+                    )
+
+        else:
+
+            model = _parse_model_config(
+                data.get("model"),
+                "model",
             )
+            models = [model]
 
-        model = ModelConfig(
-            provider=_text(
-                model_data,
-                "provider",
-                "model.provider",
-            ),
-            name=_text(
-                model_data,
-                "name",
-                "model.name",
-            ),
-            host=_optional_text(
-                model_data,
-                "host",
-                "model.host",
-            ),
-            max_tokens=_positive_int(
-                model_data,
-                "max_tokens",
-                "model.max_tokens",
-                1024,
-            ),
-            timeout=_positive_int(
-                model_data,
-                "timeout",
-                "model.timeout",
-                120,
-            ),
-            api_key_env=_optional_text(
-                model_data,
-                "api_key_env",
-                "model.api_key_env",
-            ),
-            native_tools=native_tools,
-        )
+        default_model = _model_key(model)
 
         # -------------------------
         # Vault
@@ -1583,4 +1710,6 @@ class ConfigLoader:
             boxes=boxes,
             broker=broker,
             flow=flow,
+            models=models,
+            default_model=default_model,
         )

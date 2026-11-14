@@ -288,6 +288,27 @@ filesystem:
 | `timeout` | `120` | timeout HTTP in secondi per ogni chiamata |
 | `api_key_env` | nome standard | variabile d’ambiente della chiave |
 
+Le chiavi YAML duplicate sono rifiutate: non si possono mettere due
+sezioni `model:` nello stesso file. Per più modelli si usa una lista:
+
+```yaml
+models:
+  - id: local
+    provider: lmstudio
+    host: http://localhost:1234/v1
+    name: gemma-3-27b-it
+  - id: remote
+    provider: deepseek
+    name: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+
+default_model: local
+```
+
+`models[].id` è opzionale ma consigliato; senza id l’identità è
+`provider/name`. `default_model` può essere un id o un nome. La forma
+singola `model:` resta supportata e diventa `models[0]`.
+
 Provider e chiavi:
 
 | Provider | Chiave standard | Default |

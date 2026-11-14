@@ -83,6 +83,8 @@ class ModelEntry:
     quantization: str | None = None
     runtime_state: str | None = None
     discovered: bool = False
+    host: str | None = None
+    api_key_env: str | None = None
 
     @property
     def key(self) -> tuple[str, str]:
@@ -197,6 +199,8 @@ class ModelEntry:
             "runtime_state": self.runtime_state,
             "loaded": self.runtime_state == "loaded",
             "discovered": self.discovered,
+            "host": self.host,
+            "api_key_env": self.api_key_env,
             "card": self.card,
         }
 
@@ -320,6 +324,8 @@ class ModelRegistry:
                     ),
                     enabled=entry.enabled,
                     card=card,
+                    host=entry.host,
+                    api_key_env=entry.api_key_env,
                     card_path=(
                         str(card.get("_path"))
                         if card and card.get("_path")
@@ -497,6 +503,8 @@ class ModelRegistry:
             "cost_per_1k_input",
             "cost_per_1k_output",
             "enabled",
+            "host",
+            "api_key_env",
         }
         unknown = set(raw) - allowed
 
@@ -583,6 +591,25 @@ class ModelRegistry:
                 f"{where}.enabled must be a boolean"
             )
 
+        host = raw.get("host")
+
+        if host is not None and (
+            not isinstance(host, str) or not host.strip()
+        ):
+            raise ModelRegistryError(
+                f"{where}.host must be a non-empty string"
+            )
+
+        api_key_env = raw.get("api_key_env")
+
+        if api_key_env is not None and (
+            not isinstance(api_key_env, str)
+            or not api_key_env.strip()
+        ):
+            raise ModelRegistryError(
+                f"{where}.api_key_env must be a non-empty string"
+            )
+
         return ModelEntry(
             id=model_id,
             provider=provider,
@@ -594,6 +621,10 @@ class ModelRegistry:
             cost_per_1k_input=cost_input,
             cost_per_1k_output=cost_output,
             enabled=enabled,
+            host=host.strip() if host else None,
+            api_key_env=(
+                api_key_env.strip() if api_key_env else None
+            ),
         )
 
     @staticmethod

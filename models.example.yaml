@@ -36,6 +36,7 @@ models:
   - id: lmstudio/llama3.1-8b
     provider: lmstudio
     model: llama3.1-8b
+    host: http://localhost:1234/v1
     context_window: 32768
     capabilities:
       - chat
@@ -45,4 +46,19 @@ models:
     quality: 0.70
     cost_per_1k_input: 0
     cost_per_1k_output: 0
+    enabled: true
+
+  - id: deepseek/chat
+    provider: deepseek
+    model: deepseek-chat
+    context_window: 65536
+    capabilities:
+      - chat
+      - structured_json
+      - tool_calling
+    locality: remote
+    quality: 0.80
+    cost_per_1k_input: 0.0003
+    cost_per_1k_output: 0.0012
+    api_key_env: DEEPSEEK_API_KEY
     enabled: true

@@ -67,10 +67,8 @@ class BrokerLLMClient(LLMClient):
         else:
 
             self.selection = selection
-            model_config = replace(
-                config,
-                provider=selection.entry.provider,
-                name=selection.entry.model,
+            model_config = self._model_config_for(
+                selection.entry
             )
             self._record(
                 "broker.decision",
@@ -116,10 +114,8 @@ class BrokerLLMClient(LLMClient):
             )
             raise
 
-        model_config = replace(
-            self.config,
-            provider=selection.entry.provider,
-            name=selection.entry.model,
+        model_config = self._model_config_for(
+            selection.entry
         )
 
         try:
@@ -192,6 +188,19 @@ class BrokerLLMClient(LLMClient):
             "broker.route",
             profile=selected,
             model_id=self.selection.entry.id,
+        )
+
+    def _model_config_for(self, entry: Any) -> ModelConfig:
+
+        return replace(
+            self.config,
+            provider=entry.provider,
+            name=entry.model,
+            host=getattr(entry, "host", None) or self.config.host,
+            api_key_env=(
+                getattr(entry, "api_key_env", None)
+                or self.config.api_key_env
+            ),
         )
 
     def _create_client(

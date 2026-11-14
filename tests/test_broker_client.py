@@ -163,6 +163,35 @@ def test_falls_back_when_selected_client_fails():
     assert any(event == "broker.fallback" for event, _ in audit.events)
 
 
+def test_selected_entry_can_override_host_and_key():
+    entry = SimpleNamespace(
+        id="deepseek/chat",
+        provider="deepseek",
+        model="deepseek-chat",
+        host="http://remote:9000",
+        api_key_env="REMOTE_KEY",
+    )
+    created = []
+
+    def factory(config, audit=None):
+        created.append(config)
+        return FakeLLM(config.name)
+
+    BrokerLLMClient(
+        FakeBroker(entry),
+        ModelConfig(
+            provider="lmstudio",
+            host="http://localhost:1234/v1",
+            name="base",
+        ),
+        profile="coding",
+        llm_factory=factory,
+    )
+
+    assert created[0].host == "http://remote:9000"
+    assert created[0].api_key_env == "REMOTE_KEY"
+
+
 def test_set_task_routes_to_matching_profile():
     class RoutingBroker(FakeBroker):
         profiles = TaskProfileStore([

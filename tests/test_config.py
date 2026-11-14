@@ -978,7 +978,67 @@ def test_tools_timeouts_and_adaptive_values(tmp_path):
     assert cfg.timeouts.turn_ceiling_seconds == 1200.0
 
 
-def test_api_key_env_is_optional(tmp_path):
+def test_config_rejects_duplicate_yaml_keys(tmp_path):
+    data = base_config(tmp_path)
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "model:\n"
+        "  provider: ollama\n"
+        "  name: first\n"
+        "model:\n"
+        "  provider: ollama\n"
+        "  name: second\n"
+        "vault:\n"
+        f"  path: {tmp_path / 'vault'}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="duplicate key"):
+        ConfigLoader.load(path)
+
+
+def test_config_supports_multiple_models(tmp_path):
+    data = base_config(tmp_path)
+    data.pop("model")
+    data["models"] = [
+        {
+            "id": "local",
+            "provider": "lmstudio",
+            "name": "local-model",
+            "host": "http://localhost:1234/v1",
+        },
+        {
+            "id": "remote",
+            "provider": "deepseek",
+            "name": "deepseek-chat",
+            "api_key_env": "DEEPSEEK_API_KEY",
+        },
+    ]
+    data["default_model"] = "remote"
+
+    cfg = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert cfg.default_model == "remote"
+    assert cfg.model.id == "remote"
+    assert cfg.model.provider == "deepseek"
+    assert len(cfg.models) == 2
+    assert {item.id for item in cfg.models} == {"local", "remote"}
+
+
+def test_config_unknown_default_model_is_rejected(tmp_path):
+    data = base_config(tmp_path)
+    data.pop("model")
+    data["models"] = [
+        {
+            "id": "local",
+            "provider": "lmstudio",
+            "name": "local-model",
+        }
+    ]
+    data["default_model"] = "missing"
+
+    with pytest.raises(ConfigError, match="default_model"):
+        ConfigLoader.load(write_yaml(tmp_path, data))
     cfg = ConfigLoader.load(
         write_yaml(tmp_path, base_config(tmp_path))
     )

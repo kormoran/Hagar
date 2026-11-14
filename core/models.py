@@ -21,6 +21,7 @@ class ModelConfig:
     timeout: int = 120
     api_key_env: str | None = None
     native_tools: bool = True
+    id: str | None = None
 
 
 @dataclass(slots=True)
@@ -329,3 +330,9 @@ class AppConfig:
     )
 
     config_path: Path | None = None
+
+    models: list[ModelConfig] = field(
+        default_factory=list
+    )
+
+    default_model: str | None = None
