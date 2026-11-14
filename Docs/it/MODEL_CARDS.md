@@ -196,6 +196,35 @@ Ollama completion      → text_generation
 può completare testo senza essere conversazionale. `chat` resta una
 capability da verificare.
 
+## Memoria e contesto
+
+`memory_bench` usa conversazioni sintetiche:
+
+```text
+recall semplice
+distractor
+contraddizione tra due memorie
+istruzione persistente
+contesto lungo
+falsa premessa
+```
+
+Il risultato alimenta il task qualità `memory`; il profilo
+`memory_chat` lo usa per il broker. Non vengono mai usate memorie reali
+dell'utente.
+
+## Benchmark P1
+
+```text
+tool      → più tool, distractor, controllo argomenti
+JSON      → schema_valid e field_f1
+coding    → unit test eseguiti in sottoprocesso
+production → prompt con tool e memoria, latenza reale
+```
+
+Il coding eseguibile va considerato un benchmark locale fidato: esegue
+codice generato dal modello in un processo temporaneo con timeout.
+
 ## Suite non applicabili
 
 Una suite non pertinente non vale zero:

@@ -384,8 +384,10 @@ I profili devono richiedere la capability giusta:
 ```text
 quick_chat           → chat
 private_chat         → chat + local_only
+memory_chat          → chat + quality_task memory
 coding               → coding + tool_calling
 structured_extraction → structured_json
+vision               → vision
 ```
 
 ## Subagenti

@@ -15,6 +15,8 @@ import requests
 from core.benchmark_runs import BenchmarkRunStore
 from core.benchmark_suite import manifest as benchmark_manifest
 from core.capabilities import verified_capabilities
+from core.coding_bench import benchmark_coding
+from core.memory_bench import benchmark_memory
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardStore, utc_now
 from core.quality_bench import benchmark_quality
@@ -374,7 +376,23 @@ def run() -> None:
                 llm,
                 attempts=ATTEMPTS,
             )
+            memory_report = benchmark_memory(
+                llm,
+                attempts=1,
+            )
+            coding_report = benchmark_coding(
+                llm,
+                attempts=1,
+            )
+            quality_report["tasks"]["memory"] = (
+                memory_report["tasks"]["memory"]
+            )
+            quality_report["tasks"]["coding_exec"] = (
+                coding_report["tasks"]["coding_exec"]
+            )
             item["quality"] = quality_report
+            item["memory"] = memory_report
+            item["coding"] = coding_report
         except Exception as exc:
             item["errors"].append(f"quality: {exc}")
 

@@ -48,3 +48,11 @@ profiles:
     min_context: 8000
     quality_task: vision
     prefer: quality
+
+  memory_chat:
+    description: Conversazione con memoria e contesto.
+    required_capabilities:
+      - chat
+    min_context: 8000
+    quality_task: memory
+    prefer: quality

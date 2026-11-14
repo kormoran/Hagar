@@ -42,7 +42,7 @@ class FakeLLM:
     def request_tool_call(self, messages, registry):
         return ToolCall(
             tool="bench.echo",
-            arguments={},
+            arguments={"text": "ok"},
         )
 
 
@@ -156,6 +156,7 @@ def test_benchmark_card_and_last_tested(tmp_path, monkeypatch):
     assert report["benchmarks"]["chat"]["successes"] == 2
     assert report["benchmarks"]["structured"]["valid_choice"] == 2
     assert report["benchmarks"]["tool_call"]["successes"] == 2
+    assert report["benchmarks"]["tool_call"]["argument_accuracy"] == 1.0
 
     report["last_tested_at"] = report["tested_at"]
     store = ModelCardStore(tmp_path / "cards")

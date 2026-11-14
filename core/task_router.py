@@ -22,6 +22,11 @@ _PRIVATE = re.compile(
     r"\b(?:privato|riservato|locale|offline|solo locale)\b",
     re.IGNORECASE,
 )
+_MEMORY = re.compile(
+    r"\b(?:ricorda|ricordi|memoria|memorie|progetto|"
+    r"precedente|contesto|più tardi)\b",
+    re.IGNORECASE,
+)
 
 
 def choose_profile(
@@ -60,6 +65,13 @@ def choose_profile(
     if _EXTRACTION.search(text):
 
         selected = pick("structured_extraction")
+
+        if selected:
+            return selected
+
+    if _MEMORY.search(text):
+
+        selected = pick("memory_chat")
 
         if selected:
             return selected

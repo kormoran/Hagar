@@ -11,6 +11,9 @@ from core.benchmark_suite import manifest as benchmark_manifest
 from core.broker import BrokerError
 from core.capabilities import verified_capabilities
 from core.hardware import detect_hardware
+from core.coding_bench import benchmark_coding
+from core.memory_bench import benchmark_memory
+from core.production_bench import benchmark_production
 from core.model_bench import benchmark_model
 from core.model_cards import ModelCardError
 from core.model_cards import ModelCardStore
@@ -445,6 +448,25 @@ class CommandService:
                 else:
                     report = benchmark_model(llm)
                     report["quality"] = benchmark_quality(llm)
+                    memory = benchmark_memory(llm)
+                    coding = benchmark_coding(llm)
+                    report["quality"]["tasks"]["memory"] = (
+                        memory["tasks"]["memory"]
+                    )
+                    report["quality"]["tasks"]["coding_exec"] = (
+                        coding["tasks"]["coding_exec"]
+                    )
+                    report["memory"] = memory
+                    report["coding"] = coding
+                    registry = getattr(
+                        getattr(self.harness, "agent", None),
+                        "tools",
+                        None,
+                    )
+                    report["production"] = benchmark_production(
+                        llm,
+                        registry=registry,
+                    )
 
                 existing = self.model_cards.load(
                     report["provider"],
@@ -505,8 +527,32 @@ class CommandService:
                     f"(choice {structured['valid_choice']})",
                     f"Tool: {tools['successes']}/{tools['attempts']}",
                     f"Qualità: {report['quality']['overall']:.4f}",
-                    f"Ultima prova: {report['last_tested_at']}",
                 ])
+
+                if "memory" in report["quality"].get("tasks", {}):
+                    lines.append(
+                        "Memoria: "
+                        f"{report['quality']['tasks']['memory']['mean']:.4f}"
+                    )
+
+                if "coding_exec" in report["quality"].get("tasks", {}):
+                    lines.append(
+                        "Coding eseguibile: "
+                        f"{report['quality']['tasks']['coding_exec']['mean']:.4f}"
+                    )
+
+                if report.get("production"):
+                    production = report["production"]
+                    lines.append(
+                        "Production p50/p95: "
+                        f"{production['p50_ms']} / "
+                        f"{production['p95_ms']} ms "
+                        f"(tools {production['tools']})"
+                    )
+
+                lines.append(
+                    f"Ultima prova: {report['last_tested_at']}"
+                )
 
             audit = getattr(self.harness, "audit", None)
             if audit is not None:

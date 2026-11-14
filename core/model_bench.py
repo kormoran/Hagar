@@ -12,7 +12,7 @@ from typing import Any
 from core.hardware import detect_hardware
 from core.model_cards import utc_now
 from core.permissions import Capability
-from core.tool_definition import ToolDefinition
+from core.tool_definition import ToolDefinition, ToolParameter
 from core.tool_registry import ToolRegistry
 
 
@@ -139,7 +139,17 @@ def _benchmark_structured(llm, attempts: int) -> dict[str, Any]:
     durations = []
     valid_json = 0
     valid_choice = 0
+    schema_valid = 0
+    field_scores = []
     errors = []
+
+    expected_fields = {
+        "name": str,
+        "age": int,
+        "active": bool,
+        "choice": str,
+        "probabilities": dict,
+    }
 
     for _ in range(attempts):
 
@@ -155,20 +165,45 @@ def _benchmark_structured(llm, attempts: int) -> dict[str, Any]:
                 {
                     "role": "user",
                     "content": (
-                        'Rispondi con {"choice":"yes","probabilities":'
-                        '{"yes":0.9,"no":0.1}}'
+                        'Rispondi con {"name":"Ada","age":36,'
+                        '"active":true,"choice":"yes",'
+                        '"probabilities":{"yes":0.9,"no":0.1}}'
                     ),
                 },
             ])
             payload = _json_object(text)
             valid_json += 1
+
             if (
                 payload.get("choice") in {"yes", "no"}
                 and isinstance(payload.get("probabilities"), dict)
             ):
                 valid_choice += 1
+
+            matched = sum(
+                1
+                for key, expected_type in expected_fields.items()
+                if key in payload
+                and isinstance(payload[key], expected_type)
+                and not (
+                    expected_type is int
+                    and isinstance(payload[key], bool)
+                )
+            )
+            precision = matched / max(len(payload), 1)
+            recall = matched / len(expected_fields)
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if precision + recall > 0
+                else 0.0
+            )
+            field_scores.append(f1)
+
+            if matched == len(expected_fields):
+                schema_valid += 1
         except Exception as exc:
             errors.append(str(exc))
+            field_scores.append(0.0)
 
         durations.append((time.perf_counter() - started) * 1000)
 
@@ -176,6 +211,11 @@ def _benchmark_structured(llm, attempts: int) -> dict[str, Any]:
         "attempts": attempts,
         "valid_json": valid_json,
         "valid_choice": valid_choice,
+        "schema_valid": schema_valid,
+        "field_f1": round(
+            sum(field_scores) / len(field_scores),
+            4,
+        ) if field_scores else 0.0,
         "errors": errors,
         "duration_ms": _stats(durations),
     }
@@ -198,13 +238,54 @@ def _benchmark_tools(llm, attempts: int) -> dict[str, Any]:
             description="Echo a benchmark string.",
             category="benchmark",
             capabilities=Capability.COMPUTE,
-            parameters=[],
-            handler=lambda: "ok",
+            parameters=[
+                ToolParameter(
+                    name="text",
+                    param_type="string",
+                    description="Text to echo.",
+                )
+            ],
+            handler=lambda text="": text,
         )
     )
 
+    distractors = (
+        ("bench.add", "Add two numbers.", "a"),
+        ("bench.weather", "Weather for a city.", "city"),
+        ("bench.search", "Search local files.", "query"),
+        ("bench.translate", "Translate text.", "text"),
+        ("bench.summarize", "Summarize text.", "text"),
+        ("bench.clock", "Return the time.", None),
+        ("bench.remember", "Store a note.", "note"),
+        ("bench.unrelated", "Unrelated operation.", "value"),
+    )
+
+    for name, description, parameter in distractors:
+
+        registry.register(
+            ToolDefinition(
+                name=name,
+                description=description,
+                category="benchmark",
+                capabilities=Capability.COMPUTE,
+                parameters=(
+                    [
+                        ToolParameter(
+                            name=parameter,
+                            param_type="string",
+                            description="Parameter.",
+                        )
+                    ]
+                    if parameter
+                    else []
+                ),
+                handler=lambda **kwargs: "ok",
+            )
+        )
+
     durations = []
     successes = 0
+    argument_matches = 0
     errors = []
 
     for _ in range(attempts):
@@ -216,17 +297,29 @@ def _benchmark_tools(llm, attempts: int) -> dict[str, Any]:
                     {
                         "role": "user",
                         "content": (
-                            "Chiama il tool bench.echo. "
-                            "Non rispondere in prosa."
+                            "Chiama il tool bench.echo con "
+                            'text="ok". Non rispondere in prosa.'
                         ),
                     }
                 ],
                 registry,
             )
-            if getattr(call, "tool", None) == "bench.echo":
+            tool = getattr(call, "tool", None)
+            arguments = getattr(call, "arguments", {})
+
+            if tool == "bench.echo":
                 successes += 1
+
+            if (
+                tool == "bench.echo"
+                and isinstance(arguments, dict)
+                and arguments.get("text") == "ok"
+            ):
+                argument_matches += 1
             else:
-                errors.append(f"unexpected tool: {call!r}")
+                errors.append(
+                    f"unexpected tool/arguments: {call!r}"
+                )
         except Exception as exc:
             errors.append(str(exc))
 
@@ -235,6 +328,12 @@ def _benchmark_tools(llm, attempts: int) -> dict[str, Any]:
     return {
         "attempts": attempts,
         "successes": successes,
+        "selection_accuracy": round(successes / attempts, 4),
+        "argument_matches": argument_matches,
+        "argument_accuracy": round(
+            argument_matches / attempts,
+            4,
+        ),
         "errors": errors,
         "duration_ms": _stats(durations),
     }
@@ -245,8 +344,13 @@ def _not_applicable(suite: str) -> dict[str, Any]:
     return {
         "attempts": 0,
         "successes": 0,
+        "selection_accuracy": 0.0,
+        "argument_matches": 0,
+        "argument_accuracy": 0.0,
         "valid_json": 0,
         "valid_choice": 0,
+        "schema_valid": 0,
+        "field_f1": 0.0,
         "errors": [],
         "duration_ms": _stats([]),
         "not_applicable": True,
