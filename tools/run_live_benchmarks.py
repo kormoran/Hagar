@@ -394,6 +394,12 @@ def run() -> None:
             ]
             card["last_tested_at"] = text_report["tested_at"]
 
+            if model_type != "vlm":
+                card["vision"] = {
+                    "not_applicable": True,
+                    "reason": "model type does not support vision",
+                }
+
             try:
                 cards.save(card)
             except Exception as exc:

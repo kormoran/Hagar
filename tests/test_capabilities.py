@@ -124,6 +124,17 @@ def test_broker_uses_verified_capabilities():
         raise AssertionError("chat should be excluded")
 
 
+def test_not_applicable_vision_is_not_a_capability():
+    value = verified_capabilities({
+        "vision": {
+            "not_applicable": True,
+            "overall": None,
+        },
+    })
+
+    assert value["vision"] is False
+
+
 def test_verified_native_tools_from_report():
     value = verified_capabilities({
         "capabilities": {"native_tools": True},

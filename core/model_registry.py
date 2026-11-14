@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,7 @@ import yaml
 from core.capabilities import CAPABILITIES
 from core.capabilities import verified_capabilities as compute_verified
 from core.model_cards import ModelCardError, ModelCardStore
+from core.provider_models import ProviderModelInfo
 
 
 class ModelRegistryError(RuntimeError):
@@ -79,6 +80,9 @@ class ModelEntry:
         repr=False,
     )
     card_path: str | None = None
+    quantization: str | None = None
+    runtime_state: str | None = None
+    discovered: bool = False
 
     @property
     def key(self) -> tuple[str, str]:
@@ -189,6 +193,10 @@ class ModelEntry:
             "enabled": self.enabled,
             "measured_at": self.measured_at,
             "card_path": self.card_path,
+            "quantization": self.quantization,
+            "runtime_state": self.runtime_state,
+            "loaded": self.runtime_state == "loaded",
+            "discovered": self.discovered,
             "card": self.card,
         }
 
@@ -214,6 +222,7 @@ class ModelRegistry:
         path: str | Path,
         *,
         cards: ModelCardStore | None = None,
+        provider_models: list[ProviderModelInfo] | None = None,
     ) -> "ModelRegistry":
 
         catalog_path = Path(path)
@@ -319,11 +328,115 @@ class ModelRegistry:
                 )
             )
 
+        merged = cls._merge_provider_models(
+            merged,
+            provider_models or [],
+            card_map,
+        )
+
         return cls(merged, catalog_path=catalog_path)
+
+    @classmethod
+    def _merge_provider_models(
+        cls,
+        entries: list[ModelEntry],
+        infos: list[ProviderModelInfo],
+        card_map: dict[tuple[str, str], dict[str, Any]],
+    ) -> list[ModelEntry]:
+
+        by_key = {
+            entry.key: entry
+            for entry in entries
+        }
+        info_by_key = {
+            info.key: info
+            for info in infos
+        }
+        result: list[ModelEntry] = []
+
+        for entry in entries:
+            info = info_by_key.get(entry.key)
+
+            if info is None:
+                result.append(entry)
+                continue
+
+            context = entry.context_window or info.context_window
+            capabilities = set(entry.capabilities)
+            capabilities.update(info.hagar_capabilities())
+
+            result.append(
+                replace(
+                    entry,
+                    context_window=context,
+                    capabilities=frozenset(capabilities),
+                    quantization=(
+                        info.quantization or entry.quantization
+                    ),
+                    runtime_state=info.state,
+                )
+            )
+
+        for info in infos:
+
+            if info.key in by_key:
+                continue
+
+            capabilities = set(info.hagar_capabilities())
+
+            if "text_generation" in info.capabilities:
+                capabilities.add("chat")
+
+            card = card_map.get(info.key)
+
+            result.append(
+                ModelEntry(
+                    id=f"{info.provider}/{info.model}",
+                    provider=info.provider,
+                    model=info.model,
+                    context_window=info.context_window,
+                    capabilities=frozenset(capabilities),
+                    locality="local",
+                    enabled=True,
+                    card=card,
+                    card_path=(
+                        str(card.get("_path"))
+                        if card and card.get("_path")
+                        else None
+                    ),
+                    quantization=info.quantization,
+                    runtime_state=info.state,
+                    discovered=True,
+                )
+            )
+
+        return result
 
     @property
     def entries(self) -> tuple[ModelEntry, ...]:
         return self._entries
+
+    def with_provider_models(
+        self,
+        infos: list[ProviderModelInfo],
+    ) -> "ModelRegistry":
+
+        card_map = {
+            entry.key: entry.card
+            for entry in self._entries
+            if entry.card
+        }
+
+        entries = self._merge_provider_models(
+            list(self._entries),
+            infos,
+            card_map,
+        )
+
+        return ModelRegistry(
+            entries,
+            catalog_path=self.catalog_path,
+        )
 
     def get(self, model_id: str) -> ModelEntry | None:
         return self._by_id.get(model_id)

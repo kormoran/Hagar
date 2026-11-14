@@ -645,7 +645,17 @@ def benchmark_vision(
     llm: Any,
     attempts: int = 1,
     corpus: BenchmarkCorpus | None = None,
+    applicable: bool = True,
 ) -> dict[str, Any]:
+
+    if not applicable:
+        return {
+            "suite_version": 2,
+            "tested_at": utc_now(),
+            "not_applicable": True,
+            "reason": "model does not support vision",
+            "overall": None,
+        }
 
     if attempts <= 0:
         raise VisionBenchError("attempts must be positive")

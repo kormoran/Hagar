@@ -528,6 +528,13 @@ class SubagentManager:
                     ),
                     audit=self.audit,
                     local_only=self.broker_local_only,
+                    auto_route=bool(
+                        getattr(
+                            self.config.broker,
+                            "auto_route",
+                            False,
+                        )
+                    ),
                 )
 
             else:

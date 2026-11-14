@@ -250,9 +250,16 @@ broker:
   catalog: models.yaml
   profiles: profiles.yaml
   default_profile: coding
+  loaded_only: true
+  auto_route: true
 ```
 
 I percorsi relativi sono risolti rispetto al file di configurazione.
+
+Con `auto_route: true` il profilo viene scelto per ogni turno:
+`coding`, `structured_extraction`, `vision`, `private_chat` o
+`quick_chat`. La scelta usa euristiche sulla richiesta; se il profilo
+scelto non ha un modello eleggibile resta attivo il precedente.
 
 ```text
 /models route
@@ -391,12 +398,27 @@ viene scelto silenziosamente un modello remoto.
 Il profilo usato è `broker.default_profile`, salvo override del
 `SubagentManager`.
 
+## Discovery del runtime
+
+I metadati di LM Studio e Ollama vengono fusi nel registry:
+
+```text
+modello nel catalogo → arricchito con context, quantizzazione, stato e capability runtime
+modello solo nel runtime → aggiunto come scoperto
+```
+
+Un modello scoperto senza scheda ha `quality = None`; i profili con
+`quality_floor` possono escluderlo finché non viene misurato.
+
 ## Cosa manca
 
 ```text
-selezione automatica del profilo per singolo turno
 benchmark semantico di qualità
+gestione della cache hardware e cold start per singola chiamata
 ```
+
+La selezione per turno è implementata; il benchmark resta il limite
+principale per la qualità delle scelte.
 
 ## Regole future
 

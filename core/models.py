@@ -214,6 +214,7 @@ class BrokerConfig:
     profiles: str = "profiles.yaml"
     default_profile: str = "coding"
     loaded_only: bool = True
+    auto_route: bool = True
 
 
 @dataclass(slots=True)

@@ -40,3 +40,11 @@ profiles:
     quality_floor: 0.75
     quality_task: extraction
     prefer: quality
+
+  vision:
+    description: Analisi di immagini e schermate.
+    required_capabilities:
+      - vision
+    min_context: 8000
+    quality_task: vision
+    prefer: quality

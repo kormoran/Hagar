@@ -105,6 +105,7 @@ def test_broker_config_defaults(tmp_path):
     assert Path(cfg.broker.profiles) == tmp_path / "profiles.yaml"
     assert cfg.broker.default_profile == "coding"
     assert cfg.broker.loaded_only is True
+    assert cfg.broker.auto_route is True
 
 
 def test_broker_loaded_only_can_be_disabled(tmp_path):
@@ -112,11 +113,13 @@ def test_broker_loaded_only_can_be_disabled(tmp_path):
     data["broker"] = {
         "enabled": True,
         "loaded_only": False,
+        "auto_route": False,
     }
 
     cfg = ConfigLoader.load(write_yaml(tmp_path, data))
 
     assert cfg.broker.loaded_only is False
+    assert cfg.broker.auto_route is False
 
 
 @pytest.mark.parametrize(

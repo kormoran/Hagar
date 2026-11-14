@@ -46,6 +46,7 @@ class Agent:
         agent_id: str | None = None,
         deadline: float | None = None,
         turn_timeout: float | None = None,
+        min_turn_timeout: float | None = None,
         hifi: Any = None,
         artifact_store: Any = None,
         max_inline_output_chars: int = 12_000,
@@ -60,6 +61,7 @@ class Agent:
         self.agent_id = agent_id
         self.deadline = deadline
         self.turn_timeout = turn_timeout
+        self.min_turn_timeout = min_turn_timeout
         self.hifi = hifi
         self.output_spiller = OutputSpiller(
             artifact_store,
@@ -148,10 +150,37 @@ class Agent:
         turn = uuid.uuid4().hex[:8]
         self.reset_cancel()
 
-        if self.turn_timeout is not None:
+        set_task = getattr(self.llm, "set_task", None)
+
+        if callable(set_task):
+            set_task(
+                question,
+                images=bool(images),
+            )
+
+        current_turn_timeout = self.turn_timeout
+        provider_timeout = getattr(
+            self.llm,
+            "turn_timeout",
+            None,
+        )
+
+        if provider_timeout is not None:
+            current_turn_timeout = provider_timeout
+
+        if (
+            current_turn_timeout is not None
+            and self.min_turn_timeout is not None
+        ):
+            current_turn_timeout = max(
+                current_turn_timeout,
+                self.min_turn_timeout,
+            )
+
+        if current_turn_timeout is not None:
             self.deadline = (
                 time.monotonic()
-                + max(0.0, float(self.turn_timeout))
+                + max(0.0, float(current_turn_timeout))
             )
 
         if hasattr(self.tools, "begin_turn"):

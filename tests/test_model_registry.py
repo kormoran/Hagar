@@ -7,6 +7,7 @@ import yaml
 
 from core.model_cards import ModelCardStore
 from core.model_registry import ModelRegistry, ModelRegistryError
+from core.provider_models import ProviderModelInfo
 
 
 def write_catalog(path, models, version=1):
@@ -18,6 +19,95 @@ def write_catalog(path, models, version=1):
         encoding="utf-8",
     )
     return path
+
+
+def test_registry_merges_provider_models(tmp_path):
+    catalog = write_catalog(
+        tmp_path / "models.yaml",
+        [
+            {
+                "id": "lmstudio/coder",
+                "provider": "lmstudio",
+                "model": "coder",
+                "context_window": None,
+                "capabilities": ["chat"],
+                "locality": "local",
+            }
+        ],
+    )
+
+    registry = ModelRegistry.load(
+        catalog,
+        cards=ModelCardStore(tmp_path / "cards"),
+        provider_models=[
+            ProviderModelInfo(
+                provider="lmstudio",
+                model="coder",
+                context_window=32768,
+                quantization="Q4_K_M",
+                state="loaded",
+                capabilities=frozenset({
+                    "text_generation",
+                    "tool_calling",
+                }),
+            ),
+            ProviderModelInfo(
+                provider="lmstudio",
+                model="new-model",
+                context_window=8192,
+                state="not-loaded",
+                capabilities=frozenset({
+                    "text_generation",
+                    "vision",
+                }),
+            ),
+        ],
+    )
+
+    coder = registry.get("lmstudio/coder")
+    added = registry.find("lmstudio", "new-model")
+
+    assert coder is not None
+    assert coder.context_window == 32768
+    assert coder.quantization == "Q4_K_M"
+    assert coder.runtime_state == "loaded"
+    assert coder.has_capability("tool_calling")
+    assert added is not None
+    assert added.discovered is True
+    assert added.has_capability("chat")
+    assert added.has_capability("vision")
+    assert added.runtime_state == "not-loaded"
+
+
+def test_registry_can_enrich_with_new_provider_models(tmp_path):
+    catalog = write_catalog(
+        tmp_path / "models.yaml",
+        [
+            {
+                "id": "lmstudio/coder",
+                "provider": "lmstudio",
+                "model": "coder",
+                "context_window": 4096,
+                "capabilities": ["chat"],
+            }
+        ],
+    )
+    registry = ModelRegistry.load(
+        catalog,
+        cards=ModelCardStore(tmp_path / "cards"),
+    )
+
+    updated = registry.with_provider_models([
+        ProviderModelInfo(
+            provider="lmstudio",
+            model="extra",
+            context_window=8192,
+            capabilities=frozenset({"text_generation"}),
+        )
+    ])
+
+    assert updated.find("lmstudio", "extra") is not None
+    assert registry.find("lmstudio", "extra") is None
 
 
 def test_registry_loads_list_and_merges_card(tmp_path):

@@ -91,6 +91,18 @@ class FakeVisionLLM:
         return "unknown"
 
 
+def test_benchmark_marks_suite_not_applicable():
+    report = benchmark_model(
+        FakeLLM(),
+        attempts=1,
+        tool_attempts=1,
+        skip_suites={"chat"},
+    )
+
+    assert report["benchmarks"]["chat"]["not_applicable"] is True
+    assert report["capabilities"]["chat"] is False
+
+
 def test_hardware_has_expected_shape():
     info = detect_hardware()
 

@@ -60,6 +60,16 @@ class FakeVisionLLM:
         return "unknown"
 
 
+def test_vision_not_applicable_skips_llm():
+    llm = FakeVisionLLM()
+
+    report = benchmark_vision(llm, applicable=False)
+
+    assert report["not_applicable"] is True
+    assert report["overall"] is None
+    assert llm.calls == []
+
+
 def test_manifest_has_fixed_images():
     entries = manifest()
 

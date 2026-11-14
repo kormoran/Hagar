@@ -41,6 +41,30 @@ class Selection:
             "provider": self.entry.provider,
             "model": self.entry.model,
             "score": round(self.score, 4),
+            "loaded": getattr(self.entry, "runtime_state", None) == "loaded",
+            "runtime_state": getattr(
+                self.entry,
+                "runtime_state",
+                None,
+            ),
+            "quantization": getattr(
+                self.entry,
+                "quantization",
+                None,
+            ),
+            "context_window": getattr(
+                self.entry,
+                "context_window",
+                None,
+            ),
+            "effective_capabilities": sorted(
+                self.entry.effective_capabilities
+            ),
+            "discovered": getattr(
+                self.entry,
+                "discovered",
+                False,
+            ),
             "reasons": list(self.reasons),
             "excluded": list(self.excluded),
         }
@@ -117,6 +141,12 @@ class Broker:
         callback: Callable[[], None] | None,
     ) -> None:
         self._refresh_callback = callback
+
+    def set_registry(
+        self,
+        registry: ModelRegistry,
+    ) -> None:
+        self.registry = registry
 
     def refresh(self) -> None:
 

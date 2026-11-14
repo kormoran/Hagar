@@ -1453,12 +1453,20 @@ class ConfigLoader:
                 "broker.loaded_only must be a boolean"
             )
 
+        auto_route = broker_data.get("auto_route", True)
+
+        if not isinstance(auto_route, bool):
+            raise ConfigError(
+                "broker.auto_route must be a boolean"
+            )
+
         broker = BrokerConfig(
             enabled=broker_enabled,
             catalog=broker_catalog,
             profiles=broker_profiles,
             default_profile=broker_default,
             loaded_only=loaded_only,
+            auto_route=auto_route,
         )
 
         # -------------------------

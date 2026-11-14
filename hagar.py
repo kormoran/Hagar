@@ -235,6 +235,7 @@ def _refresh_loaded_models(
         entry.provider
         for entry in broker.registry.entries
     })
+    discovered = []
 
     for provider in providers:
 
@@ -262,6 +263,7 @@ def _refresh_loaded_models(
             broker.set_loaded_models(provider, [])
             continue
 
+        discovered.extend(infos)
         broker.set_loaded_models(
             provider,
             [
@@ -269,6 +271,11 @@ def _refresh_loaded_models(
                 for info in infos
                 if info.state == "loaded"
             ],
+        )
+
+    if discovered:
+        broker.set_registry(
+            broker.registry.with_provider_models(discovered)
         )
 
 
@@ -859,6 +866,7 @@ def build_harness(
                     config.timeouts
                 ),
                 allow_fallback=not config.broker.loaded_only,
+                auto_route=config.broker.auto_route,
             )
 
     except Exception as exc:
@@ -1007,6 +1015,12 @@ def build_harness(
             float(tool_ceiling) + 60.0,
         )
 
+    min_turn_timeout = (
+        float(tool_ceiling) + 60.0
+        if tool_ceiling > 0
+        else None
+    )
+
     agent = Agent(
         llm=llm,
         tool_registry=registry,
@@ -1022,6 +1036,7 @@ def build_harness(
         agent_id=audit.session_id,
         hifi=hifi,
         turn_timeout=turn_timeout,
+        min_turn_timeout=min_turn_timeout,
         artifact_store=getattr(subagents, "artifacts", None),
     )
 

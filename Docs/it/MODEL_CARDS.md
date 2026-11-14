@@ -196,6 +196,23 @@ Ollama completion      → text_generation
 può completare testo senza essere conversazionale. `chat` resta una
 capability da verificare.
 
+## Suite non applicabili
+
+Una suite non pertinente non vale zero:
+
+```json
+{
+  "vision": {
+    "not_applicable": true,
+    "reason": "model type does not support vision"
+  }
+}
+```
+
+`verified_capabilities` tratta `not_applicable` come capability assente,
+non come punteggio zero. La run live marca così i modelli `llm` per la
+vision.
+
 ## Capability verificate
 
 La scheda distingue:

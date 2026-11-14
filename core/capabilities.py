@@ -105,11 +105,19 @@ def verified_capabilities(
     reasoning_mean = _mean(report, "reasoning")
 
     vision = report.get("vision")
-    vision_mean = (
-        float(vision.get("overall", 0.0))
-        if isinstance(vision, dict)
-        else None
-    )
+    vision_mean = None
+
+    if isinstance(vision, dict) and not vision.get(
+        "not_applicable"
+    ):
+
+        overall = vision.get("overall")
+
+        if (
+            not isinstance(overall, bool)
+            and isinstance(overall, (int, float))
+        ):
+            vision_mean = float(overall)
     ocr_mean = _ocr_mean(report)
     native = report.get("native_tools")
 

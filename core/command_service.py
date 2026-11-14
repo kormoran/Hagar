@@ -629,6 +629,9 @@ class CommandService:
                             f"Scelto: {selected['model_id']} "
                             f"(score {selected['score']:.4f})"
                         )
+                        lines.append(
+                            f"Caricato: {selected.get('runtime_state') or 'n/d'}"
+                        )
 
                     lines.append(
                         f"Esclusi: {len(report['excluded'])}"
@@ -652,6 +655,9 @@ class CommandService:
                     f"Modello: {selection.entry.id}",
                     f"Provider: {selection.entry.provider}",
                     f"Modello provider: {selection.entry.model}",
+                    f"Caricato: {getattr(selection.entry, 'runtime_state', None) or 'n/d'}",
+                    f"Contesto: {getattr(selection.entry, 'context_window', None) or 'n/d'}",
+                    f"Quantizzazione: {getattr(selection.entry, 'quantization', None) or 'n/d'}",
                     f"Score: {selection.score:.4f}",
                     "Motivi:",
                 ]

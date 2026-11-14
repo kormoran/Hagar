@@ -163,6 +163,45 @@ def test_falls_back_when_selected_client_fails():
     assert any(event == "broker.fallback" for event, _ in audit.events)
 
 
+def test_set_task_routes_to_matching_profile():
+    class RoutingBroker(FakeBroker):
+        profiles = TaskProfileStore([
+            TaskProfile(name="coding"),
+            TaskProfile(name="quick_chat"),
+        ])
+
+        def select(self, profile):
+            name = (
+                profile
+                if isinstance(profile, str)
+                else profile.name
+            )
+            return SimpleNamespace(
+                entry=SimpleNamespace(
+                    id=f"lmstudio/{name}",
+                    provider="lmstudio",
+                    model=name,
+                ),
+                score=0.8,
+            )
+
+    def factory(config, audit=None):
+        return FakeLLM(config.name)
+
+    client = BrokerLLMClient(
+        RoutingBroker(),
+        ModelConfig(provider="lmstudio", name="base"),
+        profile="coding",
+        llm_factory=factory,
+        auto_route=True,
+    )
+
+    client.set_task("Ciao, rispondi in modo breve")
+
+    assert client.profile == "quick_chat"
+    assert client.model == "quick_chat"
+
+
 def test_unloaded_model_is_reselected_before_call():
     class LoadedBroker(FakeBroker):
         loaded_only = True

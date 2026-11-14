@@ -104,6 +104,8 @@ broker:
   default_profile: coding
   # Sceglie solo modelli già caricati nel runtime locale.
   loaded_only: true
+  # Sceglie il profilo per ogni turno in base alla richiesta.
+  auto_route: true
 
 flow:
   # DSL Hagar Flow: sottoinsieme lineare di Python.

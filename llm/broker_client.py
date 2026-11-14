@@ -8,6 +8,7 @@ from typing import Any, Callable
 from core.broker import Broker, BrokerError
 from core.models import ModelConfig
 from core.timeouts import TimeoutPolicy
+from core.task_router import choose_profile
 from llm.base import LLMClient
 from llm.factory import create_llm
 
@@ -30,11 +31,14 @@ class BrokerLLMClient(LLMClient):
         local_only: bool = False,
         timeout_policy: TimeoutPolicy | None = None,
         allow_fallback: bool = True,
+        auto_route: bool = False,
     ) -> None:
 
         self.broker = broker
         self.config = config
         self.profile = profile
+        self.default_profile = profile
+        self.auto_route = auto_route
         self.audit = audit
         self._factory = llm_factory or create_llm
         self.local_only = local_only
@@ -152,6 +156,43 @@ class BrokerLLMClient(LLMClient):
         )
 
         return selection
+
+    def set_task(
+        self,
+        question: str,
+        *,
+        images: bool = False,
+    ) -> None:
+        """Sceglie il profilo per il turno, senza fallire il turno."""
+
+        if not self.auto_route:
+            return
+
+        selected = choose_profile(
+            question,
+            self.broker.profiles,
+            self.default_profile,
+            images=images,
+        )
+
+        if selected == self.profile:
+            return
+
+        try:
+            self.switch_profile(selected)
+        except Exception as exc:
+            self._record(
+                "broker.route_failed",
+                profile=selected,
+                error=str(exc),
+            )
+            return
+
+        self._record(
+            "broker.route",
+            profile=selected,
+            model_id=self.selection.entry.id,
+        )
 
     def _create_client(
         self,

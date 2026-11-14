@@ -24,6 +24,7 @@ def benchmark_model(
     llm,
     attempts: int = 3,
     tool_attempts: int = 2,
+    skip_suites: set[str] | None = None,
 ) -> dict[str, Any]:
     """Misura chat, JSON strutturato e tool calling.
 
@@ -33,10 +34,23 @@ def benchmark_model(
 
     attempts = max(1, int(attempts))
     tool_attempts = max(0, int(tool_attempts))
+    skip = set(skip_suites or ())
 
-    chat = _benchmark_chat(llm, attempts)
-    structured = _benchmark_structured(llm, attempts)
-    tools = _benchmark_tools(llm, tool_attempts)
+    chat = (
+        _not_applicable("chat")
+        if "chat" in skip
+        else _benchmark_chat(llm, attempts)
+    )
+    structured = (
+        _not_applicable("structured")
+        if "structured" in skip
+        else _benchmark_structured(llm, attempts)
+    )
+    tools = (
+        _not_applicable("tool_call")
+        if "tool_call" in skip
+        else _benchmark_tools(llm, tool_attempts)
+    )
 
     return {
         "tested_at": utc_now(),
@@ -213,8 +227,21 @@ def _benchmark_tools(llm, attempts: int) -> dict[str, Any]:
     }
 
 
-def _stats(values: list[float]) -> dict[str, float | int | None]:
+def _not_applicable(suite: str) -> dict[str, Any]:
 
+    return {
+        "attempts": 0,
+        "successes": 0,
+        "valid_json": 0,
+        "valid_choice": 0,
+        "errors": [],
+        "duration_ms": _stats([]),
+        "not_applicable": True,
+        "reason": f"{suite} suite not applicable",
+    }
+
+
+def _stats(values: list[float]) -> dict[str, float | int | None]:
     if not values:
         return {
             "count": 0,
