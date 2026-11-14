@@ -150,3 +150,16 @@ streaming
 load_tool_plugins([PLUGIN], registry, context)
 load_llm_providers([PROVIDER])
 ```
+
+## إضافات نموذجية
+
+`plugins/wikidata` إضافة أداة خارجية كاملة: تعلن نقطة الدخول
+`hagar.tools`، وتسجّل `wikidata.search` و`wikidata.entity`
+و`wikidata.article` و`wikidata.query`، وتبقى خاضعة لسياسة المضيف
+وتأكيداته. التثبيت والإعدادات والحدود في [WIKIDATA.md](WIKIDATA.md).
+
+`plugins/sql_odbc` مثال ثانٍ، مع `sql.odbc.query` و`sql.odbc.schema`
+و`sql.odbc.drivers` و`sql.odbc.execute`: يستخدم ODBC فقط، ويحصر
+الملفات في صندوق الرمل، ويستبعد قاعدة بيانات الذكريات، ويتطلب
+القدرتين `DATABASE_READ`/`DATABASE_WRITE`. التفاصيل في
+[SQL_ODBC.md](SQL_ODBC.md).

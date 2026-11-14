@@ -120,10 +120,11 @@ policy.yaml			إعداد الأذونات للأدوات (المدمجة وMCP)
 core/               config, agent, audit log, registry, sandbox, service وخادم ويب
 llm/                واجهات LLM الخلفية (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini)، وعميل MCP
 memory/             ذاكرة SQLite (sqlite_store.py) وواجهة markdown القديمة
-web/                HTML وCSS وJavaScript لواجهة الويب المحلية
+web/                HTML وCSS وJavaScript لواجهة الويب المحلية وصفحات الإدارة
 tests/              مجموعة pytest
 tools/              أدوات مساعدة للتطوير (test runner، sandbox shim، model benchmark)
 local_tools/        أدوات مدمجة؛ والمدمجة تمر عبر local_tools/plugins.py
+plugins/            إضافات خارجية: wikidata وsql_odbc
 core/plugins.py     عقود الإضافات واكتشافها (hagar.tools, hagar.llm)
 core/subagents.py   مدير الوكيل الفرعي MVP المتزامن والقراءة فقط
 llm/plugins.py      مزوّدو LLM المدمجون المسجَّلون كإضافات
@@ -182,7 +183,8 @@ max_field_chars: 2000
 يُصرَّح بكل استدعاء لأداة قبل تنفيذه. تعلن الأداة
 **قدراتها** (`FILESYSTEM_READ`، `FILESYSTEM_WRITE`،
 `FILESYSTEM_CREATE`، `FILESYSTEM_DELETE`، `MEMORY_READ`،
-`MEMORY_WRITE`، `MCP_CALL`، ...)؛ ويحدد **الكيان** (الوكيل)
+`MEMORY_WRITE`، `NETWORK`، `DATABASE_READ`، `DATABASE_WRITE`،
+`MCP_CALL`، ...)؛ ويحدد **الكيان** (الوكيل)
 قواعد تربط تلك الوظائف بـ `allow` (اسمح) أو `ask` (اسأل) أو `deny` (ارفض)،
 مع إمكانية تقييدها حسب اسم الأداة أو بادئة المسار أو فضاء الأسماء.
 
@@ -280,6 +282,10 @@ memory:
 - [ROADMAP.md](ROADMAP.md) — الوظائف المخطط لتنفيذها، والقرارات المتخذة بالفعل
   والمسائل المفتوحة.
 - [PLUGINS.md](PLUGINS.md) — عقود الأدوات ومزوّدي LLM من نوع plugin.
+- [WIKIDATA.md](WIKIDATA.md) — إضافة Wikidata: البحث والكيانات ومقالات Wikipedia وSPARQL.
+- [SQL.md](SQL.md) — أداة SQL محلية للقراءة فقط، SQLite وODBC.
+- [SQL_ODBC.md](SQL_ODBC.md) — إضافة SQL ODBC مع كتابة DML.
+- [WEB_UI.md](WEB_UI.md) — لوحة التحكم ومدير صندوق الرمل.
 - [HIFI.md](HIFI.md) — مرحلة تمهيدية للتفسير والتوضيح.
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — نقاط التحقق والمهلات والتفريغ والضغط.
 - [AISH.md](AISH.md) — shell دلالية مقيّدة وسياسة DENY.
@@ -289,6 +295,8 @@ memory:
 - [FLOW.md](FLOW.md) — DSL مقيّد ومُفسِّر.
 - [DECISIONS.md](DECISIONS.md) — أدوات القرار ومزوّدوها.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — البطاقات ومعايير القياس والعتاد.
+- [BROKER.md](BROKER.md) — كتالوج النماذج ووسيط الـ LLM المستقبلي.
+- [MULTIBOT.md](MULTIBOT.md) — معمارية مستقبلية للتفاعل العام على الشبكات الاجتماعية وفي سياقات غير آمنة.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — مواصفة أداة المستندات،
   والرسم البياني الدلالي، وإضافات الصيغ والمضيف الأصلي.
 - [SUBAGENTS.md](SUBAGENTS.md) — الوكلاء الفرعيون MVP، والعزل والحدود.

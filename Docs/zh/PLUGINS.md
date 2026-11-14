@@ -150,3 +150,17 @@ provider 不得授予权限：它只接收配置和 audit。
 load_tool_plugins([PLUGIN], registry, context)
 load_llm_providers([PROVIDER])
 ```
+
+## 示例插件
+
+`plugins/wikidata` 是一个完整的外部 tool 插件：它声明
+`hagar.tools` entry point，注册 `wikidata.search`、
+`wikidata.entity`、`wikidata.article` 和 `wikidata.query`，并
+仍然受宿主的策略与确认约束。安装、配置与限制见
+[WIKIDATA.md](WIKIDATA.md)。
+
+`plugins/sql_odbc` 是第二个示例，包含 `sql.odbc.query`、
+`sql.odbc.schema`、`sql.odbc.drivers` 和 `sql.odbc.execute`：仅使用
+ODBC，把文件限制在 sandbox 内，排除记忆数据库，并要求
+`DATABASE_READ`/`DATABASE_WRITE` capability。详情见
+[SQL_ODBC.md](SQL_ODBC.md)。

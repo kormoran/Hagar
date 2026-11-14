@@ -5,6 +5,62 @@ referência ao commit quando útil.
 
 ---
 
+# 0.8.0 — 2026-11-14
+
+## Resumo
+
+Release do broker LLM: escolha do modelo por tarefa, capability
+verificadas, fichas medidas, timeout adaptativos e página web dos
+modelos locais.
+
+## Broker LLM
+
+- `ModelRegistry` com catálogo declarado, fichas medidas e metadados
+  de runtime.
+- `TaskProfile` com capability, contexto, privacidade, custo e qualidade.
+- `Broker.select` por regras e pontuação; auditoria `broker.decision`.
+- `BrokerLLMClient` com fallback explícito e mudança de perfil atómica.
+- Seleção do perfil por turno (`auto_route`).
+- Routing dos subagentes com `local_only`.
+
+## Capability e fichas
+
+- Capability declaradas e verificadas (`capabilities_verified`).
+- Novas capability `coding`, `ocr`, `reasoning`.
+- `not_applicable` para suites não pertinentes.
+- Discovery LM Studio/Ollama e merge no registry.
+- `loaded_only`: o broker usa apenas modelos já carregados.
+
+## Benchmark
+
+- Tool calling com distractor e controlo de argumentos.
+- JSON com `schema_valid` e `field_f1`.
+- Coding executável com unit test.
+- `memory_bench` sintético.
+- Prompt production com ferramentas e memória.
+
+## Timeout e contexto
+
+- Timeout LLM adaptativo baseado na p95 da ficha.
+- Limites por chamada e por turno.
+- Override `tools.timeouts` para OCR e ferramentas lentas.
+- Descrições de ferramentas compactas para modelos pequenos.
+
+## Web UI
+
+- Nova página `/models` com lista local, ficha e benchmark.
+- Benchmark em background com polling.
+- Estado carregado, contexto, quantização e capability.
+- Removida a lista das ferramentas da página de chat.
+
+## Configuração
+
+- `models` e `default_model` em `hagar.yaml`.
+- Recusa de chaves YAML duplicadas.
+- Host e `api_key_env` por entrada do catálogo.
+
+---
+
 # 0.7.0 — 2026-11-12
 
 ## Resumo
@@ -52,6 +108,52 @@ release.
 - `flow.repair` não repara erros de runtime, policy, confirmação ou
   timeout.
 - Cada tentativa é registada na auditoria e no resultado.
+
+## Painel de controlo e Sandbox manager
+
+- Novas páginas web `/control` e `/sandbox`, acessíveis a partir da GUI
+  principal e com regresso à chat.
+- Painel: allow/deny de ferramentas em runtime, providers/modelos com
+  mudança de modelo, definições Hi-Fi/tool/modelo/filesystem/memória e
+  reset a partir de `hagar.yaml`.
+- Sandbox manager: árvore lazy, override RWX por percurso, path real do
+  elemento selecionado e criação de diretórios; nenhuma eliminação.
+- Novas API `/api/admin/*` protegidas pelo token, com mutações recusadas
+  durante um turno; `config.config_path` para o reset.
+
+## Plugin SQL ODBC
+
+- Novo plugin externo `plugins/sql_odbc`: `sql.odbc.drivers`,
+  `sql.odbc.schema`, `sql.odbc.query` e `sql.odbc.execute`.
+- Escrita DML (`INSERT`, `UPDATE`, `DELETE`, `MERGE`, `REPLACE`)
+  apenas via ODBC, com `DATABASE_WRITE`, `FILESYSTEM_WRITE` e
+  confirmação humana obrigatória.
+- Os mesmos limites da ferramenta local: apenas ficheiros na sandbox,
+  BD das memórias excluída, uma instrução, timeout e nada de DDL.
+
+## Ferramenta SQL local
+
+- Novas capability `DATABASE_READ` e `DATABASE_WRITE`, com
+  `permissions.database_read` e `permissions.database_write`.
+- Novos `sql.file.drivers`, `sql.file.schema` e `sql.file.query` para
+  bases de dados em ficheiro na sandbox.
+- SQLite nativo em `mode=ro` com authorizer; outros formatos via ODBC,
+  com erro explícito se o driver não estiver instalado.
+- Limites: apenas ficheiros na sandbox, uma instrução read-only,
+  linhas/bytes e timeout; a base de dados das memórias do Hagar está
+  sempre excluída.
+
+## Plugin Wikidata
+
+- Novo plugin externo `plugins/wikidata`, com entry point
+  `hagar.tools`: `wikidata.search`, `wikidata.entity`,
+  `wikidata.article` e `wikidata.query`.
+- Capability `NETWORK`, política `wikidata.*` com confirmação e nenhum
+  acesso a URL arbitrários: apenas endpoints Wikimedia em HTTPS.
+- SPARQL em só de leitura (`SELECT`), sem federação `SERVICE` ou
+  cláusulas `FROM`; respostas e output limitados.
+- Etiquetas `mul`, prioridade das claim principais, resolução das
+  etiquetas referenciadas e truncamento explícito.
 
 # 0.6.0 — 2026-11-09
 

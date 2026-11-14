@@ -153,3 +153,17 @@ streaming
 load_tool_plugins([PLUGIN], registry, context)
 load_llm_providers([PROVIDER])
 ```
+
+## Примеры плагинов
+
+`plugins/wikidata` — полноценный внешний плагин-инструмент: объявляет
+entry point `hagar.tools`, регистрирует `wikidata.search`,
+`wikidata.entity`, `wikidata.article` и `wikidata.query` и остаётся
+подчинённым политике и подтверждениям хоста. Установка, настройка и
+ограничения описаны в [WIKIDATA.md](WIKIDATA.md).
+
+`plugins/sql_odbc` — второй пример, с `sql.odbc.query`,
+`sql.odbc.schema`, `sql.odbc.drivers` и `sql.odbc.execute`: использует
+только ODBC, ограничивает файлы песочницей, исключает базу данных
+памяти и требует capability `DATABASE_READ`/`DATABASE_WRITE`.
+Подробности в [SQL_ODBC.md](SQL_ODBC.md).

@@ -1,6 +1,6 @@
 # HAGAR — دليل المستخدم
 
-الإصدار: **0.7.0**
+الإصدار: **0.8.0**
 
 يصف هذا الدليل السلوك الملاحَظ لـ Hagar: الأوامر،
 والخيارات، والإعدادات، والسياسات، وحالات الخطأ. وبالنسبة للتصميم الداخلي
@@ -63,7 +63,11 @@ hagar --config hagar.yaml
 | `/tools [categoria]` | يسرد الأدوات والقدرات؛ التصفية اختيارية |
 | `/status` | يعرض النموذج والمشروع والذاكرة والتدقيق وصندوق الرمل |
 | `/usage` | يعرض الرموز المستهلكة في الجلسة |
-| `/models ...` | بطاقات ومعايير قياس وعتاد خاص بالوسيط (broker) |
+| `/models ...` | بطاقات ومعايير قياس وسجل وعتاد خاص بالوسيط (broker) |
+| `/models test` | معايير قياس النص وجودة النموذج الحالي |
+| `/models test vision` | معايير قياس الرؤية على صور تخليقية |
+| `/models runs [n]` | آخر تشغيلات القياس المحفوظة |
+| `/models discover [provider]` | القدرات التي يعلنها LM Studio أو Ollama |
 | `/models hardware` | يكتشف المعالج والذاكرة العشوائية ووحدة معالجة الرسوميات في الجهاز |
 | `/undo` | يلغي تعديلات الدور الأخير |
 | `/mcp` | يسرد خوادم MCP ونقاط النهاية والأدوات المستوردة |
@@ -189,6 +193,17 @@ hagar --config hagar.yaml web --port 8765
 - يعرض **Thinking** الاستدلال الذي يكشفه المزوّد، إن وُجد؛ وإلا
   فيعرض الخط الزمني لأحداث الوكيل.
 - تعرض **Memories** ذكريات قاعدة البيانات ومهاراتها للقراءة فقط، مع البحث.
+- يفتح الزرّان **Pannello** و**Sandbox** الصفحتين الإداريتين؛ ولكلتيهما
+  **Torna alla chat**. التفاصيل في [WEB_UI.md](WEB_UI.md).
+- تسرد **Pannello** الأدوات مع تفعيل/منع وقت التشغيل، والمزوّدين
+  والنماذج القابلة للاختيار، وقيم الإعدادات القابلة للتعديل (Hi-Fi
+  والمهلات والحدود). ويعيد **Ritorna a configurazione hagar.yaml**
+  تحميل القيم، ويعيد تفعيل الأدوات، ويصفّر تجاوزات RWX.
+- تعرض **Sandbox** شجرة صندوق الرمل مع مربعات اختيار R/W/X لكل
+  عنصر، والمسار الحقيقي للعنصر المحدد، وإنشاء دلائل جديدة. ولا توجد
+  وظيفة حذف.
+- تُرفض التغييرات الإدارية أثناء دور جارٍ؛ ولا يتجاوز allow/deny
+  السياسة ولا التأكيدات ولا سقف النظام.
 - يوقف زر **Stop** الدور على نحو تعاوني.
 - يرفق زر **Immagine** ملفات PNG/JPEG/WebP (بحد أقصى 4، و10 MB لكل منها)
   للنماذج البصرية. ويُحوَّل WebP إلى PNG في الواجهة لأن LM
@@ -270,6 +285,27 @@ filesystem:
 | `max_tokens` | `1024` | يستخدمه Claude فقط |
 | `timeout` | `120` | مهلة HTTP بالثواني لكل استدعاء |
 | `api_key_env` | الاسم القياسي | متغير البيئة الخاص بالمفتاح |
+
+تُرفض مفاتيح YAML المكررة: فلا يمكن وضع قسمين `model:` في الملف
+نفسه. ولعدة نماذج تُستخدم قائمة:
+
+```yaml
+models:
+  - id: local
+    provider: lmstudio
+    host: http://localhost:1234/v1
+    name: gemma-3-27b-it
+  - id: remote
+    provider: deepseek
+    name: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+
+default_model: local
+```
+
+`models[].id` اختياري لكنه مستحسن؛ وبلا id تكون الهوية
+`provider/name`. و`default_model` يمكن أن يكون id أو اسمًا. ويبقى
+الشكل المفرد `model:` مدعومًا ويصبح `models[0]`.
 
 المزوّدون والمفاتيح:
 
@@ -462,6 +498,8 @@ permissions:
   shell: false
   network: false
   agents: false
+  database_read: false
+  database_write: false
 ```
 
 هي **سقف النظام**. الافتراضي: `read=true`، والبقية `false`.
@@ -473,6 +511,11 @@ permissions:
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
 | `agents` | `AGENT_SPAWN` و`AGENT_DATA`، لـ `agent.*`/`artifact.*`/`mailbox.*` |
+| `database_read` | `DATABASE_READ`، لاستعلامات SQL في القراءة |
+| `database_write` | `DATABASE_WRITE` (و`DATABASE_READ`)، لتعديلات SQL |
+
+تستلزم `database_write` وجود `DATABASE_READ` في السقف، لأن أداة
+الكتابة يجب أن تقرأ المخطط قبل تعديله.
 
 `COMPUTE` و`MCP_CALL` في السقف دائمًا، لكن يمكن للسياسة حجبهما.
 وإذا لم يمنح السقف قدرة ما، فلا يمكن للسياسة منحها.
@@ -569,11 +612,19 @@ hifi:
 tools:
   timeout: 120
   repeat_limit: 3
+  compact: true
+  timeouts:
+    document.ocr_pdf: 900
 ```
 
 `timeout` هو الحد بالثواني لاستدعاء أداة واحد؛ و`0` يعطّله.
 ويمنع `repeat_limit` الاستدعاء المطابق الثالث في الدور نفسه؛
-و`0` يعطّل المنع. ومهلة معالج Python قيد التنفيذ
+و`0` يعطّل المنع. ويستخدم `compact` أوصافًا قصيرة ويحذف أوصاف
+المعاملات من المخطط الأصلي: فيقلّص الـ prompt للنماذج الصغيرة. وتبقى
+الأوصاف الكاملة في `ToolDefinition`. ويضع `timeouts` استثناءات
+لكل أداة على حدة.
+
+ومهلة معالج Python قيد التنفيذ
 هي بذل أقصى للجهد (best effort): فقد ينتهي العامل بعد الحد.
 
 ## 4.12 `dev`
@@ -703,6 +754,8 @@ subjects:
 | `DEV_EXEC` | تنفيذ وصفات dev.run |
 | `BOX_EXEC` | تنفيذ boxed transform |
 | `FLOW_EXEC` | تنفيذ DSL الخاص بـ Hagar Flow |
+| `DATABASE_READ` | قراءة قواعد بيانات SQL |
+| `DATABASE_WRITE` | تعديل قواعد بيانات SQL |
 
 ## 5.3 القواعد والخصوصية
 

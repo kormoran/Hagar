@@ -154,3 +154,17 @@ Para probar un plugin sin instalarlo, se puede llamar directamente:
 load_tool_plugins([PLUGIN], registry, context)
 load_llm_providers([PROVIDER])
 ```
+
+## Plugin de ejemplo
+
+`plugins/wikidata` es un plugin de tool externo completo: declara
+el entry point `hagar.tools`, registra `wikidata.search`,
+`wikidata.entity`, `wikidata.article` y `wikidata.query`, y queda
+sujeto a la policy y a las confirmaciones del host. La instalación, la
+configuración y los límites están en [WIKIDATA.md](WIKIDATA.md).
+
+`plugins/sql_odbc` es un segundo ejemplo, con `sql.odbc.query`,
+`sql.odbc.schema`, `sql.odbc.drivers` y `sql.odbc.execute`: usa solo
+ODBC, limita los archivos a la sandbox, excluye la base de datos de las
+memorias y requiere las capability `DATABASE_READ`/`DATABASE_WRITE`.
+Detalles en [SQL_ODBC.md](SQL_ODBC.md).

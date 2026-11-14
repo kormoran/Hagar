@@ -1,7 +1,7 @@
 # HAGAR — 架构
 
-版本：0.7.0
-最后更新：2026-11-03
+版本：0.8.0
+最后更新：2026-11-14
 
 ---
 
@@ -495,7 +495,8 @@ memory.failed      阶段和错误
 - **Capability**（`IntFlag`）：一个操作能做什么
   （`FILESYSTEM_READ`、`FILESYSTEM_WRITE`、`FILESYSTEM_CREATE`、
   `FILESYSTEM_DELETE`、`FILESYSTEM_EXEC`、`MEMORY_READ`、
-  `MEMORY_WRITE`、`NETWORK`、`MCP_CALL`、`COMPUTE`）。用 `|` 组合；
+  `MEMORY_WRITE`、`NETWORK`、`MCP_CALL`、`COMPUTE`、
+  `DATABASE_READ`、`DATABASE_WRITE`）。用 `|` 组合；
   校验始终是子集判断。
 - **Effect**（`IntEnum`）：`ALLOW`、`ASK`、`DENY`。冲突时
   取较高的值（`DENY > ASK > ALLOW`）。
@@ -910,10 +911,23 @@ checkpoint 不复制 workspace：它只记录某个变更
 `ToolRegistry` 应用：
 
 - `tools.timeout` 对单次调用，通过守护 worker；
+- `tools.timeouts.<名称>` 用于慢速工具的例外；
+- `tools.compact` 用于使用简短描述，并从原生 schema 中省略
+  参数描述；
 - `tools.repeat_limit` 针对每轮 `tool + 参数` 的 hash。
 
-超时是尽力而为：已经启动的 Python handler 不会被
-杀死。repeat guard 在每次 `Agent.ask` 时清零计数。
+简短描述位于 `core/tool_short.py`；`ToolDefinition` 仍然
+保留完整的描述。
+
+LLM 调用使用自适应超时（`core/timeouts.py`）：
+卡片的 p95、prompt 大小、`max_tokens`、安全系数，
+以及 `timeouts.floor_seconds`/`ceiling_seconds` 限制。轮次
+有一个独立的上限，不会低于已配置工具的最大超时。
+
+工具超时是尽力而为：已经启动的 Python handler 不会
+被杀死。repeat guard 在每次 `Agent.ask` 时清零计数。
+工具的异步执行尚未实现：长时间 OCR 仍保持同步，
+只是使用专用超时。
 
 `OutputSpiller` 把超过 12,000 字符的输出移到
 `ArtifactStore`，并返回带 `artifact_id` 的摘要。
@@ -1026,7 +1040,7 @@ read-before-write gate 下写入结果。`BOX_EXEC` 默认 DENY。
 
 项目用 `pip install -e .` 安装，并在
 `pyproject.toml` 中声明包。entry point 是 `hagar = "hagar:main"`。当前
-版本是 `0.7.0`。
+版本是 `0.8.0`。
 
 示例配置是 `hagar.example.yaml`；`hagar.yaml` 是一个
 被 git 忽略的本地文件。示例的默认 Vault 是
@@ -1072,7 +1086,11 @@ API 密钥存在时）。
 | `text` | `text.diff` | `COMPUTE` |
 | `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
+| `sql_file` | `sql.file.drivers`, `sql.file.schema`, `sql.file.query` | `DATABASE_READ`, `FILESYSTEM_READ` |
 
+- `sql.file.*` 以只读方式访问 sandbox 内的文件数据库。
+  SQLite 使用带 `mode=ro` 和 authorizer 的 stdlib；其他格式
+  要求已安装 ODBC 驱动。记忆数据库始终被排除。详情见 [SQL.md](SQL.md)。
 - `clock.now` 返回本地时间、日期、时区、UTC 偏移和 epoch。
 - `calendar.date` 把本地日期，或一个可选的 ISO 日期，转换为
   前推儒略历或表格式伊斯兰历
@@ -1185,10 +1203,9 @@ Python 插件是受信的，并在进程内运行；对于不受信的
 # 5. 开发
 
 - 套件：`./tools/run_tests.sh`（Linux/macOS）或
-  `.\tools\run_tests.ps1`（Windows）。在 Windows 上：892 通过，2 跳过
-  （没有 Developer Mode 时 symlink 不可用）。在 Debian Linux
-  上（2026-11-12）：所有测试为绿，包括 symlink（894 通过，0
-  跳过）。shim 的细节与理由见 README §3.1。
+  `.\tools\run_tests.ps1`（Windows）。在 Windows 上：1132 通过，2 跳过，
+  1 xfailed。在 Debian Linux 上（2026-11-14）：所有测试为绿，
+  包括 symlink（1134 通过，0 跳过）。shim 的细节与理由见 README §3.1。
 - live 测试：`./tools/run_tests.sh --live`（Linux/macOS）或
   `.\tools\run_tests.ps1 --live`（Windows）——多 9 个测试（Ollama；
   远程 provider，如果密钥存在）。

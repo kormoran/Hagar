@@ -5,6 +5,61 @@ reference to the commit when useful.
 
 ---
 
+# 0.8.0 — 2026-11-14
+
+## Summary
+
+LLM broker release: per-task model selection, verified capabilities,
+measured cards, adaptive timeouts and a web page for local models.
+
+## LLM broker
+
+- `ModelRegistry` with a declared catalogue, measured cards and
+  runtime metadata.
+- `TaskProfile` with capabilities, context, privacy, cost and quality.
+- `Broker.select` by rules and score; `broker.decision` audit.
+- `BrokerLLMClient` with explicit fallback and atomic profile switch.
+- Per-turn profile selection (`auto_route`).
+- Subagent routing with `local_only`.
+
+## Capabilities and cards
+
+- Declared and verified capabilities (`capabilities_verified`).
+- New `coding`, `ocr`, `reasoning` capabilities.
+- `not_applicable` for irrelevant suites.
+- LM Studio/Ollama discovery and merge into the registry.
+- `loaded_only`: the broker uses only models that are already loaded.
+
+## Benchmarks
+
+- Tool calling with distractors and argument checking.
+- JSON with `schema_valid` and `field_f1`.
+- Executable coding with unit tests.
+- Synthetic `memory_bench`.
+- Production prompts with tools and memory.
+
+## Timeouts and context
+
+- Adaptive LLM timeout based on the card's p95.
+- Per-call and per-turn limits.
+- `tools.timeouts` override for OCR and slow tools.
+- Compact tool descriptions for small models.
+
+## Web UI
+
+- New `/models` page with local list, card and benchmarks.
+- Background benchmarking with polling.
+- Loaded state, context, quantization and capabilities.
+- Removed the tool list from the chat page.
+
+## Configuration
+
+- `models` and `default_model` in `hagar.yaml`.
+- Rejection of duplicate YAML keys.
+- Host and `api_key_env` per catalogue entry.
+
+---
+
 # 0.7.0 — 2026-11-12
 
 ## Summary
@@ -53,6 +108,51 @@ this release.
 - `flow.repair` does not repair runtime, policy, confirmation or
   timeout errors.
 - Every attempt is recorded in the audit and in the result.
+
+## Control panel and Sandbox manager
+
+- New `/control` and `/sandbox` web pages, reachable from the main GUI
+  and with a return to the chat.
+- Control panel: runtime tool allow/deny, providers/models with model
+  switching, Hi-Fi/tool/model/filesystem/memory settings and reset from
+  `hagar.yaml`.
+- Sandbox manager: lazy tree, RWX override per path, real path of the
+  selected element and directory creation; no delete.
+- New `/api/admin/*` APIs protected by the token, with mutations refused
+  during a turn; `config.config_path` for the reset.
+
+## SQL ODBC plugin
+
+- New external plugin `plugins/sql_odbc`: `sql.odbc.drivers`,
+  `sql.odbc.schema`, `sql.odbc.query` and `sql.odbc.execute`.
+- DML writing (`INSERT`, `UPDATE`, `DELETE`, `MERGE`, `REPLACE`) only
+  via ODBC, with `DATABASE_WRITE`, `FILESYSTEM_WRITE` and mandatory
+  human confirmation.
+- Same limits as the local tool: sandbox files only, memories DB
+  excluded, one statement, timeout and no DDL.
+
+## Local SQL tool
+
+- New `DATABASE_READ` and `DATABASE_WRITE` capabilities, with
+  `permissions.database_read` and `permissions.database_write`.
+- New `sql.file.drivers`, `sql.file.schema` and `sql.file.query` for
+  file databases in the sandbox.
+- Native SQLite in `mode=ro` with authorizer; other formats via ODBC,
+  with an explicit error if the driver is not installed.
+- Limits: sandbox files only, one read-only statement, rows/bytes and
+  timeout; Hagar's memory database is always excluded.
+
+## Wikidata plugin
+
+- New external plugin `plugins/wikidata`, with entry point
+  `hagar.tools`: `wikidata.search`, `wikidata.entity`,
+  `wikidata.article` and `wikidata.query`.
+- `NETWORK` capability, `wikidata.*` policy with confirmation and no
+  access to arbitrary URLs: only Wikimedia HTTPS endpoints.
+- SPARQL read-only (`SELECT`), without `SERVICE` federation or `FROM`
+  clauses; bounded responses and output.
+- `mul` labels, priority of the main claims, resolution of referenced
+  labels and explicit truncation.
 
 # 0.6.0 — 2026-11-09
 

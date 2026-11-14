@@ -1,7 +1,7 @@
 # HAGAR — Roadmap
 
-Current version: 0.7.0 (in development)
-Last updated: 2026-11-09
+Current version: 0.8.0 (in preparation)
+Last updated: 2026-11-14
 
 The decisions already made are marked as such; the points still open are
 listed at the end of each area. Sections 1–9 are the history up to
@@ -16,9 +16,9 @@ listed at the end of each area. Sections 1–9 are the history up to
 | Release | Goal | Status |
 |---|---|---|
 | **0.6.0** | Runtime safety + AIsh | released |
-| **0.7.0** | dev.run + box + Hagar Flow | in development |
-| **0.8.0** | LLM broker | next |
-| **0.9.0** | Read-only SQL tool | frozen |
+| **0.7.0** | dev.run + box + Hagar Flow | released |
+| **0.8.0** | LLM broker | in preparation |
+| **0.9.0** | Memory lifecycle | frozen |
 
 The order may change, but the constraint is: **no subagents without usage and
 limits; no broker without subagents and model registry.**
@@ -46,16 +46,21 @@ limits; no broker without subagents and model registry.**
 - the broker never grants permissions: it can only propose a subset;
 - human override and `broker.decision` audit.
 
-## 0.3 0.8.0 — SQL tool
+## 0.3 SQL tool — implemented
 
-- read-only in the first version;
+- read-only local tool `sql.file.*`: native SQLite and other formats
+  via ODBC;
 - SQLite `mode=ro`, `PRAGMA query_only`, a single statement;
 - no `ATTACH`, writing `PRAGMA` or `load_extension`;
 - timeout, row/byte limit and query audit;
-- configured database aliases, never arbitrary paths;
-- `DATABASE_READ` capability;
-- writing and network databases only in a later phase, with
-  `DATABASE_WRITE` and `NETWORK`.
+- sandbox files only, never arbitrary paths; the memory database
+  is always excluded;
+- `DATABASE_READ` and `DATABASE_WRITE` capabilities;
+- external plugin `sql.odbc.*` for DML writing via ODBC, with
+  human confirmation and the same sandbox limits;
+- network databases out of this cut.
+
+Details in [SQL.md](SQL.md) and [SQL_ODBC.md](SQL_ODBC.md).
 
 ## 0.4 Open points
 
@@ -129,6 +134,22 @@ HIR, parallelism and subagents remain outside the MVP.
 `Docs/it` is the only source maintained during development. The
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` and `Docs/ar` directories are
 regenerated only when preparing a release.
+
+## 0.6 Post-1.0 — Multibot
+
+Architecture of separate services for the model's interaction with
+external entities on social media and unsafe public contexts. It does not enter
+1.0: the document is [MULTIBOT.md](MULTIBOT.md).
+
+Constraints already decided:
+
+- Hagar remains single-user and the main chat does not become multi-user;
+- the model only produces drafts and does not have the capability to publish;
+- identity, tokens, workers, guards, approval and publisher are separate
+  services;
+- graduated autonomy, quotas, kill switch and explicit acceptance of the
+  risk;
+- no access for the worker to memory, filesystem or generic network.
 
 ---
 

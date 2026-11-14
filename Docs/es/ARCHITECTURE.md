@@ -1,7 +1,7 @@
 # HAGAR — Arquitectura
 
-Versión: 0.7.0
-Última actualización: 2026-11-03
+Versión: 0.8.0
+Última actualización: 2026-11-14
 
 ---
 
@@ -502,7 +502,8 @@ El modelo es una matriz sujeto × objeto:
 - **Capability** (`IntFlag`): qué puede hacer una operación
   (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`, `FILESYSTEM_CREATE`,
   `FILESYSTEM_DELETE`, `FILESYSTEM_EXEC`, `MEMORY_READ`,
-  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`). Se combinan con `|`;
+  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`,
+  `DATABASE_READ`, `DATABASE_WRITE`). Se combinan con `|`;
   la verificación es siempre de subconjunto.
 - **Effect** (`IntEnum`): `ALLOW`, `ASK`, `DENY`. En caso de conflicto
   vence el valor más alto (`DENY > ASK > ALLOW`).
@@ -922,10 +923,24 @@ Si el checkpoint está incompleto, el undo se rechaza.
 `ToolRegistry` aplica:
 
 - `tools.timeout` por llamada individual, mediante worker demonio;
+- `tools.timeouts.<nombre>` para excepciones en tool lentos;
+- `tools.compact` para usar descripciones breves y omitir las
+  descripciones de los parámetros del esquema nativo;
 - `tools.repeat_limit` sobre el hash `tool + argumentos` por turno.
 
-El timeout es best effort: un handler Python ya iniciado no se
+Las descripciones breves viven en `core/tool_short.py`; los `ToolDefinition`
+conservan de todos modos la descripción completa.
+
+Las llamadas LLM usan un timeout adaptativo (`core/timeouts.py`):
+p95 de la ficha, tamaño del prompt, `max_tokens`, factor de
+seguridad y límites `timeouts.floor_seconds`/`ceiling_seconds`. El turno
+tiene un techo separado que no baja del timeout máximo de los tool
+configurados.
+
+El timeout de los tool es best effort: un handler Python ya iniciado no se
 mata. El repeat guard pone a cero el contador en cada `Agent.ask`.
+La ejecución asíncrona de los tool no está implementada: un OCR largo sigue
+siendo síncrono con un timeout dedicado.
 
 `OutputSpiller` mueve los output de más de 12.000 caracteres
 al `ArtifactStore` y devuelve un resumen con `artifact_id`.
@@ -1038,7 +1053,7 @@ el AST validado es el IR del MVP.
 
 El proyecto se instala con `pip install -e .` y declara los package en
 `pyproject.toml`. El entry point es `hagar = "hagar:main"`. La versión
-actual es `0.7.0`.
+actual es `0.8.0`.
 
 La configuración de ejemplo es `hagar.example.yaml`; `hagar.yaml` es un
 archivo local ignorado por git. El Vault predeterminado del ejemplo es
@@ -1084,7 +1099,12 @@ en el registry y viven fuera del core, en un package separado.
 | `text` | `text.diff` | `COMPUTE` |
 | `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
+| `sql_file` | `sql.file.drivers`, `sql.file.schema`, `sql.file.query` | `DATABASE_READ`, `FILESYSTEM_READ` |
 
+- `sql.file.*` accede en solo lectura a bases de datos en archivo dentro
+  de la sandbox. SQLite usa la stdlib con `mode=ro` y authorizer; los
+  demás formatos requieren un driver ODBC instalado. La base de datos de
+  las memorias queda siempre excluida. Detalles en [SQL.md](SQL.md).
 - `clock.now` devuelve hora local, fecha, huso, offset UTC y epoch.
 - `calendar.date` convierte la fecha local, o una fecha ISO opcional, al
   calendario juliano proléptico o al islámico tabular
@@ -1199,10 +1219,9 @@ GUI dedicada. Los detalles están en `SUBAGENTS.md`.
 # 5. Desarrollo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) o bien
-  `.\tools\run_tests.ps1` (Windows). En Windows: 892 superados, 2 skip
-  (symlink no disponibles sin Developer Mode). En Debian Linux
-  (2026-11-12): todos los test en verde, incluidos los symlink (894 superados, 0
-  skip). Detalles y motivación del shim en README §3.1.
+  `.\tools\run_tests.ps1` (Windows). En Windows: 1132 superados, 2 skip,
+  1 xfailed. En Debian Linux (2026-11-14): todos los test en verde, incluidos los
+  symlink (1134 superados, 0 skip). Detalles y motivación del shim en README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) o bien
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test más (Ollama;
   proveedores remotos si las claves están presentes).

@@ -1,7 +1,7 @@
 # HAGAR — Roadmap
 
-Versione corrente: 0.7.0 (in sviluppo)
-Ultimo aggiornamento: 2026-11-09
+Versione corrente: 0.8.0 (in preparazione)
+Ultimo aggiornamento: 2026-11-14
 
 Le decisioni prese sono indicate come tali; i punti ancora aperti sono
 elencati alla fine di ogni area. Le sezioni 1–9 sono lo storico fino
@@ -16,9 +16,9 @@ alla 0.6.0; il piano operativo corrente è la sezione 0.
 | Release | Obiettivo | Stato |
 |---|---|---|
 | **0.6.0** | Runtime safety + AIsh | rilasciata |
-| **0.7.0** | dev.run + box + Hagar Flow | in sviluppo |
-| **0.8.0** | Broker LLM | prossimo |
-| **0.9.0** | Tool SQL read-only | congelato |
+| **0.7.0** | dev.run + box + Hagar Flow | rilasciata |
+| **0.8.0** | Broker LLM | in preparazione |
+| **0.9.0** | Ciclo di vita delle memorie | congelato |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**

@@ -5,6 +5,62 @@ riferimento al commit quando utile.
 
 ---
 
+# 0.8.0 — 2026-11-14
+
+## Riepilogo
+
+Release del broker LLM: scelta del modello per task, capability
+verificate, schede misurate, timeout adattivi e pagina web dei modelli
+locali.
+
+## Broker LLM
+
+- `ModelRegistry` con catalogo dichiarato, schede misurate e metadati
+  runtime.
+- `TaskProfile` con capability, contesto, privacy, costo e qualità.
+- `Broker.select` a regole e punteggio; audit `broker.decision`.
+- `BrokerLLMClient` con fallback esplicito e cambio profilo atomico.
+- Selezione del profilo per turno (`auto_route`).
+- Routing dei subagenti con `local_only`.
+
+## Capability e schede
+
+- Capability dichiarate e verificate (`capabilities_verified`).
+- Nuove capability `coding`, `ocr`, `reasoning`.
+- `not_applicable` per suite non pertinenti.
+- Discovery LM Studio/Ollama e merge nel registry.
+- `loaded_only`: il broker usa solo modelli già caricati.
+
+## Benchmark
+
+- Tool calling con distractor e controllo argomenti.
+- JSON con `schema_valid` e `field_f1`.
+- Coding eseguibile con unit test.
+- `memory_bench` sintetico.
+- Prompt production con tool e memoria.
+
+## Timeout e contesto
+
+- Timeout LLM adattivo basato sulla p95 della scheda.
+- Limiti per chiamata e per turno.
+- Override `tools.timeouts` per OCR e tool lenti.
+- Descrizioni tool compatte per modelli piccoli.
+
+## Web UI
+
+- Nuova pagina `/models` con elenco locale, scheda e benchmark.
+- Benchmark in background con polling.
+- Stato caricato, contesto, quantizzazione e capability.
+- Rimossa la lista dei tool dalla pagina di chat.
+
+## Configurazione
+
+- `models` e `default_model` in `hagar.yaml`.
+- Rifiuto delle chiavi YAML duplicate.
+- Host e `api_key_env` per singola voce del catalogo.
+
+---
+
 # 0.7.0 — 2026-11-12
 
 ## Riepilogo

@@ -1,7 +1,7 @@
 # HAGAR — Roadmap
 
-Versión actual: 0.7.0 (en desarrollo)
-Última actualización: 2026-11-09
+Versión actual: 0.8.0 (en preparación)
+Última actualización: 2026-11-14
 
 Las decisiones tomadas se indican como tales; los puntos aún abiertos están
 enumerados al final de cada área. Las secciones 1–9 son el histórico hasta
@@ -16,9 +16,9 @@ la 0.6.0; el plan operativo actual es la sección 0.
 | Release | Objetivo | Estado |
 |---|---|---|
 | **0.6.0** | Runtime safety + AIsh | publicada |
-| **0.7.0** | dev.run + box + Hagar Flow | en desarrollo |
-| **0.8.0** | Broker LLM | próximo |
-| **0.9.0** | Tool SQL de solo lectura | congelado |
+| **0.7.0** | dev.run + box + Hagar Flow | publicada |
+| **0.8.0** | Broker LLM | en preparación |
+| **0.9.0** | Ciclo de vida de las memorias | congelado |
 
 El orden puede cambiar, pero la restricción es: **nada de subagentes sin usage y
 límites; nada de broker sin subagentes y model registry.**
@@ -46,16 +46,21 @@ límites; nada de broker sin subagentes y model registry.**
 - el broker nunca concede permisos: solo puede proponer un subconjunto;
 - override humano y auditoría `broker.decision`.
 
-## 0.3 0.8.0 — Tool SQL
+## 0.3 Tool SQL — implementado
 
-- solo lectura en la primera versión;
+- tool local de solo lectura `sql.file.*`: SQLite nativo y otros formatos
+  vía ODBC;
 - SQLite `mode=ro`, `PRAGMA query_only`, una sola instrucción;
 - nada de `ATTACH`, `PRAGMA` de escritura ni `load_extension`;
 - timeout, límite de filas/bytes y auditoría de la query;
-- alias de base de datos configurados, nunca rutas arbitrarias;
-- capability `DATABASE_READ`;
-- escritura y bases de datos de red solo en una fase posterior, con
-  `DATABASE_WRITE` y `NETWORK`.
+- solo archivos dentro de la sandbox, nunca rutas arbitrarias; la base
+  de datos de las memorias queda siempre excluida;
+- capability `DATABASE_READ` y `DATABASE_WRITE`;
+- plugin externo `sql.odbc.*` para la escritura DML vía ODBC, con
+  confirmación humana y los mismos límites de sandbox;
+- bases de datos de red fuera de este corte.
+
+Detalles en [SQL.md](SQL.md) y [SQL_ODBC.md](SQL_ODBC.md).
 
 ## 0.4 Puntos abiertos
 
@@ -129,6 +134,22 @@ HIR, paralelismo y subagentes quedan fuera del MVP.
 `Docs/it` es la única fuente mantenida durante el desarrollo. Los directorios
 `Docs/en`, `Docs/es`, `Docs/zh`, `Docs/ru`, `Docs/pt` y `Docs/ar` se
 regeneran solo cuando se prepara una release.
+
+## 0.6 Post-1.0 — Multibot
+
+Arquitectura de servicios separados para la interacción del modelo con
+entidades externas en redes sociales y contextos públicos no seguros. No
+entra en la 1.0: el documento es [MULTIBOT.md](MULTIBOT.md).
+
+Restricciones ya decididas:
+
+- Hagar sigue siendo single-user y el chat principal no se vuelve multiusuario;
+- el modelo produce solo borradores y no tiene la capability de publicar;
+- identidad, token, worker, guard, aprobación y publisher son servicios
+  separados;
+- autonomía graduada, cuotas, kill switch y aceptación explícita del
+  riesgo;
+- ningún acceso del worker a memoria, filesystem o red genérica.
 
 ---
 

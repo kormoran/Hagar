@@ -46,7 +46,8 @@ subagent é `timed_out` e o audit regista `agent.timed_out`.
 
 Cada subagent:
 
-- usa o mesmo modelo local do pai, mas um cliente LLM separado;
+- usa um cliente LLM separado; com o broker ativo o modelo é escolhido
+  pelo perfil `broker.default_profile` e tem de ser local;
 - tem um registry separado;
 - vê apenas os tools com capability `FILESYSTEM_READ`,
   `MEMORY_READ` e `COMPUTE`, mais `AGENT_DATA`;
@@ -174,7 +175,7 @@ No fim do turno do pai:
 
 | Componente | Pai | Subagent |
 |---|---|---|
-| LLM client | `harness.llm` | nova instância, mesmo modelo |
+| LLM client | `harness.llm` | nova instância; broker local se ativo |
 | Tool registry | completo | filtrado read-only |
 | Filesystem | workspace do pai | workspace privado só de leitura |
 | Memory | `MemoryStore` | `memory=None`, nenhuma escrita |
@@ -317,4 +318,4 @@ concorrentes concluídos, cada um com usage separado.
 - aninhamento controlado, se solicitado;
 - `agent_id` em todos os eventos internos;
 - confirmações delegadas ao pai ou à GUI;
-- modelo escolhido pelo broker, não pelo manager.
+- modelo escolhido pelo broker, não pelo manager; apenas local.

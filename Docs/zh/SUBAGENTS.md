@@ -43,7 +43,8 @@ HTTP 调用。到期时，子级的状态为 `timed_out`，审计会记录
 
 每个子级：
 
-- 使用与父级相同的本地模型，但使用独立的 LLM 客户端；
+- 使用独立的 LLM 客户端；在 broker 启用时，模型由
+  `broker.default_profile` 配置档案选择，并且必须是本地模型；
 - 拥有独立的注册表；
 - 只能看到能力为 `FILESYSTEM_READ`、`MEMORY_READ` 和 `COMPUTE`
   的工具，外加 `AGENT_DATA`；
@@ -168,7 +169,7 @@ mailbox 只包含文本和 `artifact_id` 引用。
 
 | 组件 | 父级 | 子级 |
 |---|---|---|
-| LLM 客户端 | `harness.llm` | 新实例，同一模型 |
+| LLM 客户端 | `harness.llm` | 新实例；若启用则使用本地 broker |
 | 工具注册表 | 完整 | 过滤为只读 |
 | 文件系统 | 父级工作区 | 私有的只读工作区 |
 | 记忆 | `MemoryStore` | `memory=None`，不写入 |
@@ -308,4 +309,4 @@ reason=read_but_not_saved    → 已读取但未导出
 - 如有需要，受控嵌套；
 - 所有内部事件上的 `agent_id`；
 - 把确认委派给父级或 GUI；
-- 由 broker 而不是管理器选择模型。
+- 由 broker 而不是管理器选择模型；仅限本地模型。

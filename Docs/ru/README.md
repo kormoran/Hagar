@@ -120,10 +120,11 @@ policy.yaml			Конфигурация разрешений для инстру�
 core/               config, agent, журнал аудита, registry, sandbox, service и веб-сервер
 llm/                бэкенды LLM (Ollama, LM Studio, DeepSeek, OpenAI, Claude, Gemini), клиент MCP
 memory/             память SQLite (sqlite_store.py) и legacy markdown-бэкенд
-web/                HTML, CSS и JavaScript локального GUI
+web/                HTML, CSS и JavaScript локального GUI и административных страниц
 tests/              набор тестов pytest
 tools/              вспомогательные средства разработки (test runner, sandbox shim, бенчмарк моделей)
 local_tools/        встроенные инструменты; built-in проходят через local_tools/plugins.py
+plugins/            внешние плагины: wikidata и sql_odbc
 core/plugins.py     контракты и обнаружение плагинов (hagar.tools, hagar.llm)
 core/subagents.py   менеджер синхронного и read-only субагента MVP
 llm/plugins.py      встроенные провайдеры LLM, зарегистрированные как плагины
@@ -182,7 +183,8 @@ max_field_chars: 2000
 Каждый вызов инструмента авторизуется до его выполнения. Инструмент объявляет свои
 **capability** (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`,
 `FILESYSTEM_CREATE`, `FILESYSTEM_DELETE`, `MEMORY_READ`,
-`MEMORY_WRITE`, `MCP_CALL`, ...); **субъект** (агент) определяет
+`MEMORY_WRITE`, `NETWORK`, `DATABASE_READ`, `DATABASE_WRITE`,
+`MCP_CALL`, ...); **субъект** (агент) определяет
 правила, сопоставляющие эти функциональные возможности с `allow` (разрешить), `ask` (спросить) или `deny` (запретить),
 возможно ограниченные по имени инструмента, префиксу пути или пространству имён.
 
@@ -288,6 +290,10 @@ HAGAR имеет документацию на нескольких языках
 - [ROADMAP.md](ROADMAP.md) — Запланированные к реализации функции, уже принятые решения
   и всё ещё открытые вопросы.
 - [PLUGINS.md](PLUGINS.md) — контракты для инструментов и провайдеров LLM-плагинов.
+- [WIKIDATA.md](WIKIDATA.md) — плагин Wikidata: поиск, сущности, статьи Wikipedia и SPARQL.
+- [SQL.md](SQL.md) — локальный SQL-инструмент только для чтения, SQLite и ODBC.
+- [SQL_ODBC.md](SQL_ODBC.md) — плагин SQL ODBC с записью DML.
+- [WEB_UI.md](WEB_UI.md) — панель управления и Sandbox manager.
 - [HIFI.md](HIFI.md) — предварительный проход интерпретации и уточнения.
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — checkpoint, тайм-ауты, выгрузка и компакция.
 - [AISH.md](AISH.md) — ограниченный семантический shell и политика DENY.
@@ -297,6 +303,8 @@ HAGAR имеет документацию на нескольких языках
 - [FLOW.md](FLOW.md) — ограниченный DSL и интерпретатор.
 - [DECISIONS.md](DECISIONS.md) — инструменты решений и провайдеры.
 - [MODEL_CARDS.md](MODEL_CARDS.md) — паспорта, бенчмарки и оборудование.
+- [BROKER.md](BROKER.md) — каталог моделей и будущий брокер LLM.
+- [MULTIBOT.md](MULTIBOT.md) — будущая архитектура для публичного взаимодействия в соцсетях и небезопасных контекстах.
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — спецификация document tool,
   семантический граф, плагины форматов и нативный хост.
 - [SUBAGENTS.md](SUBAGENTS.md) — MVP субагентов, изоляция и ограничения.

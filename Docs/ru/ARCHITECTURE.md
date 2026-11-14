@@ -1,7 +1,7 @@
 # HAGAR — Архитектура
 
-Версия: 0.7.0
-Последнее обновление: 2026-11-03
+Версия: 0.8.0
+Последнее обновление: 2026-11-14
 
 ---
 
@@ -502,7 +502,8 @@ memory.failed      фаза и ошибка
 - **Capability** (`IntFlag`): что может делать операция
   (`FILESYSTEM_READ`, `FILESYSTEM_WRITE`, `FILESYSTEM_CREATE`,
   `FILESYSTEM_DELETE`, `FILESYSTEM_EXEC`, `MEMORY_READ`,
-  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`). Они комбинируются через `|`;
+  `MEMORY_WRITE`, `NETWORK`, `MCP_CALL`, `COMPUTE`,
+  `DATABASE_READ`, `DATABASE_WRITE`). Они комбинируются через `|`;
   проверка всегда на вложенность (подмножество).
 - **Effect** (`IntEnum`): `ALLOW`, `ASK`, `DENY`. При конфликте
   побеждает большее значение (`DENY > ASK > ALLOW`).
@@ -919,10 +920,24 @@ Capability `DECISION` отделена от `COMPUTE`, `NETWORK` и
 `ToolRegistry` применяет:
 
 - `tools.timeout` на отдельный вызов, через демонический worker;
+- `tools.timeouts.<имя>` для исключений на медленных инструментах;
+- `tools.compact`, чтобы использовать краткие описания и опускать
+  описания параметров из нативной схемы;
 - `tools.repeat_limit` по хешу `tool + аргументы` на ход.
 
-Тайм-аут best effort: уже запущенный Python-handler не убивается. Repeat guard
-сбрасывает счётчик при каждом `Agent.ask`.
+Краткие описания живут в `core/tool_short.py`; `ToolDefinition`
+всё равно сохраняют полное описание.
+
+Вызовы LLM используют адаптивный тайм-аут (`core/timeouts.py`):
+p95 карточки, размер prompt, `max_tokens`, коэффициент
+безопасности и пределы `timeouts.floor_seconds`/`ceiling_seconds`. У хода
+есть отдельный потолок, который не опускается ниже максимального тайм-аута
+настроенных инструментов.
+
+Тайм-аут инструментов best effort: уже запущенный Python-handler не
+убивается. Repeat guard сбрасывает счётчик при каждом `Agent.ask`.
+Асинхронное выполнение инструментов не реализовано: долгий OCR остаётся
+синхронным с выделенным тайм-аутом.
 
 `OutputSpiller` переносит выводы длиннее 12 000 символов в `ArtifactStore`
 и возвращает сводку с `artifact_id`. `ContextCompactor` заменяет более старые
@@ -1035,7 +1050,7 @@ gate read-before-write. `BOX_EXEC` по умолчанию DENY.
 
 Проект устанавливается через `pip install -e .` и объявляет пакеты в
 `pyproject.toml`. Entry point — `hagar = "hagar:main"`. Текущая версия —
-`0.7.0`.
+`0.8.0`.
 
 Пример конфигурации — `hagar.example.yaml`; `hagar.yaml` — это локальный
 файл, игнорируемый git. Vault по умолчанию в примере —
@@ -1081,7 +1096,12 @@ Python 3.11/3.12/3.13, собирает sdist и wheel, запускает `twin
 | `text` | `text.diff` | `COMPUTE` |
 | `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
+| `sql_file` | `sql.file.drivers`, `sql.file.schema`, `sql.file.query` | `DATABASE_READ`, `FILESYSTEM_READ` |
 
+- `sql.file.*` обращается только для чтения к файловым базам данных в песочнице.
+  SQLite использует stdlib с `mode=ro` и authorizer; другие форматы
+  требуют установленного драйвера ODBC. База данных памяти
+  всегда исключена. Подробности в [SQL.md](SQL.md).
 - `clock.now` возвращает локальное время, дату, часовой пояс, смещение UTC и epoch.
 - `calendar.date` преобразует локальную дату, или необязательную дату ISO, в
   пролептический юлианский календарь или в табличный исламский календарь
@@ -1196,10 +1216,9 @@ Policy и песочница остаются в registry: плагин не м�
 # 5. Разработка
 
 - Набор тестов: `./tools/run_tests.sh` (Linux/macOS) или
-  `.\tools\run_tests.ps1` (Windows). В Windows: 892 пройдено, 2 пропущено
-  (symlink недоступны без Developer Mode). В Debian Linux
-  (2026-11-12): все тесты зелёные, включая symlink (894 пройдено, 0
-  пропущено). Подробности и обоснование shim — в README §3.1.
+  `.\tools\run_tests.ps1` (Windows). В Windows: 1132 пройдено, 2 пропущено,
+  1 xfailed. В Debian Linux (2026-11-14): все тесты зелёные, включая
+  symlink (1134 пройдено, 0 пропущено). Подробности и обоснование shim — в README §3.1.
 - Живые тесты: `./tools/run_tests.sh --live` (Linux/macOS) или
   `.\tools\run_tests.ps1 --live` (Windows) — 9 дополнительных тестов (Ollama;
   удалённые провайдеры, если ключи присутствуют).

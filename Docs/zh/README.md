@@ -120,10 +120,11 @@ policy.yaml			工具（内置与 MCP）的权限配置
 core/               config、agent、审计日志、registry、sandbox、service 与 web server
 llm/                LLM 后端（Ollama、LM Studio、DeepSeek、OpenAI、Claude、Gemini）、MCP 客户端
 memory/             SQLite 记忆（sqlite_store.py）与遗留 markdown 后端
-web/                本地 GUI 的 HTML、CSS 与 JavaScript
+web/                本地 GUI 与管理页面的 HTML、CSS 与 JavaScript
 tests/              pytest 测试套件
 tools/              开发辅助工具（测试运行器、sandbox shim、模型基准测试）
 local_tools/        集成工具；内置工具经由 local_tools/plugins.py
+plugins/            外部插件：wikidata 与 sql_odbc
 core/plugins.py     插件（hagar.tools、hagar.llm）的契约与发现
 core/subagents.py   同步、只读的 MVP 子智能体管理器
 llm/plugins.py      以插件形式注册的内置 LLM provider
@@ -182,7 +183,8 @@ max_field_chars: 2000
 每次工具调用在执行前都会被授权。工具声明自己的
 **capability**（`FILESYSTEM_READ`、`FILESYSTEM_WRITE`、
 `FILESYSTEM_CREATE`、`FILESYSTEM_DELETE`、`MEMORY_READ`、
-`MEMORY_WRITE`、`MCP_CALL` 等）；**主体**（智能体）定义
+`MEMORY_WRITE`、`NETWORK`、`DATABASE_READ`、`DATABASE_WRITE`、
+`MCP_CALL` 等）；**主体**（智能体）定义
 规则，把这些功能关联到 `allow`（允许）、`ask`（询问）或 `deny`（拒绝），
 并可按工具名称、路径前缀或命名空间加以限定。
 
@@ -275,6 +277,10 @@ HAGAR 拥有多语言文档。目前支持的语言
 - [ROADMAP.md](ROADMAP.md) — 计划实现的功能、已做出的决定
   以及仍待解决的问题。
 - [PLUGINS.md](PLUGINS.md) — 工具与 LLM provider 插件的契约。
+- [WIKIDATA.md](WIKIDATA.md) — Wikidata 插件：搜索、实体、Wikipedia 条目与 SPARQL。
+- [SQL.md](SQL.md) — 本地只读 SQL 工具、SQLite 与 ODBC。
+- [SQL_ODBC.md](SQL_ODBC.md) — 支持 DML 写入的 SQL ODBC 插件。
+- [WEB_UI.md](WEB_UI.md) — 控制面板与 Sandbox manager。
 - [HIFI.md](HIFI.md) — 解释性预检与澄清。
 - [RUNTIME_GUARDS.md](RUNTIME_GUARDS.md) — 检查点、超时、溢出与压缩。
 - [AISH.md](AISH.md) — 受限语义 shell 与 DENY 策略。
@@ -284,6 +290,8 @@ HAGAR 拥有多语言文档。目前支持的语言
 - [FLOW.md](FLOW.md) — 受限 DSL 与解释器。
 - [DECISIONS.md](DECISIONS.md) — 决策工具与 provider。
 - [MODEL_CARDS.md](MODEL_CARDS.md) — 卡片、基准测试与硬件。
+- [BROKER.md](BROKER.md) — 模型目录与未来的 LLM broker。
+- [MULTIBOT.md](MULTIBOT.md) — 未来在社交平台与不安全场景中进行公开互动的架构。
 - [DOCUMENT_TOOL.md](DOCUMENT_TOOL.md) — document tool 的规范、
   语义图、格式插件与原生宿主。
 - [SUBAGENTS.md](SUBAGENTS.md) — 子智能体 MVP、隔离与限制。

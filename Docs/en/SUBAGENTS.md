@@ -46,7 +46,8 @@ child's state is `timed_out` and the audit records `agent.timed_out`.
 
 Every child:
 
-- uses the same local model as the parent, but a separate LLM client;
+- uses a separate LLM client; with the broker active the model is
+  chosen by the `broker.default_profile` profile and must be local;
 - has a separate registry;
 - sees only the tools with the `FILESYSTEM_READ`,
   `MEMORY_READ` and `COMPUTE` capabilities, plus `AGENT_DATA`;
@@ -174,7 +175,7 @@ At the end of the parent's turn:
 
 | Component | Parent | Child |
 |---|---|---|
-| LLM client | `harness.llm` | new instance, same model |
+| LLM client | `harness.llm` | new instance; local broker if active |
 | Tool registry | complete | read-only filtered |
 | Filesystem | parent workspace | private read-only workspace |
 | Memory | `MemoryStore` | `memory=None`, no writes |
@@ -317,4 +318,4 @@ subagents completed, each with separate usage.
 - controlled nesting, if required;
 - `agent_id` on all internal events;
 - confirmations delegated to the parent or to the GUI;
-- model chosen by the broker, not by the manager.
+- model chosen by the broker, not by the manager; local only.

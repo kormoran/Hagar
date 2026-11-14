@@ -1,7 +1,7 @@
 # HAGAR — 路线图
 
-当前版本：0.7.0（开发中）
-最后更新：2026-11-09
+当前版本：0.8.0（准备中）
+最后更新：2026-11-14
 
 已做出的决定会标明；仍未解决的问题列在每个领域的末尾。第 1–9 节是截至
 0.6.0 的历史；当前行动计划是第 0 节。
@@ -15,9 +15,9 @@
 | Release | 目标 | 状态 |
 |---|---|---|
 | **0.6.0** | 运行时安全 + AIsh | 已发布 |
-| **0.7.0** | dev.run + box + Hagar Flow | 开发中 |
-| **0.8.0** | LLM broker | 下一步 |
-| **0.9.0** | 只读 SQL 工具 | 冻结 |
+| **0.7.0** | dev.run + box + Hagar Flow | 已发布 |
+| **0.8.0** | LLM broker | 准备中 |
+| **0.9.0** | 记忆生命周期 | 冻结 |
 
 顺序可以改变，但约束是：**没有 usage 和限制，就没有子智能体；没有子智能体和
 model registry，就没有 broker。**
@@ -45,16 +45,21 @@ model registry，就没有 broker。**
 - broker 永不授予权限：它只能提议一个子集；
 - 人工覆盖和 `broker.decision` 审计。
 
-## 0.3 0.8.0 — SQL 工具
+## 0.3 SQL 工具 — 已实现
 
-- 第一版只读；
+- 本地只读工具 `sql.file.*`：原生 SQLite，其他格式
+  通过 ODBC；
 - SQLite `mode=ro`、`PRAGMA query_only`，只允许一条语句；
 - 不允许 `ATTACH`、写入型 `PRAGMA` 或 `load_extension`；
 - 超时、行/字节上限和查询审计；
-- 配置好的数据库 alias，绝不允许任意路径；
-- capability `DATABASE_READ`；
-- 写入和网络数据库只在后续阶段，使用
-  `DATABASE_WRITE` 和 `NETWORK`。
+- 仅限 sandbox 内的文件，绝不允许任意路径；记忆数据库
+  始终被排除；
+- capability `DATABASE_READ` 和 `DATABASE_WRITE`；
+- 用于通过 ODBC 进行 DML 写入的外部插件 `sql.odbc.*`，带
+  人工确认和相同的 sandbox 限制；
+- 网络数据库不在本次范围内。
+
+详情见 [SQL.md](SQL.md) 和 [SQL_ODBC.md](SQL_ODBC.md)。
 
 ## 0.4 开放问题
 
@@ -125,6 +130,21 @@ HIR、并行和子智能体不在 MVP 内。
 
 `Docs/it` 是开发期间唯一维护的来源。`Docs/en`、`Docs/es`、`Docs/zh`、
 `Docs/ru`、`Docs/pt` 和 `Docs/ar` 目录只在准备发布时重新生成。
+
+## 0.6 Post-1.0 — Multibot
+
+为模型与社交平台上、公共且不安全的语境中的外部实体互动而设计的
+分离服务架构。它不进入 1.0：文档为 [MULTIBOT.md](MULTIBOT.md)。
+
+已决定的约束：
+
+- Hagar 保持单用户，主聊天不会变成多用户；
+- 模型只生成草稿，不具备发布 capability；
+- 身份、token、worker、guard、审批和 publisher 是分离的
+  服务；
+- 分级自主性、配额、kill switch 以及对风险的明确
+  接受；
+- worker 不得访问记忆、文件系统或通用网络。
 
 ---
 

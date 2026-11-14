@@ -5,6 +5,64 @@
 
 ---
 
+# 0.8.0 — 2026-11-14
+
+## Краткое описание
+
+Релиз брокера LLM: выбор модели под задачу, проверенные
+capability, измеренные паспорта, адаптивные тайм-ауты и веб-страница
+локальных моделей.
+
+## Брокер LLM
+
+- `ModelRegistry` с объявленным каталогом, измеренными паспортами и
+  метаданными runtime.
+- `TaskProfile` с capability, контекстом, приватностью, стоимостью и
+  качеством.
+- `Broker.select` по правилам и баллам; аудит `broker.decision`.
+- `BrokerLLMClient` с явным fallback и атомарной сменой профиля.
+- Выбор профиля на ход (`auto_route`).
+- Маршрутизация субагентов с `local_only`.
+
+## Capability и паспорта
+
+- Объявленные и проверенные capability (`capabilities_verified`).
+- Новые capability `coding`, `ocr`, `reasoning`.
+- `not_applicable` для неподходящих наборов.
+- Обнаружение LM Studio/Ollama и слияние в registry.
+- `loaded_only`: брокер использует только уже загруженные модели.
+
+## Бенчмарки
+
+- Вызов инструментов с distractor и контролем аргументов.
+- JSON с `schema_valid` и `field_f1`.
+- Исполняемый coding с unit-тестами.
+- Синтетический `memory_bench`.
+- Production prompt с инструментами и памятью.
+
+## Тайм-ауты и контекст
+
+- Адаптивный тайм-аут LLM на основе p95 паспорта.
+- Лимиты на вызов и на ход.
+- Override `tools.timeouts` для OCR и медленных инструментов.
+- Компактные описания инструментов для небольших моделей.
+
+## Web UI
+
+- Новая страница `/models` со списком локальных моделей, паспортом и
+  бенчмарками.
+- Бенчмарки в фоне с polling.
+- Состояние загрузки, контекст, квантизация и capability.
+- Список инструментов удалён со страницы чата.
+
+## Конфигурация
+
+- `models` и `default_model` в `hagar.yaml`.
+- Отклонение дублирующихся ключей YAML.
+- Host и `api_key_env` для отдельной записи каталога.
+
+---
+
 # 0.7.0 — 2026-11-12
 
 ## Краткое описание
@@ -54,6 +112,51 @@ DSL Hagar Flow и list comprehension. Container mode остаётся вне
 - `flow.repair` не исправляет ошибки runtime, policy, подтверждения или
   тайм-аута.
 - Каждая попытка регистрируется в аудите и в результате.
+
+## Панель управления и Sandbox manager
+
+- Новые веб-страницы `/control` и `/sandbox`, доступные из основного GUI
+  и с возвратом в чат.
+- Панель: allow/deny инструментов в runtime, провайдеры/модели со сменой
+  модели, настройки Hi-Fi/инструментов/модели/filesystem/памяти и сброс из
+  `hagar.yaml`.
+- Sandbox manager: ленивое дерево, override RWX по пути, реальный путь
+  выбранного элемента и создание каталогов; никакого удаления.
+- Новые API `/api/admin/*`, защищённые токеном, с отклонением мутаций
+  во время хода; `config.config_path` для сброса.
+
+## Плагин SQL ODBC
+
+- Новый внешний плагин `plugins/sql_odbc`: `sql.odbc.drivers`,
+  `sql.odbc.schema`, `sql.odbc.query` и `sql.odbc.execute`.
+- Запись DML (`INSERT`, `UPDATE`, `DELETE`, `MERGE`, `REPLACE`)
+  только через ODBC, с `DATABASE_WRITE`, `FILESYSTEM_WRITE` и обязательным
+  человеческим подтверждением.
+- Те же ограничения, что у локального инструмента: только файлы в песочнице, БД
+  памяти исключена, один оператор, тайм-аут и никакого DDL.
+
+## Локальный инструмент SQL
+
+- Новые capability `DATABASE_READ` и `DATABASE_WRITE`, с
+  `permissions.database_read` и `permissions.database_write`.
+- Новые `sql.file.drivers`, `sql.file.schema` и `sql.file.query` для
+  файловых баз данных в песочнице.
+- Нативный SQLite в `mode=ro` с authorizer; другие форматы через ODBC,
+  с явной ошибкой, если драйвер не установлен.
+- Ограничения: только файлы в песочнице, один read-only оператор, строки/байты и
+  тайм-аут; база данных памятей Hagar всегда исключена.
+
+## Плагин Wikidata
+
+- Новый внешний плагин `plugins/wikidata`, с entry point
+  `hagar.tools`: `wikidata.search`, `wikidata.entity`,
+  `wikidata.article` и `wikidata.query`.
+- Capability `NETWORK`, policy `wikidata.*` с подтверждением и без
+  доступа к произвольным URL: только endpoint Wikimedia по HTTPS.
+- SPARQL только для чтения (`SELECT`), без федерации `SERVICE` или
+  `FROM`-клауз; ответы и вывод ограничены.
+- Метки `mul`, приоритет основных claim, разрешение
+  ссылочных меток и явное усечение.
 
 # 0.6.0 — 2026-11-09
 

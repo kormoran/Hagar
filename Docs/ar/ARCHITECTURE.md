@@ -1,7 +1,7 @@
 # HAGAR — المعمارية
 
-الإصدار: 0.7.0
-آخر تحديث: 2026-11-03
+الإصدار: 0.8.0
+آخر تحديث: 2026-11-14
 
 ---
 
@@ -503,7 +503,8 @@ memory.failed      المرحلة والخطأ
 - **Capability** (`IntFlag`): ما يمكن للعملية فعله
   (`FILESYSTEM_READ`، `FILESYSTEM_WRITE`، `FILESYSTEM_CREATE`،
   `FILESYSTEM_DELETE`، `FILESYSTEM_EXEC`، `MEMORY_READ`،
-  `MEMORY_WRITE`، `NETWORK`، `MCP_CALL`، `COMPUTE`). وتُدمَج بـ `|`؛
+  `MEMORY_WRITE`، `NETWORK`، `MCP_CALL`، `COMPUTE`،
+  `DATABASE_READ`، `DATABASE_WRITE`). وتُدمَج بـ `|`؛
   والتحقق دائمًا من كونها مجموعة جزئية.
 - **Effect** (`IntEnum`): `ALLOW` و`ASK` و`DENY`. وعند التعارض
   تفوز القيمة الأعلى (`DENY > ASK > ALLOW`).
@@ -918,10 +919,22 @@ Markdown القديمة.
 يطبّق `ToolRegistry`:
 
 - `tools.timeout` لكل استدعاء، عبر عامل (worker) شيطاني؛
+- `tools.timeouts.<الاسم>` لاستثناءات الأدوات البطيئة؛
+- `tools.compact` لاستخدام أوصاف قصيرة وحذف أوصاف المعاملات من
+  المخطط الأصلي؛
 - `tools.repeat_limit` على بصمة `tool + المعاملات` لكل دور.
 
-المهلة بأفضل جهد: فالمعالج Python الذي بدأ بالفعل لا يُقتل. ويصفّر
-حارس التكرار العدّ عند كل `Agent.ask`.
+تعيش الأوصاف القصيرة في `core/tool_short.py`؛ و`ToolDefinition` تحتفظ
+على أي حال بالوصف الكامل.
+
+وتستخدم نداءات LLM مهلة تكيفية (`core/timeouts.py`): p95 من البطاقة،
+وحجم الـ prompt، و`max_tokens`، ومعامل الأمان، وحدود
+`timeouts.floor_seconds`/`ceiling_seconds`. وللدور سقف منفصل لا ينزل
+تحت أقصى مهلة للأدوات المعدَّة.
+
+مهلة الأدوات بأفضل جهد: فالمعالج Python الذي بدأ بالفعل لا يُقتل.
+ويصفّر حارس التكرار العدّ عند كل `Agent.ask`. ولا يوجد تنفيذ غير
+متزامن للأدوات: فالـ OCR الطويل يبقى متزامنًا بمهلة مخصَّصة.
 
 وينقل `OutputSpiller` المخرجات التي تتجاوز 12.000 حرف إلى
 `ArtifactStore` ويعيد ملخصًا مع `artifact_id`.
@@ -1034,7 +1047,7 @@ extract_json
 
 يُثبَّت المشروع بـ `pip install -e .` ويعلن الحزم في
 `pyproject.toml`. ونقطة الدخول هي `hagar = "hagar:main"`. والإصدار
-الحالي هو `0.7.0`.
+الحالي هو `0.8.0`.
 
 ملف الإعدادات النموذجي هو `hagar.example.yaml`؛ و`hagar.yaml` ملف
 محلي يتجاهله git. والـ Vault الافتراضي في المثال هو
@@ -1080,7 +1093,12 @@ Python 3.11/3.12/3.13، وتبني sdist وwheel، وتنفّذ `twine check`،
 | `text` | `text.diff` | `COMPUTE` |
 | `url` | `url.parse` | `COMPUTE` |
 | `feeder` | `feed.read` | `NETWORK` |
+| `sql_file` | `sql.file.drivers`، `sql.file.schema`، `sql.file.query` | `DATABASE_READ`، `FILESYSTEM_READ` |
 
+- تصل `sql.file.*` في القراءة فقط إلى قواعد بيانات على ملفات داخل
+  صندوق الرمل. ويستخدم SQLite المكتبة القياسية مع `mode=ro` وauthorizer؛
+  والصيغ الأخرى تتطلب مشغّل ODBC مثبَّتًا. وقاعدة بيانات الذكريات
+  مستبعَدة دائمًا. التفاصيل في [SQL.md](SQL.md).
 - يعيد `clock.now` الوقت المحلي والتاريخ والمنطقة الزمنية وإزاحة UTC وepoch.
 - يحوّل `calendar.date` التاريخ المحلي، أو تاريخ ISO اختياريًا، إلى
   التقويم اليولياني المديد أو التقويم الإسلامي الجدولي
@@ -1194,10 +1212,10 @@ Python 3.11/3.12/3.13، وتبني sdist وwheel، وتنفّذ `twine check`،
 # 5. التطوير
 
 - المجموعة: `./tools/run_tests.sh` (Linux/macOS) أو
-  `.\tools\run_tests.ps1` (Windows). على Windows: 892 ناجحًا، و2 متجاوز
-  (الروابط الرمزية غير متاحة دون Developer Mode). وعلى Debian Linux
-  (2026-11-12): جميع الاختبارات خضراء، بما فيها الروابط الرمزية (894 ناجحًا، و0
-  متجاوز). والتفاصيل ومبرر الـ shim في README §3.1.
+  `.\tools\run_tests.ps1` (Windows). على Windows: 1132 ناجحًا، و2 متجاوز،
+  و1 xfailed. وعلى Debian Linux (2026-11-14): جميع الاختبارات خضراء، بما
+  فيها الروابط الرمزية (1134 ناجحًا، و0 متجاوز). والتفاصيل ومبرر
+  الـ shim في README §3.1.
 - الاختبارات الحية: `./tools/run_tests.sh --live` (Linux/macOS) أو
   `.\tools\run_tests.ps1 --live` (Windows) — 9 اختبارات إضافية (Ollama؛
   والمزوّدون عن بُعد إذا كانت المفاتيح موجودة).

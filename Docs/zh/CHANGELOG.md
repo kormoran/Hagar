@@ -5,6 +5,60 @@
 
 ---
 
+# 0.8.0 — 2026-11-14
+
+## 概要
+
+LLM broker 版本：按任务选择模型、经过校验的 capability、
+实测卡片、自适应超时以及本地模型网页。
+
+## LLM broker
+
+- `ModelRegistry`，含声明式目录、实测卡片和运行时元数据。
+- `TaskProfile`，含 capability、上下文、隐私、成本和质量。
+- 基于规则和评分的 `Broker.select`；`broker.decision` 审计。
+- `BrokerLLMClient`，带显式回退和原子的配置档案切换。
+- 按轮次选择配置档案（`auto_route`）。
+- 子智能体路由带 `local_only`。
+
+## Capability 与卡片
+
+- 声明并校验的 capability（`capabilities_verified`）。
+- 新增 capability `coding`、`ocr`、`reasoning`。
+- 对不相关的套件使用 `not_applicable`。
+- LM Studio/Ollama discovery 并合并进 registry。
+- `loaded_only`：broker 只使用已加载的模型。
+
+## 基准测试
+
+- tool calling，带 distractor 和参数检查。
+- JSON，带 `schema_valid` 和 `field_f1`。
+- 可执行的 coding，带单元测试。
+- 合成的 `memory_bench`。
+- 带 tool 和记忆的 production prompt。
+
+## 超时与上下文
+
+- 基于卡片 p95 的自适应 LLM 超时。
+- 每次调用与每轮次的限制。
+- 针对 OCR 和慢速工具的 `tools.timeouts` 覆盖。
+- 面向小模型的紧凑工具描述。
+
+## Web UI
+
+- 新增 `/models` 页面，含本地列表、卡片和基准测试。
+- 后台基准测试，带 polling。
+- 加载状态、上下文、量化与 capability。
+- 从聊天页面移除了工具列表。
+
+## 配置
+
+- `hagar.yaml` 中的 `models` 和 `default_model`。
+- 拒绝重复的 YAML 键。
+- 目录中每个条目的 host 和 `api_key_env`。
+
+---
+
 # 0.7.0 — 2026-11-12
 
 ## 概要
@@ -53,6 +107,51 @@ Hagar Flow DSL 和 list comprehension。container 模式不在
 - `flow.repair` 不修复运行时、policy、确认或超时
   错误。
 - 每次尝试都会记录在审计和结果中。
+
+## 控制面板与 Sandbox manager
+
+- 新增网页 `/control` 和 `/sandbox`，可从主 GUI 访问并可返回
+  聊天。
+- 面板：工具的运行时 allow/deny、provider/模型及模型切换、
+  Hi-Fi/tool/model/filesystem/memory 设置，以及从
+  `hagar.yaml` 重置。
+- Sandbox manager：惰性树、按路径的 RWX 覆盖、所选元素的
+  真实路径和目录创建；没有删除功能。
+- 新增受 token 保护的 `/api/admin/*` API，轮次进行中会拒绝
+  变更；`config.config_path` 用于重置。
+
+## SQL ODBC 插件
+
+- 新增外部插件 `plugins/sql_odbc`：`sql.odbc.drivers`、
+  `sql.odbc.schema`、`sql.odbc.query` 和 `sql.odbc.execute`。
+- DML 写入（`INSERT`、`UPDATE`、`DELETE`、`MERGE`、`REPLACE`）
+  仅通过 ODBC，并且必须具有 `DATABASE_WRITE`、`FILESYSTEM_WRITE`
+  和人工确认。
+- 与本地工具相同的限制：仅限 sandbox 内的文件、排除记忆
+  数据库、单条语句、超时且不允许 DDL。
+
+## 本地 SQL 工具
+
+- 新增 capability `DATABASE_READ` 和 `DATABASE_WRITE`，带
+  `permissions.database_read` 和 `permissions.database_write`。
+- 新增 `sql.file.drivers`、`sql.file.schema` 和 `sql.file.query`，用于
+  sandbox 内的文件数据库。
+- 原生 SQLite，`mode=ro` 并带 authorizer；其他格式通过 ODBC，
+  驱动未安装时给出明确错误。
+- 限制：仅限 sandbox 内的文件、一条只读语句、行/字节和
+  超时；Hagar 的记忆数据库始终被排除。
+
+## Wikidata 插件
+
+- 新增外部插件 `plugins/wikidata`，带 entry point
+  `hagar.tools`：`wikidata.search`、`wikidata.entity`、
+  `wikidata.article` 和 `wikidata.query`。
+- capability `NETWORK`，`wikidata.*` policy 带确认，且不访问
+  任意 URL：只有 HTTPS 的 Wikimedia 端点。
+- 只读 SPARQL（`SELECT`），不使用 `SERVICE` 联合或 `FROM`
+  子句；响应和输出受限。
+- `mul` 标签、主 claim 的优先级、被引用标签的解析以及
+  显式截断。
 
 # 0.6.0 — 2026-11-09
 

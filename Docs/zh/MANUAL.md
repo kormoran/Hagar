@@ -1,6 +1,6 @@
 # HAGAR — 用户手册
 
-版本：**0.7.0**
+版本：**0.8.0**
 
 本手册描述 Hagar 的可观察行为：命令、
 选项、配置、策略以及错误情形。关于内部设计
@@ -63,7 +63,11 @@ hagar --config hagar.yaml
 | `/tools [类别]` | 列出工具与 capability；过滤器可选 |
 | `/status` | 显示模型、项目、记忆、审计和 sandbox |
 | `/usage` | 显示会话中消耗的 token |
-| `/models ...` | 供 broker 使用的卡片、基准测试和硬件信息 |
+| `/models ...` | 供 broker 使用的卡片、基准测试、历史记录和硬件信息 |
+| `/models test` | 当前模型的文本与质量基准测试 |
+| `/models test vision` | 在合成图像上进行的 vision 基准测试 |
+| `/models runs [n]` | 已保存的最近若干次基准测试运行 |
+| `/models discover [provider]` | LM Studio 或 Ollama 声明的能力 |
 | `/models hardware` | 检测本机的 CPU、RAM 和 GPU |
 | `/undo` | 撤销上一轮次的修改 |
 | `/mcp` | 列出 MCP 服务器、端点和导入的工具 |
@@ -189,6 +193,17 @@ hagar --config hagar.yaml web --port 8765
 - **Thinking** 显示 provider 暴露的推理内容（若有）；否则
   显示智能体事件的时间线。
 - **Memories** 以只读方式显示数据库中的记忆和 skill，支持搜索。
+- **Pannello** 与 **Sandbox** 按钮会打开管理页面；两者都有
+  **Torna alla chat**（返回聊天）。详情见
+  [WEB_UI.md](WEB_UI.md)。
+- **Pannello** 列出带运行时 allow/deny 开关的工具、可供选择的
+  provider 与模型，以及可修改的配置值（Hi-Fi、超时、限制）。
+  **Ritorna a configurazione hagar.yaml** 会重新加载这些值、
+  重新启用工具并清除 RWX 覆盖。
+- **Sandbox** 显示 sandbox 树，每个元素带 R/W/X 复选框、
+  所选元素的真实路径，以及新建目录。不存在删除功能。
+- 轮次执行期间管理性变更会被拒绝；allow/deny 不会绕过
+  policy、确认或系统上限。
 - **Stop** 按钮以协作方式中断当前轮次。
 - **Immagine** 按钮可附加 PNG/JPEG/WebP（最多 4 张，每张 10 MB），
   供 vision 模型使用。WebP 在 GUI 中会被转换为 PNG，因为 LM
@@ -270,6 +285,27 @@ filesystem:
 | `max_tokens` | `1024` | 仅由 Claude 使用 |
 | `timeout` | `120` | 每次调用的 HTTP 超时（秒） |
 | `api_key_env` | 标准名称 | 密钥所在的环境变量 |
+
+重复的 YAML 键会被拒绝：不能在同一个文件中放置两个
+`model:` 段。要使用多个模型，应使用列表：
+
+```yaml
+models:
+  - id: local
+    provider: lmstudio
+    host: http://localhost:1234/v1
+    name: gemma-3-27b-it
+  - id: remote
+    provider: deepseek
+    name: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+
+default_model: local
+```
+
+`models[].id` 是可选的，但建议提供；没有 id 时，身份为
+`provider/name`。`default_model` 可以是 id 或名称。单一形式
+`model:` 仍受支持，并成为 `models[0]`。
 
 Provider 与密钥：
 
@@ -462,6 +498,8 @@ permissions:
   shell: false
   network: false
   agents: false
+  database_read: false
+  database_write: false
 ```
 
 它们是**系统上限**。默认：`read=true`，其他为 `false`。
@@ -473,6 +511,11 @@ permissions:
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
 | `agents` | `AGENT_SPAWN` 和 `AGENT_DATA`，用于 `agent.*`/`artifact.*`/`mailbox.*` |
+| `database_read` | `DATABASE_READ`，用于读取型 SQL 查询 |
+| `database_write` | `DATABASE_WRITE`（以及 `DATABASE_READ`），用于 SQL 修改 |
+
+`database_write` 在上限中隐含 `DATABASE_READ`，因为写入型工具
+必须先读取 schema 才能修改它。
 
 `COMPUTE` 和 `MCP_CALL` 始终在上限之内，但策略可以拒绝它们。
 如果上限不授予某项 capability，策略也不能授予它。
@@ -569,11 +612,18 @@ hifi:
 tools:
   timeout: 120
   repeat_limit: 3
+  compact: true
+  timeouts:
+    document.ocr_pdf: 900
 ```
 
 `timeout` 是单次工具调用的秒数上限；`0` 表示停用。
 `repeat_limit` 会在同一轮次中阻止第三次相同的调用；`0` 表示停用
-该阻止。对已在执行的 Python handler 的超时是 best effort：
+该阻止。`compact` 使用简短描述，并从原生 schema 中省略参数
+描述：这样可以缩短面向小模型的 prompt。完整描述仍保留在
+`ToolDefinition` 中。`timeouts` 为单个工具设置例外。
+
+对已在执行的 Python handler 的超时是 best effort：
 worker 可能在超过限制后才结束。
 
 ## 4.12 `dev`
@@ -703,6 +753,8 @@ subjects:
 | `DEV_EXEC` | 执行 dev.run recipe |
 | `BOX_EXEC` | 执行 boxed transform |
 | `FLOW_EXEC` | 执行 Hagar Flow DSL |
+| `DATABASE_READ` | 读取 SQL 数据库 |
+| `DATABASE_WRITE` | 修改 SQL 数据库 |
 
 ## 5.3 规则与特异性
 

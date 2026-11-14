@@ -1,6 +1,6 @@
 # HAGAR — User manual
 
-Version: **0.7.0**
+Version: **0.8.0**
 
 This manual describes the observable behaviour of Hagar: commands,
 options, configuration, policies and error cases. For the internal design
@@ -63,7 +63,11 @@ model**: Hagar replies `Unknown command` and suggests `/help`.
 | `/tools [category]` | lists the tools and the capabilities; the filter is optional |
 | `/status` | shows model, project, memory, audit and sandbox |
 | `/usage` | shows the tokens consumed in the session |
-| `/models ...` | cards, benchmarks and hardware for the broker |
+| `/models ...` | cards, benchmarks, history and hardware for the broker |
+| `/models test` | text and quality benchmark of the current model |
+| `/models test vision` | vision benchmark on synthetic images |
+| `/models runs [n]` | latest saved benchmark runs |
+| `/models discover [provider]` | capabilities declared by LM Studio or Ollama |
 | `/models hardware` | detects the machine's CPU, RAM and GPU |
 | `/undo` | undoes the changes of the last turn |
 | `/mcp` | lists MCP servers, endpoints and imported tools |
@@ -189,6 +193,18 @@ It opens a local GUI at `http://127.0.0.1:8765/`.
 - **Thinking** shows the reasoning exposed by the provider, if present;
   otherwise the timeline of the agent's events.
 - **Memories** shows the memories and skills of the database in read-only mode, with search.
+- The **Panel** and **Sandbox** buttons open the administrative pages;
+  both have **Back to chat**. Details in
+  [WEB_UI.md](WEB_UI.md).
+- **Panel** lists the tools with a runtime allow/deny toggle, the providers and
+  the selectable models, and the editable configuration values
+  (Hi-Fi, timeout, limits). **Return to hagar.yaml configuration**
+  reloads the values, re-enables the tools and clears the RWX overrides.
+- **Sandbox** shows the sandbox tree with R/W/X checkboxes per
+  element, the real path of the selected element and the creation of
+  new directories. There is no deletion function.
+- Administrative mutations are refused while a turn is in
+  progress; allow/deny does not override policy, confirmations or the system ceiling.
 - The **Stop** button interrupts the turn cooperatively.
 - The **Image** button attaches PNG/JPEG/WebP (max 4, 10 MB each)
   for vision models. WebP is converted to PNG in the GUI because LM
@@ -271,6 +287,27 @@ filesystem:
 | `max_tokens` | `1024` | used only by Claude |
 | `timeout` | `120` | HTTP timeout in seconds for each call |
 | `api_key_env` | standard name | environment variable of the key |
+
+Duplicate YAML keys are rejected: you cannot put two `model:`
+sections in the same file. For multiple models you use a list:
+
+```yaml
+models:
+  - id: local
+    provider: lmstudio
+    host: http://localhost:1234/v1
+    name: gemma-3-27b-it
+  - id: remote
+    provider: deepseek
+    name: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+
+default_model: local
+```
+
+`models[].id` is optional but recommended; without an id the identity is
+`provider/name`. `default_model` can be an id or a name. The single
+`model:` form remains supported and becomes `models[0]`.
 
 Providers and keys:
 
@@ -463,6 +500,8 @@ permissions:
   shell: false
   network: false
   agents: false
+  database_read: false
+  database_write: false
 ```
 
 These are the **system ceiling**. Default: `read=true`, the others `false`.
@@ -474,6 +513,11 @@ These are the **system ceiling**. Default: `read=true`, the others `false`.
 | `shell` | `FILESYSTEM_EXEC` |
 | `network` | `NETWORK` |
 | `agents` | `AGENT_SPAWN` and `AGENT_DATA`, for `agent.*`/`artifact.*`/`mailbox.*` |
+| `database_read` | `DATABASE_READ`, for read-only SQL queries |
+| `database_write` | `DATABASE_WRITE` (and `DATABASE_READ`), for SQL changes |
+
+`database_write` implies `DATABASE_READ` in the ceiling, because a writing
+tool must be able to read the schema before modifying it.
 
 `COMPUTE` and `MCP_CALL` are always in the ceiling, but the policy can deny them.
 If the ceiling does not grant a capability, the policy cannot grant it.
@@ -570,11 +614,19 @@ The mode adds one LLM call for every turn.
 tools:
   timeout: 120
   repeat_limit: 3
+  compact: true
+  timeouts:
+    document.ocr_pdf: 900
 ```
 
 `timeout` is the limit in seconds for a single tool call; `0` disables it.
 `repeat_limit` blocks the third identical call in the same turn; `0` disables
-the block. The timeout of a Python handler already running is best effort: the
+the block. `compact` uses short descriptions and omits the parameter
+descriptions from the native schema: it reduces the prompt for small models.
+The full descriptions remain in the `ToolDefinition` objects. `timeouts`
+sets exceptions per individual tool.
+
+The timeout of a Python handler already running is best effort: the
 worker may finish after the limit.
 
 ## 4.12 `dev`
@@ -704,6 +756,8 @@ shows `shall I do it? (y/N)` and the default is `N`.
 | `DEV_EXEC` | execution of dev.run recipes |
 | `BOX_EXEC` | execution of boxed transforms |
 | `FLOW_EXEC` | execution of the Hagar Flow DSL |
+| `DATABASE_READ` | reading of SQL databases |
+| `DATABASE_WRITE` | modification of SQL databases |
 
 ## 5.3 Rules and specificity
 
