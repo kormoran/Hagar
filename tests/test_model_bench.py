@@ -103,6 +103,26 @@ def test_benchmark_marks_suite_not_applicable():
     assert report["capabilities"]["chat"] is False
 
 
+def test_benchmark_marks_chat_not_applicable_for_tool_models():
+    class ChatlessFake(FakeLLM):
+        def chat(self, messages):
+            prompt = messages[-1]["content"]
+
+            if "JSON" in prompt or "choice" in prompt:
+                return '{"choice":"yes","probabilities":{"yes":0.9,"no":0.1}}'
+
+            return ""
+
+    report = benchmark_model(
+        ChatlessFake(),
+        attempts=1,
+        tool_attempts=1,
+    )
+
+    assert report["benchmarks"]["chat"]["not_applicable"] is True
+    assert report["capabilities"]["chat"] is False
+
+
 def test_hardware_has_expected_shape():
     info = detect_hardware()
 

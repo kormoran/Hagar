@@ -1,5 +1,5 @@
 {
-  "tested_at": "2026-11-13T18:56:17+00:00",
+  "tested_at": "2026-11-13T23:47:28+00:00",
   "provider": "lmstudio",
   "model": "lmstudio-community/meta-llama-3.1-8b-instruct",
   "hardware": {
@@ -19,9 +19,9 @@
     },
     "memory": {
       "total_bytes": 51444142080,
-      "available_bytes": 23530176512,
+      "available_bytes": 34846330880,
       "total_gib": 47.91,
-      "available_gib": 21.91
+      "available_gib": 32.45
     },
     "gpus": [
       {
@@ -46,13 +46,13 @@
       "errors": [],
       "duration_ms": {
         "count": 1,
-        "min": 41491.88,
-        "mean": 41491.88,
-        "p50": 41491.88,
-        "p95": 41491.88,
-        "max": 41491.88
+        "min": 38127.13,
+        "mean": 38127.13,
+        "p50": 38127.13,
+        "p95": 38127.13,
+        "max": 38127.13
       },
-      "output_tokens_per_second": 0.289
+      "output_tokens_per_second": 0.577
     },
     "structured": {
       "attempts": 1,
@@ -61,11 +61,11 @@
       "errors": [],
       "duration_ms": {
         "count": 1,
-        "min": 8863.26,
-        "mean": 8863.26,
-        "p50": 8863.26,
-        "p95": 8863.26,
-        "max": 8863.26
+        "min": 2890.52,
+        "mean": 2890.52,
+        "p50": 2890.52,
+        "p95": 2890.52,
+        "max": 2890.52
       }
     },
     "tool_call": {
@@ -74,18 +74,18 @@
       "errors": [],
       "duration_ms": {
         "count": 1,
-        "min": 6976.21,
-        "mean": 6976.21,
-        "p50": 6976.21,
-        "p95": 6976.21,
-        "max": 6976.21
+        "min": 2665.29,
+        "mean": 2665.29,
+        "p50": 2665.29,
+        "p95": 2665.29,
+        "max": 2665.29
       }
     }
   },
   "quality": {
     "suite_version": 3,
     "corpus": "hagar-bench-2026-11",
-    "tested_at": "2026-11-13T18:57:47+00:00",
+    "tested_at": "2026-11-13T23:47:51+00:00",
     "attempts": 1,
     "tasks": {
       "summary": {
@@ -93,19 +93,19 @@
         "cases": 2,
         "scores": [
           0.36000000000000004,
-          0.6000000000000001
+          0.4
         ],
-        "mean": 0.48,
+        "mean": 0.38,
         "errors": []
       },
       "translation": {
         "attempts": 1,
         "cases": 2,
         "scores": [
-          0.3234518040422763,
-          0.1758280723214508
+          0.3345042734161895,
+          0.04122108478803159
         ],
-        "mean": 0.2496,
+        "mean": 0.1879,
         "errors": []
       },
       "extraction": {
@@ -159,27 +159,27 @@
         "name": "summary_broker",
         "attempts": 1,
         "scores": [
-          0.6000000000000001
+          0.4
         ],
-        "mean": 0.6,
+        "mean": 0.4,
         "errors": []
       },
       {
         "name": "translation_it_en",
         "attempts": 1,
         "scores": [
-          0.3234518040422763
+          0.3345042734161895
         ],
-        "mean": 0.3235,
+        "mean": 0.3345,
         "errors": []
       },
       {
         "name": "translation_en_it",
         "attempts": 1,
         "scores": [
-          0.1758280723214508
+          0.04122108478803159
         ],
-        "mean": 0.1758,
+        "mean": 0.0412,
         "errors": []
       },
       {
@@ -219,7 +219,7 @@
         "errors": []
       }
     ],
-    "overall": 0.1216
+    "overall": 0.0947
   },
   "capabilities_verified": {
     "chat": true,
@@ -231,6 +231,6 @@
     "ocr": false,
     "reasoning": false
   },
-  "last_tested_at": "2026-11-13T18:56:17+00:00",
+  "last_tested_at": "2026-11-13T23:47:28+00:00",
   "card_version": 1
 }

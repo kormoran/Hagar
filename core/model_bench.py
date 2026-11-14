@@ -52,6 +52,19 @@ def benchmark_model(
         else _benchmark_tools(llm, tool_attempts)
     )
 
+    if (
+        not chat.get("not_applicable")
+        and chat.get("successes", 0) == 0
+        and (
+            structured.get("valid_json", 0) > 0
+            or tools.get("successes", 0) > 0
+        )
+    ):
+        chat["not_applicable"] = True
+        chat["reason"] = (
+            "model refuses free chat but passes structured/tool tasks"
+        )
+
     return {
         "tested_at": utc_now(),
         "provider": getattr(llm, "provider", "unknown"),
