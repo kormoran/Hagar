@@ -158,6 +158,7 @@ def run_model_benchmark(
     registry: Any = None,
     cards: ModelCardStore | None = None,
     runs: BenchmarkRunStore | None = None,
+    include_coding: bool = False,
 ) -> dict[str, Any]:
 
     provider = provider.strip().lower()
@@ -186,7 +187,11 @@ def run_model_benchmark(
     text = benchmark_model(llm, attempts=1, tool_attempts=1)
     quality = benchmark_quality(llm, attempts=1)
     memory = benchmark_memory(llm, attempts=1)
-    coding = benchmark_coding(llm, attempts=1)
+    coding = (
+        benchmark_coding(llm, attempts=1)
+        if include_coding
+        else None
+    )
     production = benchmark_production(
         llm,
         registry=registry,
@@ -194,14 +199,20 @@ def run_model_benchmark(
     )
 
     quality["tasks"]["memory"] = memory["tasks"]["memory"]
-    quality["tasks"]["coding_exec"] = coding["tasks"]["coding_exec"]
+
+    if coding is not None:
+        quality["tasks"]["coding_exec"] = (
+            coding["tasks"]["coding_exec"]
+        )
 
     card = store.load(provider, model) or {}
     card.update(text)
     card["quality"] = quality
     card["memory"] = memory
-    card["coding"] = coding
     card["production"] = production
+
+    if coding is not None:
+        card["coding"] = coding
     card["capabilities_verified"] = verified_capabilities(card)
     card["last_tested_at"] = text["tested_at"]
 

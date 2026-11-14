@@ -125,7 +125,9 @@ GET  /api/models/benchmark?id=<job>
 
 La pagina aggiorna lo stato con polling e ricarica la scheda al termine.
 Il benchmark usa il client diretto del provider, non il broker attivo, e
-salva una nuova scheda e un nuovo run.
+salva una nuova scheda e un nuovo run. Dalla Web UI non viene eseguito
+il benchmark coding, perché comporterebbe l’esecuzione di codice
+generato dal modello; il coding eseguibile resta nel runner P1 locale.
 
 ## 3. Sandbox manager
 
