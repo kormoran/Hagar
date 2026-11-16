@@ -706,6 +706,79 @@ class SqliteMemoryStore:
         )
         return skill, False
 
+    def update_skill(
+        self,
+        skill_id: str,
+        *,
+        title: str | None = None,
+        content: str | None = None,
+        tags: Any = None,
+        when: datetime | None = None,
+    ) -> Skill:
+        """Aggiorna una skill senza crearne una nuova; non tocca lo stato."""
+
+        current = self.get_skill(skill_id)
+
+        if current is None:
+            raise MemoryError(f"skill not found: {skill_id}")
+
+        next_title = current.title if title is None else title
+        next_content = current.content if content is None else content
+        next_tags = (
+            current.tags
+            if tags is None
+            else _normalize_tags(tags)
+        )
+
+        if not isinstance(next_title, str) or not next_title.strip():
+            raise MemoryError("title must be a non-empty string")
+
+        if not isinstance(next_content, str) or not next_content.strip():
+            raise MemoryError("content must be a non-empty string")
+
+        if len(next_content) > self.max_skill_chars:
+            raise MemoryError(
+                f"content exceeds max_skill_chars ({self.max_skill_chars})"
+            )
+
+        timestamp = _iso_timestamp(when)
+
+        with self.database.connection() as connection:
+
+            connection.execute(
+                """
+                UPDATE skills
+                SET title = ?, content = ?, tags = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    next_title.strip(),
+                    next_content.strip(),
+                    json.dumps(list(next_tags), ensure_ascii=False),
+                    timestamp,
+                    skill_id,
+                ),
+            )
+            self.database.fts_upsert(
+                connection,
+                entity="skill",
+                entity_id=skill_id,
+                kind=current.kind,
+                project=None,
+                status=current.status,
+                title=next_title.strip(),
+                body=next_content.strip(),
+            )
+
+        updated = self.get_skill(skill_id)
+
+        if updated is None:
+            raise MemoryError(
+                f"skill not readable after update: {skill_id}"
+            )
+
+        return updated
+
     def get_skill(self, skill_id: str) -> Skill | None:
 
         with self.database.connection() as connection:

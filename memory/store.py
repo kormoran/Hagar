@@ -1188,6 +1188,61 @@ class MemoryStore:
             False,
         )
 
+    def update_skill(
+        self,
+        skill_id: str,
+        *,
+        title: str | None = None,
+        content: str | None = None,
+        tags: Any = None,
+        when: datetime | None = None,
+    ) -> Skill:
+        """Aggiorna una skill del Vault senza cambiare il suo stato."""
+
+        current = self.get_skill(skill_id)
+
+        if current is None:
+            raise MemoryError(f"skill not found: {skill_id}")
+
+        next_title = current.title if title is None else title
+        next_content = current.content if content is None else content
+        next_tags = (
+            current.tags
+            if tags is None
+            else _normalize_tags(tags)
+        )
+
+        if not isinstance(next_title, str) or not next_title.strip():
+            raise MemoryError("title must be a non-empty string")
+
+        if not isinstance(next_content, str) or not next_content.strip():
+            raise MemoryError("content must be a non-empty string")
+
+        if len(next_content) > self.max_skill_chars:
+            raise MemoryError(
+                f"content exceeds max_skill_chars ({self.max_skill_chars})"
+            )
+
+        relative = current.path
+        text = self.vault.read(relative)
+        meta, _ = _split_frontmatter(text)
+        meta["title"] = next_title.strip()
+        meta["tags"] = list(next_tags)
+        meta["updated_at"] = _iso_timestamp(when)
+        self.vault.write(
+            relative,
+            _frontmatter(meta) + "\n" + next_content.strip() + "\n",
+        )
+
+        updated = self.get_skill(skill_id)
+
+        if updated is None:
+            raise MemoryError(
+                f"skill not readable after update: {skill_id}"
+            )
+
+        return updated
+
     def get_skill(
         self,
         skill_id: str,

@@ -1455,6 +1455,15 @@ def _interactive_loop(
             harness.memory,
             harness.audit,
             input_func=broker.read_line,
+            max_active_skills=getattr(
+                getattr(
+                    getattr(harness, "config", None),
+                    "memory",
+                    None,
+                ),
+                "max_active_skills",
+                0,
+            ),
         )
         if harness.memory is not None
         else None

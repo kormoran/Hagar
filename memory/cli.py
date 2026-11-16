@@ -9,6 +9,10 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 
+from memory.consolidate import apply_skill_retention
+from memory.consolidate import find_duplicate_skills
+from memory.consolidate import merge_skills
+from memory.consolidate import retention_candidates
 from memory.store import MemoryError
 from memory.store import MemoryStore
 from memory.store import Skill
@@ -34,12 +38,14 @@ class MemoryCLI:
         audit: Any = None,
         input_func: Callable[[str], str] | None = None,
         output_func: Callable[[str], Any] | None = None,
+        max_active_skills: int = 0,
     ) -> None:
 
         self.store = store
         self.audit = audit
         self.input_func = input_func or input
         self.output = output_func or print
+        self.max_active_skills = max(0, int(max_active_skills))
 
     # ==================================================
     # Entry point
@@ -92,6 +98,18 @@ class MemoryCLI:
             elif command == "review":
 
                 self._review()
+
+            elif command == "duplicates":
+
+                self._duplicates(arguments[1:])
+
+            elif command == "merge":
+
+                self._merge(arguments[1:])
+
+            elif command == "retention":
+
+                self._retention(arguments[1:])
 
             else:
 
@@ -291,7 +309,10 @@ class MemoryCLI:
             "  /memory confirm <slug>\n"
             "  /memory archive <slug>\n"
             "  /memory archive search <testo>\n"
-            "  /memory archive read <session> [offset] [limit]"
+            "  /memory archive read <session> [offset] [limit]\n"
+            "  /memory duplicates [soglia]\n"
+            "  /memory merge <target> <fonte> [...]\n"
+            "  /memory retention [apply]"
         )
 
     def _counts(self) -> dict[str, int]:
@@ -422,6 +443,163 @@ class MemoryCLI:
 
         self.output(
             f"Skill {skill.id}: {skill.status}"
+        )
+
+    def _duplicates(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        threshold = 0.70
+
+        if arguments:
+
+            try:
+                threshold = float(arguments[0])
+
+            except ValueError as exc:
+
+                raise MemoryError(
+                    "la soglia deve essere un numero tra 0 e 1"
+                ) from exc
+
+        groups = find_duplicate_skills(
+            self.store,
+            threshold=threshold,
+        )
+
+        if not groups:
+
+            self.output(
+                "Nessuna coppia di skill simile "
+                f"(soglia {threshold:.2f})."
+            )
+            return
+
+        self.output(
+            f"Gruppi di skill simili: {len(groups)} "
+            f"(soglia {threshold:.2f})"
+        )
+
+        for index, group in enumerate(groups, start=1):
+
+            self.output("")
+            self.output(
+                f"[{index}] target: {group.target.id} "
+                f"— {group.target.title} "
+                f"({group.target.status}, {group.score:.2f})"
+            )
+
+            for duplicate in group.duplicates:
+
+                self.output(
+                    f"    - {duplicate.id} — {duplicate.title} "
+                    f"({duplicate.status})"
+                )
+
+        self.output("")
+        self.output(
+            "Unisci con: /memory merge <target> <fonte> [...]"
+        )
+
+    def _merge(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        if len(arguments) < 2:
+
+            self.output(
+                "Uso: /memory merge <target> <fonte> [...]"
+            )
+            return
+
+        target = arguments[0]
+        sources = arguments[1:]
+        merged = merge_skills(
+            self.store,
+            target,
+            sources,
+        )
+
+        self._record(
+            "memory.merge",
+            target=merged.id,
+            sources=sources,
+            content_chars=len(merged.content),
+        )
+
+        self.output(
+            f"Skill {merged.id} consolidata; "
+            f"fonti archiviate: {', '.join(sources)}"
+        )
+
+    def _retention(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        apply = bool(arguments) and arguments[0].lower() in {
+            "apply",
+            "applica",
+            "archivia",
+        }
+
+        if self.max_active_skills <= 0:
+
+            self.output(
+                "Retention skill disattivata "
+                "(memory.max_active_skills: 0)."
+            )
+            return
+
+        confirmed = self.store.list_skills(
+            status="confirmed",
+            limit=10000,
+        )
+        candidates = retention_candidates(
+            self.store,
+            self.max_active_skills,
+        )
+
+        self.output(
+            f"Skill confermate: {len(confirmed)}; "
+            f"limite: {self.max_active_skills}; "
+            f"da archiviare: {len(candidates)}."
+        )
+
+        for skill in candidates:
+
+            self.output(
+                f"  - {skill.id} — {skill.title} "
+                f"({skill.created_at})"
+            )
+
+        if not candidates:
+            return
+
+        if not apply:
+
+            self.output(
+                "Nessuna modifica. Usa "
+                "/memory retention apply per archiviare."
+            )
+            return
+
+        archived = apply_skill_retention(
+            self.store,
+            self.max_active_skills,
+        )
+
+        self._record(
+            "memory.retention",
+            limit=self.max_active_skills,
+            archived=[skill.id for skill in archived],
+        )
+
+        self.output(
+            f"Archiviate {len(archived)} skill; "
+            "nessun contenuto è stato cancellato."
         )
 
     def _review(self) -> None:

@@ -18,7 +18,7 @@ alla 0.6.0; il piano operativo corrente è la sezione 0.
 | **0.6.0** | Runtime safety + AIsh | rilasciata |
 | **0.7.0** | dev.run + box + Hagar Flow | rilasciata |
 | **0.8.0** | Broker LLM | in preparazione |
-| **0.9.0** | Ciclo di vita delle memorie | congelato |
+| **0.9.0** | Ciclo di vita delle memorie | in sviluppo |
 
 L’ordine può cambiare, ma il vincolo è: **niente subagenti senza usage e
 limiti; niente broker senza subagenti e model registry.**
@@ -150,6 +150,19 @@ Vincoli già decisi:
 - autonomia graduata, quote, kill switch e accettazione esplicita del
   rischio;
 - nessun accesso del worker a memoria, filesystem o rete generica.
+
+## 0.7 0.9.0 — Ciclo di vita delle memorie
+
+- consolidamento delle skill simili con `/memory duplicates` e
+  `/memory merge`;
+- merge esplicito: target confermata, fonti archiviate, nessuna
+  cancellazione;
+- retention delle skill confermate con `memory.max_active_skills` e
+  `/memory retention apply`;
+- archivio reversibile con `/memory confirm`.
+
+Restano fuori da questo taglio: merge automatico, embedding e
+consolidamento delle decisioni di progetto.
 
 ---
 

@@ -985,6 +985,12 @@ class ConfigLoader:
                 "memory.max_skill_chars",
                 4000,
             ),
+            max_active_skills=_non_negative_int(
+                memory_data,
+                "max_active_skills",
+                "memory.max_active_skills",
+                0,
+            ),
             context_project_memories=_non_negative_int(
                 memory_data,
                 "context_project_memories",

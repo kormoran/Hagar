@@ -61,6 +61,7 @@ memory:
   context_project_memories: 10
   max_context_chars: 6000
   project_max_active: 200
+  max_active_skills: 0
   summary_max_chars: 4000
   max_skill_chars: 4000
 

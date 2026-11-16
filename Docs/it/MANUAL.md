@@ -118,6 +118,9 @@ summary e skill restano disponibili.
 | `/memory archive <slug>` | archivia una skill |
 | `/memory archive search <testo>` | cerca nei transcript archiviati |
 | `/memory archive read <session> [offset] [limit]` | legge un transcript archiviato |
+| `/memory duplicates [soglia]` | propone gruppi di skill simili da consolidare |
+| `/memory merge <target> <fonte> [...]` | unisce le fonti nella target e le archivia |
+| `/memory retention [apply]` | mostra o archivia le confermate oltre il limite |
 
 Le parole `search` e `read` sono riservate: uno slug di skill chiamato
 esattamente `search` o `read` non è archiviabile con questo comando.
@@ -405,6 +408,7 @@ memory:
   context_project_memories: 10
   max_context_chars: 6000
   project_max_active: 200
+  max_active_skills: 0
   summary_max_chars: 4000
   max_skill_chars: 4000
 ```
@@ -420,6 +424,7 @@ memory:
 | `context_project_memories` | `10` | titoli di decisioni attive |
 | `max_context_chars` | `6000` | budget del blocco memoria |
 | `project_max_active` | `200` | soglia di manutenzione progetto |
+| `max_active_skills` | `0` | limite di skill confermate; `0` disattiva |
 | `summary_max_chars` | `4000` | lunghezza massima del summary |
 | `max_skill_chars` | `4000` | lunghezza massima di una skill |
 

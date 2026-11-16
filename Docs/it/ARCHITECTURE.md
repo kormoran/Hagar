@@ -654,11 +654,26 @@ memory:
   context_project_memories: 10
   max_context_chars: 6000
   project_max_active: 200
+  max_active_skills: 0
   summary_max_chars: 4000
   max_skill_chars: 4000
 ```
 
-### Memoria di progetto
+### Consolidamento e retention
+
+`memory/consolidate.py` propone gruppi di skill con contenuto simile
+(Jaccard sui termini, soglia predefinita 0.70). Non modifica nulla:
+`/memory duplicates` mostra i gruppi, `/memory merge <target> <fonti>`
+accoda il contenuto mancante alla target, unisce i tag e archivia le
+fonti. Il merge di una fonte confermata richiede una target confermata;
+non promuove mai una candidata.
+
+`memory.max_active_skills` è il limite delle skill confermate. `0`
+disattiva il limite. `/memory retention` mostra le più vecchie oltre la
+soglia; `/memory retention apply` le archivia. Nessun contenuto viene
+cancellato e l’operazione è reversibile con `/memory confirm`.
+
+
 
 La memoria di progetto è separata dalle skill:
 
@@ -1219,9 +1234,10 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1132 superati, 2 skip,
-  1 xfailed. Su Debian Linux (2026-11-14): tutti i test verdi, inclusi i
-  symlink (1134 superati, 0 skip). Dettagli e motivazione dello shim in README §3.1.
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1137 superati, 2 skip,
+  1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
+  superati, 0 skip; i 5 test di consolidamento memoria vanno rieseguiti
+  su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).

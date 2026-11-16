@@ -129,6 +129,7 @@ class MemoryConfig:
     context_turns: int = 10
     context_skills: int = 3
     max_skill_chars: int = 4000
+    max_active_skills: int = 0
     context_project_memories: int = 10
     max_context_chars: int = 6000
     project_max_active: int = 200

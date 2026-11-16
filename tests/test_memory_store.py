@@ -599,3 +599,26 @@ def test_context_skills_must_be_non_negative(vault):
             session_id="sess1",
             context_skills=-1,
         )
+
+
+def test_update_skill_preserves_status_and_provenance(store):
+    skill, _ = store.create_skill(
+        "Da consolidare",
+        "testo iniziale",
+        tags=["uno"],
+        when=make_when(),
+    )
+    store.set_skill_status(skill.id, "confirmed")
+
+    updated = store.update_skill(
+        skill.id,
+        content="testo aggiornato",
+        tags=["uno", "due"],
+        when=make_when(hour=13),
+    )
+
+    assert updated.content == "testo aggiornato"
+    assert updated.tags == ("uno", "due")
+    assert updated.status == "confirmed"
+    assert updated.source_session == "sess1"
+
