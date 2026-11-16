@@ -153,6 +153,11 @@ class HarnessService:
                     4000,
                 ),
                 audit=getattr(self.harness, "audit", None),
+                embedding_index=getattr(
+                    self.harness,
+                    "embedding_index",
+                    None,
+                ),
             )
             self.summary_runner.start()
 
@@ -765,6 +770,11 @@ class HarnessService:
                     self.harness.config.memory.summary_max_chars
                 ),
                 context_window=context_window,
+                embedding_index=getattr(
+                    self.harness,
+                    "embedding_index",
+                    None,
+                ),
             ).finish()
 
         except Exception as exc:

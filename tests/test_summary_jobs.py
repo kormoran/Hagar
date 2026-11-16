@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from memory.session import SessionSummarizer
+from memory.sqlite_projects import SqliteProjectStore
 from memory.sqlite_store import SqliteMemoryStore
 from memory.summary_jobs import SummaryJobRunner
 from memory.summary_jobs import SummaryJobStore
@@ -20,6 +21,14 @@ class FakeSummaryLLM:
             "summary": "riassunto parziale",
             "decisions": [],
         })
+
+
+class FakeEmbeddingIndex:
+    def __init__(self):
+        self.calls = []
+
+    def upsert(self, entity, entity_id, text, **kwargs):
+        self.calls.append((entity, entity_id, text, kwargs))
 
 
 def make_memory(tmp_path) -> SqliteMemoryStore:
@@ -62,8 +71,31 @@ def test_long_session_is_chunked(tmp_path):
     assert result["archived"] == []
 
 
-def test_summary_job_runner_completes(tmp_path):
+def test_summary_indexes_vectors_when_index_is_available(tmp_path):
 
+    memory = make_memory(tmp_path)
+    add_turns(memory, 2)
+    projects = SqliteProjectStore(memory.database)
+    projects.ensure()
+    projects.create_project("Hagar")
+    index = FakeEmbeddingIndex()
+
+    SessionSummarizer(
+        memory,
+        projects=projects,
+        project_id="hagar",
+        llm=FakeSummaryLLM(),
+        input_func=lambda prompt: "",
+        embedding_index=index,
+    ).finish(archive=False)
+
+    assert any(
+        call[0] == "summary"
+        for call in index.calls
+    )
+
+
+def test_summary_job_runner_completes(tmp_path):
     memory = make_memory(tmp_path)
     add_turns(memory, 4)
     memory.archive_session()

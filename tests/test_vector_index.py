@@ -108,3 +108,34 @@ def test_unchanged_text_is_not_reembedded(tmp_path):
     assert first["updated"] == 1
     assert second["updated"] == 0
     assert second["unchanged"] >= 1
+
+
+def test_prune_removes_vectors_of_other_models(tmp_path):
+
+    memory = make_store(tmp_path)
+    memory.create_skill("Python", "usare python")
+    index = MemoryEmbeddingIndex(memory.database, FakeEngine())
+    index.reindex()
+
+    with memory.database.connection() as connection:
+        connection.execute(
+            "INSERT INTO memory_embeddings("
+            "entity, entity_id, project, status, model, dimensions, "
+            "vector, content_hash, updated_at"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "skill",
+                "old",
+                None,
+                "confirmed",
+                "old-model",
+                3,
+                index._pack([1.0, 0.0, 0.0]),
+                "hash",
+                "2026-01-01",
+            ),
+        )
+
+    assert index.prune_other_models() == 1
+    assert index.stats()["total"] == 1
+

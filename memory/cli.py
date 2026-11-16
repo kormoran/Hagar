@@ -42,6 +42,7 @@ class MemoryCLI:
         output_func: Callable[[str], Any] | None = None,
         max_active_skills: int = 0,
         embedding_index: MemoryEmbeddingIndex | None = None,
+        vector_recall: Any = None,
     ) -> None:
 
         self.store = store
@@ -50,6 +51,7 @@ class MemoryCLI:
         self.output = output_func or print
         self.max_active_skills = max(0, int(max_active_skills))
         self.embedding_index = embedding_index
+        self.vector_recall = vector_recall
 
     # ==================================================
     # Entry point
@@ -321,7 +323,7 @@ class MemoryCLI:
             "  /memory duplicates [soglia]\n"
             "  /memory merge <target> <fonte> [...]\n"
             "  /memory retention [apply]\n"
-            "  /memory embeddings [status|reindex|search <testo>]"
+            "  /memory embeddings [status|reindex [--prune]|search <testo>]"
         )
 
     def _counts(self) -> dict[str, int]:
@@ -648,11 +650,25 @@ class MemoryCLI:
 
         if command == "reindex":
 
-            counts = self.embedding_index.reindex()
+            prune = any(
+                item.lower() in {"--prune", "prune"}
+                for item in arguments[1:]
+            )
+            counts = self.embedding_index.reindex(
+                prune_other_models=prune,
+            )
+
+            if self.vector_recall is not None:
+                self.vector_recall.invalidate()
             self.output(
                 "Reindex: "
                 f"{counts.get('updated', 0)} aggiornati, "
                 f"{counts.get('unchanged', 0)} invariati"
+                + (
+                    f", {counts.get('pruned', 0)} vecchi rimossi"
+                    if prune
+                    else ""
+                )
             )
             return
 

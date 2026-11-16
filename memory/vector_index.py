@@ -184,6 +184,17 @@ class MemoryEmbeddingIndex:
                 (entity, entity_id, self.model),
             )
 
+    def prune_other_models(self) -> int:
+
+        with self.database.connection() as connection:
+
+            cursor = connection.execute(
+                "DELETE FROM memory_embeddings WHERE model != ?",
+                (self.model,),
+            )
+
+        return int(cursor.rowcount or 0)
+
     def search(
         self,
         query: str,
@@ -372,6 +383,7 @@ class MemoryEmbeddingIndex:
         self,
         *,
         batch_size: int = 16,
+        prune_other_models: bool = False,
     ) -> dict[str, int]:
 
         items = self._items()
@@ -382,6 +394,7 @@ class MemoryEmbeddingIndex:
             "project": 0,
             "updated": 0,
             "unchanged": 0,
+            "pruned": 0,
         }
         batch_size = max(1, int(batch_size))
 
@@ -410,5 +423,8 @@ class MemoryEmbeddingIndex:
 
                 if entity in counts:
                     counts[entity] += 1
+
+        if prune_other_models:
+            counts["pruned"] = self.prune_other_models()
 
         return counts

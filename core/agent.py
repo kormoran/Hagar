@@ -42,6 +42,7 @@ class Agent:
         project_id: str | None = None,
         max_context_chars: int = 6000,
         context_project_memories: int = 10,
+        vector_recall: Any = None,
         event_sink: EventSink | None = None,
         agent_id: str | None = None,
         deadline: float | None = None,
@@ -84,6 +85,7 @@ class Agent:
         self.context_project_memories = int(
             context_project_memories
         )
+        self.vector_recall = vector_recall
 
     # ==================================================
     # Cancellazione
@@ -1025,6 +1027,8 @@ class Agent:
             project_text = ""
             project_decisions = 0
             summary_text = ""
+            vector_text = None
+            vector_hits: list[dict[str, Any]] = []
 
             if (
                 self.project_store is not None
@@ -1055,10 +1059,28 @@ class Agent:
                         latest_summary(free_only=True) or ""
                     )
 
+            if self.vector_recall is not None:
+
+                try:
+                    vector_text, vector_hits = (
+                        self.vector_recall.context(
+                            question,
+                            self.project_id,
+                        )
+                    )
+                except Exception as exc:
+
+                    self._record(
+                        "memory.vector_failed",
+                        turn=turn,
+                        error=str(exc),
+                    )
+
             parts = [
                 part
                 for part in (
                     project_text,
+                    vector_text,
                     summary_text,
                     context,
                 )
@@ -1104,6 +1126,16 @@ class Agent:
                 project_decisions=project_decisions,
                 chars=len(context),
                 trimmed=trimmed,
+            )
+
+        if vector_hits:
+
+            self._record(
+                "memory.vector_recall",
+                turn=turn,
+                project=self.project_id,
+                hits=vector_hits,
+                chars=len(vector_text or ""),
             )
 
             if trimmed:

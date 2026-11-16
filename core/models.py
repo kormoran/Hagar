@@ -136,6 +136,12 @@ class MemoryConfig:
     summary_max_chars: int = 4000
     summary_context_window: int = 8192
     summary_background: bool = True
+    vector_recall_enabled: bool = True
+    vector_min_score: float = 0.82
+    vector_strong_score: float = 0.84
+    vector_margin: float = 0.04
+    vector_top_k: int = 3
+    vector_max_chars: int = 1200
 
 
 @dataclass(slots=True)

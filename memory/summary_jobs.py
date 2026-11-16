@@ -213,6 +213,7 @@ class SummaryJobRunner:
         context_window: int | None = None,
         summary_max_chars: int = 4000,
         audit: Any = None,
+        embedding_index: Any = None,
         poll_seconds: float = 1.0,
     ) -> None:
 
@@ -227,6 +228,7 @@ class SummaryJobRunner:
         )
         self.summary_max_chars = int(summary_max_chars)
         self.audit = audit
+        self.embedding_index = embedding_index
         self.poll_seconds = max(0.1, float(poll_seconds))
         self._stop = threading.Event()
         self._wake = threading.Event()
@@ -315,6 +317,7 @@ class SummaryJobRunner:
             summary_max_chars=self.summary_max_chars,
             session_id=job.session_id,
             context_window=self.context_window,
+            embedding_index=self.embedding_index,
         )
 
         summarizer.finish(archive=False)

@@ -123,6 +123,7 @@ summary e skill restano disponibili.
 | `/memory retention [apply]` | mostra o archivia le confermate oltre il limite |
 | `/memory embeddings status` | stato dell'indice vettoriale |
 | `/memory embeddings reindex` | calcola e salva i vettori mancanti |
+| `/memory embeddings reindex --prune` | ricostruisce e rimuove i vettori di modelli precedenti |
 | `/memory embeddings search <testo>` | ricerca cosine nelle memorie |
 
 Le parole `search` e `read` sono riservate: uno slug di skill chiamato
@@ -438,10 +439,23 @@ memory:
 | `summary_max_chars` | `4000` | lunghezza massima del summary |
 | `summary_context_window` | `8192` | token di contesto usati per il chunking |
 | `summary_background` | `true` | genera il summary in background |
+| `vector_recall_enabled` | `true` | richiamo vettoriale del progetto |
+| `vector_min_score` | `0.82` | soglia minima cosine |
+| `vector_strong_score` | `0.84` | soglia per accettare più risultati |
+| `vector_margin` | `0.04` | distacco minimo dal secondo risultato |
+| `vector_top_k` | `3` | memorie massime iniettate |
+| `vector_max_chars` | `1200` | budget del blocco vettoriale |
 | `max_skill_chars` | `4000` | lunghezza massima di una skill |
 
 `vault_subdir` deve restare dentro il Vault: path assoluti, `..`,
 `I:/...` e altri drive Windows vengono rifiutati anche su Linux.
+
+Con `vector_recall_enabled: true` Hagar tiene in RAM i vettori del
+progetto corrente e, a ogni richiesta, inietta solo le memorie sopra
+`vector_min_score` e con il distacco richiesto da `vector_margin`. La
+ricerca testuale resta necessaria per nomi, versioni, path e codici
+esatti. La ricerca vettoriale automatica richiede `embedding.enabled` e
+almeno un `reindex` eseguito dopo l’attivazione del motore.
 
 Con `backend: sqlite` il database predefinito è:
 

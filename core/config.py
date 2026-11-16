@@ -1028,7 +1028,60 @@ class ConfigLoader:
                 "memory.summary_background",
                 True,
             ),
+            vector_recall_enabled=_bool(
+                memory_data,
+                "vector_recall_enabled",
+                "memory.vector_recall_enabled",
+                True,
+            ),
+            vector_min_score=_positive_float(
+                memory_data,
+                "vector_min_score",
+                "memory.vector_min_score",
+                0.82,
+            ),
+            vector_strong_score=_positive_float(
+                memory_data,
+                "vector_strong_score",
+                "memory.vector_strong_score",
+                0.84,
+            ),
+            vector_margin=_positive_float(
+                memory_data,
+                "vector_margin",
+                "memory.vector_margin",
+                0.04,
+                allow_zero=True,
+            ),
+            vector_top_k=_positive_int(
+                memory_data,
+                "vector_top_k",
+                "memory.vector_top_k",
+                3,
+            ),
+            vector_max_chars=_positive_int(
+                memory_data,
+                "vector_max_chars",
+                "memory.vector_max_chars",
+                1200,
+            ),
         )
+
+        if not 0.0 < memory.vector_min_score <= 1.0:
+            raise ConfigError(
+                "memory.vector_min_score must be between 0 and 1"
+            )
+
+        if not 0.0 < memory.vector_strong_score <= 1.0:
+            raise ConfigError(
+                "memory.vector_strong_score must be between 0 and 1"
+            )
+
+        if memory.vector_strong_score < memory.vector_min_score:
+            raise ConfigError(
+                "memory.vector_strong_score must be >= "
+                "memory.vector_min_score"
+            )
 
         # -------------------------
         # Embedding engine (optional)

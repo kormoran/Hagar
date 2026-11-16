@@ -61,6 +61,7 @@ class SessionSummarizer:
         summary_max_chars: int = 4000,
         session_id: str | None = None,
         context_window: int | None = None,
+        embedding_index: Any = None,
     ) -> None:
 
         self.memory = memory
@@ -77,6 +78,7 @@ class SessionSummarizer:
             if context_window
             else 8192
         )
+        self.embedding_index = embedding_index
 
     def finish(
         self,
@@ -129,6 +131,11 @@ class SessionSummarizer:
             session_id=self.session_id,
         )
 
+        self._index_summary(
+            summary_path,
+            summary,
+        )
+
         created_ids: list[str] = []
 
         if self.projects is not None and self.project_id:
@@ -158,6 +165,10 @@ class SessionSummarizer:
                     continue
 
                 created_ids.append(decision.id)
+                self._index_decision(
+                    decision.id,
+                    item,
+                )
 
             self._review(created_ids)
 
@@ -635,6 +646,72 @@ class SessionSummarizer:
             reviewed=True,
             approved=approved,
         )
+
+    def _index_summary(
+        self,
+        path: Any,
+        text: str,
+    ) -> None:
+
+        if self.embedding_index is None:
+            return
+
+        raw = str(path).replace("\\", "/")
+
+        if not raw.startswith("sqlite:summary/"):
+            return
+
+        summary_id = raw.rsplit("/", 1)[-1]
+
+        try:
+
+            self.embedding_index.upsert(
+                "summary",
+                summary_id,
+                text,
+                project=self.project_id,
+            )
+
+        except Exception as exc:
+
+            self._record(
+                "memory.embedding_failed",
+                entity="summary",
+                entity_id=summary_id,
+                error=str(exc),
+            )
+
+    def _index_decision(
+        self,
+        decision_id: str,
+        item: dict[str, Any],
+    ) -> None:
+
+        if self.embedding_index is None:
+            return
+
+        try:
+
+            self.embedding_index.upsert(
+                "decision",
+                decision_id,
+                "\n".join([
+                    str(item.get("title", "")),
+                    str(item.get("decision", "")),
+                    str(item.get("rationale", "")),
+                ]),
+                project=self.project_id,
+                status="candidate",
+            )
+
+        except Exception as exc:
+
+            self._record(
+                "memory.embedding_failed",
+                entity="decision",
+                entity_id=decision_id,
+                error=str(exc),
+            )
 
     def _record(
         self,

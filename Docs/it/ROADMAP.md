@@ -164,11 +164,11 @@ Vincoli già decisi:
 - chunking del transcript in base alla context window e merge
   gerarchico dei summary parziali;
 - motore embedding ONNX dedicato (`multilingual-e5-small`);
-- tabella `memory_embeddings` e ricerca cosine.
+- tabella `memory_embeddings` e ricerca cosine;
+- recall vettoriale automatico del progetto con soglia e margine.
 
-Restano fuori da questo taglio: merge automatico, iniezione automatica
-dei risultati vettoriali nel contesto e consolidamento delle decisioni
-di progetto.
+Restano fuori da questo taglio: merge automatico, calibrazione delle
+soglie su dati reali e consolidamento delle decisioni di progetto.
 
 ---
 

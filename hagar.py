@@ -218,6 +218,8 @@ class Harness:
     memory_error: str | None = None
     embeddings: Any = None
     embedding_error: str | None = None
+    embedding_index: Any = None
+    vector_recall: Any = None
     project_store: ProjectStore | None = None
     project_id: str | None = None
     project_state: dict[str, str | None] | None = None
@@ -452,6 +454,8 @@ def build_harness(
     memory_error: str | None = None
     embeddings: Any = None
     embedding_error: str | None = None
+    embedding_index: Any = None
+    vector_recall: Any = None
     project_store: ProjectStore | None = None
     project_state: dict[str, str | None] = {"id": None}
 
@@ -593,6 +597,47 @@ def build_harness(
                 provider=config.embedding.provider,
                 model=config.embedding.model,
                 error=embedding_error,
+            )
+
+    if (
+        embeddings is not None
+        and memory is not None
+        and getattr(memory, "database", None) is not None
+        and config.memory.vector_recall_enabled
+    ):
+
+        try:
+
+            from memory.vector_index import MemoryEmbeddingIndex
+            from memory.vector_recall import ProjectVectorRecall
+
+            embedding_index = MemoryEmbeddingIndex(
+                memory.database,
+                embeddings,
+            )
+            vector_recall = ProjectVectorRecall(
+                memory.database,
+                embedding_index,
+                min_score=config.memory.vector_min_score,
+                strong_score=config.memory.vector_strong_score,
+                margin=config.memory.vector_margin,
+                top_k=config.memory.vector_top_k,
+                max_chars=config.memory.vector_max_chars,
+            )
+            audit.record(
+                "memory.vector_recall_enabled",
+                min_score=config.memory.vector_min_score,
+                strong_score=config.memory.vector_strong_score,
+                margin=config.memory.vector_margin,
+                top_k=config.memory.vector_top_k,
+            )
+
+        except Exception as exc:
+
+            vector_recall = None
+            audit.record(
+                "memory.vector_recall_failed",
+                error=str(exc),
             )
 
     # ==========================================
@@ -1068,6 +1113,7 @@ def build_harness(
         context_project_memories=(
             config.memory.context_project_memories
         ),
+        vector_recall=vector_recall,
         agent_id=audit.session_id,
         hifi=hifi,
         turn_timeout=turn_timeout,
@@ -1148,6 +1194,8 @@ def build_harness(
         memory_error=memory_error,
         embeddings=embeddings,
         embedding_error=embedding_error,
+        embedding_index=embedding_index,
+        vector_recall=vector_recall,
         project_store=project_store,
         project_id=None,
         project_state=project_state,
@@ -1511,26 +1559,8 @@ def _interactive_loop(
     if project_cli is not None:
         project_cli.input_func = broker.read_line
 
-    embedding_index = None
-
-    if (
-        harness.memory is not None
-        and getattr(harness, "embeddings", None) is not None
-        and getattr(harness.memory, "database", None) is not None
-    ):
-
-        try:
-
-            from memory.vector_index import MemoryEmbeddingIndex
-
-            embedding_index = MemoryEmbeddingIndex(
-                harness.memory.database,
-                harness.embeddings,
-            )
-
-        except Exception as exc:
-
-            print("Embedding index: disabled —", exc)
+    embedding_index = getattr(harness, "embedding_index", None)
+    vector_recall = getattr(harness, "vector_recall", None)
 
     memory_cli = (
         MemoryCLI(
@@ -1547,6 +1577,7 @@ def _interactive_loop(
                 0,
             ),
             embedding_index=embedding_index,
+            vector_recall=vector_recall,
         )
         if harness.memory is not None
         else None
