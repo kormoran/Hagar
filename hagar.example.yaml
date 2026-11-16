@@ -67,6 +67,19 @@ memory:
   summary_background: true
   max_skill_chars: 4000
 
+# Motore di embedding dedicato, separato dal modello di chat.
+# Richiede: pip install "hagar[embedding]"
+embedding:
+  enabled: false
+  provider: builtin
+  model: intfloat/multilingual-e5-small
+  dimensions: 384
+  batch_size: 16
+  max_length: 512
+  normalize: true
+  query_prefix: "query: "
+  document_prefix: "passage: "
+
 hifi:
   # Pre-pass di disambiguazione: una chiamata extra prima della risposta.
   enabled: false

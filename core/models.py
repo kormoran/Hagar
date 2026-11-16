@@ -139,6 +139,22 @@ class MemoryConfig:
 
 
 @dataclass(slots=True)
+class EmbeddingConfig:
+    """Motore di embedding dedicato, indipendente dal modello di chat."""
+
+    enabled: bool = False
+    provider: str = "builtin"
+    model: str = "intfloat/multilingual-e5-small"
+    dimensions: int = 384
+    batch_size: int = 16
+    max_length: int = 512
+    normalize: bool = True
+    cache_dir: str | None = None
+    query_prefix: str = "query: "
+    document_prefix: str = "passage: "
+
+
+@dataclass(slots=True)
 class DecisionProviderConfig:
     """Provider di decisione: LLM oppure classificatore lineare locale."""
 
@@ -298,6 +314,10 @@ class AppConfig:
 
     memory: MemoryConfig = field(
         default_factory=MemoryConfig
+    )
+
+    embedding: EmbeddingConfig = field(
+        default_factory=EmbeddingConfig
     )
 
     decisions: DecisionsConfig = field(

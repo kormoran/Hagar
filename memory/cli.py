@@ -13,9 +13,11 @@ from memory.consolidate import apply_skill_retention
 from memory.consolidate import find_duplicate_skills
 from memory.consolidate import merge_skills
 from memory.consolidate import retention_candidates
+from memory.embeddings import EmbeddingError
 from memory.store import MemoryError
 from memory.store import MemoryStore
 from memory.store import Skill
+from memory.vector_index import MemoryEmbeddingIndex
 
 
 def _clip(
@@ -39,6 +41,7 @@ class MemoryCLI:
         input_func: Callable[[str], str] | None = None,
         output_func: Callable[[str], Any] | None = None,
         max_active_skills: int = 0,
+        embedding_index: MemoryEmbeddingIndex | None = None,
     ) -> None:
 
         self.store = store
@@ -46,6 +49,7 @@ class MemoryCLI:
         self.input_func = input_func or input
         self.output = output_func or print
         self.max_active_skills = max(0, int(max_active_skills))
+        self.embedding_index = embedding_index
 
     # ==================================================
     # Entry point
@@ -111,6 +115,10 @@ class MemoryCLI:
 
                 self._retention(arguments[1:])
 
+            elif command == "embeddings":
+
+                self._embeddings(arguments[1:])
+
             else:
 
                 self.output(
@@ -119,7 +127,7 @@ class MemoryCLI:
 
                 self._help()
 
-        except MemoryError as exc:
+        except (MemoryError, EmbeddingError) as exc:
 
             self.output(f"Memoria: {exc}")
 
@@ -312,7 +320,8 @@ class MemoryCLI:
             "  /memory archive read <session> [offset] [limit]\n"
             "  /memory duplicates [soglia]\n"
             "  /memory merge <target> <fonte> [...]\n"
-            "  /memory retention [apply]"
+            "  /memory retention [apply]\n"
+            "  /memory embeddings [status|reindex|search <testo>]"
         )
 
     def _counts(self) -> dict[str, int]:
@@ -600,6 +609,89 @@ class MemoryCLI:
         self.output(
             f"Archiviate {len(archived)} skill; "
             "nessun contenuto è stato cancellato."
+        )
+
+    def _embeddings(
+        self,
+        arguments: list[str],
+    ) -> None:
+
+        if self.embedding_index is None:
+
+            self.output(
+                "Embedding disattivato: configura embedding.enabled "
+                "e installa hagar[embedding]."
+            )
+            return
+
+        command = (
+            arguments[0].lower()
+            if arguments
+            else "stats"
+        )
+
+        if command in {"stats", "status"}:
+
+            stats = self.embedding_index.stats()
+            self.output(
+                f"Embedding: {stats['model']} "
+                f"({stats['dimensions']}d), "
+                f"{stats.get('total', 0)} vettori"
+            )
+
+            for entity, total in sorted(
+                stats.get("entities", {}).items()
+            ):
+                self.output(f"  {entity}: {total}")
+
+            return
+
+        if command == "reindex":
+
+            counts = self.embedding_index.reindex()
+            self.output(
+                "Reindex: "
+                f"{counts.get('updated', 0)} aggiornati, "
+                f"{counts.get('unchanged', 0)} invariati"
+            )
+            return
+
+        if command == "search":
+
+            query = " ".join(arguments[1:]).strip()
+
+            if not query:
+
+                self.output(
+                    "Uso: /memory embeddings search <testo>"
+                )
+                return
+
+            hits = self.embedding_index.search(
+                query,
+                limit=10,
+            )
+
+            if not hits:
+
+                self.output("Nessun risultato vettoriale.")
+                return
+
+            for hit in hits:
+
+                self.output(
+                    f"{hit.score:.4f}  {hit.entity}:{hit.entity_id}"
+                    + (
+                        f"  progetto={hit.project}"
+                        if hit.project
+                        else ""
+                    )
+                )
+            return
+
+        self.output(
+            "Uso: /memory embeddings "
+            "status|reindex|search <testo>"
         )
 
     def _review(self) -> None:

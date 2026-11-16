@@ -687,6 +687,40 @@ stimati in caratteri): se entra nel budget si usa una sola chiamata;
 altrimenti si usano summary parziali e un merge gerarchico. Il summary
 finale resta un indice della sessione, non sostituisce il transcript.
 
+### Motore di embedding
+
+`memory/embeddings.py` definisce `EmbeddingEngine`, separato dal modello
+di chat e dal broker. Il provider predefinito è `OnnxE5Provider`:
+ONNX Runtime diretto, modello
+`intfloat/multilingual-e5-small` (384 dimensioni), caricamento lazy e
+cache locale.
+
+Il motore applica i prefissi E5 (`query: ` e `passage: `), normalizza i
+vettori e valida le dimensioni. Se `onnxruntime` o `tokenizers` non
+sono installati o il modello non è disponibile, il motore resta inattivo
+senza fermare Hagar. Non esiste fallback al modello di chat.
+
+### Indice vettoriale
+
+`memory/vector_index.py` usa la tabella `memory_embeddings` dello stesso
+database SQLite:
+
+```text
+entity, entity_id, project, status
+model, dimensions, vector BLOB, content_hash, updated_at
+```
+
+I vettori sono float32 in un BLOB; la ricerca carica i candidati con
+filtri SQL e calcola la similarità coseno in Python. La chiave include
+`model`, quindi modelli o dimensioni diverse non vengono mescolati.
+
+`MemoryEmbeddingIndex.reindex()` calcola i vettori per skill, summary,
+decisioni e progetti e salta i testi con lo stesso `content_hash`.
+`search()` filtra per progetto e tipo, esclude le memorie archiviate e
+restituisce i risultati ordinati per score. Non c’è ancora iniezione
+automatica nel contesto: il richiamo vettoriale è disponibile via
+`/memory embeddings search`.
+
 
 
 La memoria di progetto è separata dalle skill:
@@ -1254,10 +1288,10 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1143 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1150 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; gli 11 test di memoria aggiunti dopo vanno rieseguiti
-  su Linux. Dettagli e motivazione dello shim in README §3.1.
+  superati, 0 skip; i 18 test di memoria/embedding aggiunti dopo vanno
+  rieseguiti su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
   provider remoti se le chiavi sono presenti).

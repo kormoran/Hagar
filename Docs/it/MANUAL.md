@@ -121,11 +121,19 @@ summary e skill restano disponibili.
 | `/memory duplicates [soglia]` | propone gruppi di skill simili da consolidare |
 | `/memory merge <target> <fonte> [...]` | unisce le fonti nella target e le archivia |
 | `/memory retention [apply]` | mostra o archivia le confermate oltre il limite |
+| `/memory embeddings status` | stato dell'indice vettoriale |
+| `/memory embeddings reindex` | calcola e salva i vettori mancanti |
+| `/memory embeddings search <testo>` | ricerca cosine nelle memorie |
 
 Le parole `search` e `read` sono riservate: uno slug di skill chiamato
 esattamente `search` o `read` non è archiviabile con questo comando.
 
 Non esiste un comando di cancellazione: si archivia soltanto.
+
+I comandi `/memory embeddings` richiedono `embedding.enabled: true` e
+l’extra `hagar[embedding]`. `reindex` calcola i vettori per skill,
+summary, decisioni e progetti; `search` restituisce i risultati ordinati
+per similarità coseno.
 
 Il backend predefinito è SQLite (`memory.backend: sqlite`). Il database
 sta nei dati locali dell'app, non nel Vault:
@@ -446,6 +454,56 @@ backup; il Vault non viene aggiornato.
 
 Il budget è in **caratteri**, non in token. Quando il blocco viene
 tagliato, l’audit registra `memory.context_trimmed`.
+
+## 4.5.1 `embedding`
+
+Motore di embedding dedicato, separato dal modello di chat e dal broker.
+Serve per la ricerca vettoriale delle memorie.
+
+```yaml
+embedding:
+  enabled: false
+  provider: builtin
+  model: intfloat/multilingual-e5-small
+  dimensions: 384
+  batch_size: 16
+  max_length: 512
+  normalize: true
+  query_prefix: "query: "
+  document_prefix: "passage: "
+```
+
+| Campo | Default | Effetto |
+|---|---|---|
+| `enabled` | `false` | attiva il motore |
+| `provider` | `builtin` | solo provider ONNX integrato |
+| `model` | `intfloat/multilingual-e5-small` | modello di embedding |
+| `dimensions` | `384` | dimensione attesa dei vettori |
+| `batch_size` | `16` | testi per chiamata |
+| `max_length` | `512` | limite token del testo |
+| `normalize` | `true` | normalizza per cosine |
+| `cache_dir` | dati locali | cache del modello ONNX |
+| `query_prefix` | `query: ` | prefisso delle domande |
+| `document_prefix` | `passage: ` | prefisso dei documenti |
+
+Il modello gira **nello stesso processo** tramite ONNX Runtime e
+`tokenizers`, ma resta indipendente dal modello di chat. Non viene scelto
+dal broker e non cambia durante la sessione.
+
+```bash
+pip install "hagar[embedding]"
+```
+
+Il pacchetto opzionale richiede una versione di Python per cui esistano
+le wheel di `onnxruntime` (verificato su Python 3.13). Su versioni più
+recenti, senza wheel disponibili, il motore resta disattivato.
+
+Il primo uso scarica il modello nella cache locale. Se `onnxruntime`,
+`tokenizers` o il modello non sono disponibili, la ricerca vettoriale
+resta disattivata e la chat continua a funzionare.
+
+I prefissi sono obbligatori per E5: senza `query: ` e `passage: ` la
+qualità della ricerca peggiora.
 
 ## 4.6 `filesystem`
 

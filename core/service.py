@@ -660,6 +660,21 @@ class HarnessService:
             ),
         }
 
+        embedding = getattr(self.harness, "embeddings", None)
+
+        embedding_status = (
+            embedding.status()
+            if embedding is not None
+            else {
+                "enabled": False,
+                "error": getattr(
+                    self.harness,
+                    "embedding_error",
+                    None,
+                ),
+            }
+        )
+
         return {
             "session_id": getattr(
                 audit,
@@ -672,6 +687,7 @@ class HarnessService:
             },
             "project": self.current_project(),
             "memory": memory_status,
+            "embedding": embedding_status,
             "audit": audit_status,
             "policy": {
                 "path": str(config.policy.path),

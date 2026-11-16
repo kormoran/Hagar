@@ -47,6 +47,11 @@ dev = [
 database = [
     "pyodbc>=5.1",
 ]
+embedding = [
+    "onnxruntime>=1.17",
+    "tokenizers>=0.15",
+    "numpy>=1.26",
+]
 
 [project.urls]
 Homepage = "https://github.com/kormoran/Hagar"

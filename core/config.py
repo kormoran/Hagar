@@ -9,6 +9,7 @@ import yaml
 from .models import (
     AppConfig,
     AuditConfig,
+    EmbeddingConfig,
     MemoryConfig,
     ModelConfig,
     PolicyConfig,
@@ -1030,6 +1031,92 @@ class ConfigLoader:
         )
 
         # -------------------------
+        # Embedding engine (optional)
+        # -------------------------
+
+        embedding_data = _mapping(
+            data.get("embedding", {}) or {},
+            "embedding",
+        )
+        embedding_provider = (
+            _optional_text(
+                embedding_data,
+                "provider",
+                "embedding.provider",
+            )
+            or "builtin"
+        )
+
+        if embedding_provider != "builtin":
+
+            raise ConfigError(
+                "embedding.provider must be 'builtin'"
+            )
+
+        embedding = EmbeddingConfig(
+            enabled=_bool(
+                embedding_data,
+                "enabled",
+                "embedding.enabled",
+                False,
+            ),
+            provider=embedding_provider,
+            model=(
+                _optional_text(
+                    embedding_data,
+                    "model",
+                    "embedding.model",
+                )
+                or "intfloat/multilingual-e5-small"
+            ),
+            dimensions=_positive_int(
+                embedding_data,
+                "dimensions",
+                "embedding.dimensions",
+                384,
+            ),
+            batch_size=_positive_int(
+                embedding_data,
+                "batch_size",
+                "embedding.batch_size",
+                16,
+            ),
+            max_length=_positive_int(
+                embedding_data,
+                "max_length",
+                "embedding.max_length",
+                512,
+            ),
+            normalize=_bool(
+                embedding_data,
+                "normalize",
+                "embedding.normalize",
+                True,
+            ),
+            cache_dir=_optional_text(
+                embedding_data,
+                "cache_dir",
+                "embedding.cache_dir",
+            ),
+            query_prefix=(
+                _optional_text(
+                    embedding_data,
+                    "query_prefix",
+                    "embedding.query_prefix",
+                )
+                or "query: "
+            ),
+            document_prefix=(
+                _optional_text(
+                    embedding_data,
+                    "document_prefix",
+                    "embedding.document_prefix",
+                )
+                or "passage: "
+            ),
+        )
+
+        # -------------------------
         # Decision providers (optional)
         # -------------------------
 
@@ -1720,6 +1807,7 @@ class ConfigLoader:
             audit=audit,
             policy=policy,
             memory=memory,
+            embedding=embedding,
             decisions=decisions,
             hifi=hifi,
             tools=tools,

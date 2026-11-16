@@ -216,6 +216,8 @@ class Harness:
     policy_error: str | None = None
     memory: Any = None
     memory_error: str | None = None
+    embeddings: Any = None
+    embedding_error: str | None = None
     project_store: ProjectStore | None = None
     project_id: str | None = None
     project_state: dict[str, str | None] | None = None
@@ -448,6 +450,8 @@ def build_harness(
 
     memory: Any = None
     memory_error: str | None = None
+    embeddings: Any = None
+    embedding_error: str | None = None
     project_store: ProjectStore | None = None
     project_state: dict[str, str | None] = {"id": None}
 
@@ -560,6 +564,36 @@ def build_harness(
                     root=str(config.vault.path),
                     error=str(exc),
                 )
+
+    # ==========================================
+    # Motore di embedding (opzionale)
+    # ==========================================
+
+    if config.embedding.enabled:
+
+        try:
+
+            from memory.embeddings import EmbeddingEngine
+
+            embeddings = EmbeddingEngine(config.embedding)
+            audit.record(
+                "embedding.enabled",
+                provider=config.embedding.provider,
+                model=config.embedding.model,
+                dimensions=config.embedding.dimensions,
+                available=embeddings.status().get("available"),
+            )
+
+        except Exception as exc:
+
+            embeddings = None
+            embedding_error = str(exc)
+            audit.record(
+                "embedding.disabled",
+                provider=config.embedding.provider,
+                model=config.embedding.model,
+                error=embedding_error,
+            )
 
     # ==========================================
     # Filesystem sandbox
@@ -1112,6 +1146,8 @@ def build_harness(
         policy_error=policy_error,
         memory=memory,
         memory_error=memory_error,
+        embeddings=embeddings,
+        embedding_error=embedding_error,
         project_store=project_store,
         project_id=None,
         project_state=project_state,
@@ -1307,6 +1343,31 @@ def _main(
 
         print("Memory: disabled")
 
+    if config.embedding.enabled:
+
+        if harness.embeddings is not None:
+
+            status = harness.embeddings.status()
+            print(
+                "Embedding:",
+                f"{status.get('provider')} / "
+                f"{status.get('model')} "
+                f"({status.get('dimensions')}d, "
+                + (
+                    "pronto"
+                    if status.get("available")
+                    else "onnxruntime/tokenizers non installati"
+                )
+                + ")",
+            )
+
+        else:
+
+            print(
+                "Embedding: disabled —",
+                harness.embedding_error,
+            )
+
     if harness.memory is not None:
 
         if getattr(harness, "project_store", None) is not None:
@@ -1450,6 +1511,27 @@ def _interactive_loop(
     if project_cli is not None:
         project_cli.input_func = broker.read_line
 
+    embedding_index = None
+
+    if (
+        harness.memory is not None
+        and getattr(harness, "embeddings", None) is not None
+        and getattr(harness.memory, "database", None) is not None
+    ):
+
+        try:
+
+            from memory.vector_index import MemoryEmbeddingIndex
+
+            embedding_index = MemoryEmbeddingIndex(
+                harness.memory.database,
+                harness.embeddings,
+            )
+
+        except Exception as exc:
+
+            print("Embedding index: disabled —", exc)
+
     memory_cli = (
         MemoryCLI(
             harness.memory,
@@ -1464,6 +1546,7 @@ def _interactive_loop(
                 "max_active_skills",
                 0,
             ),
+            embedding_index=embedding_index,
         )
         if harness.memory is not None
         else None

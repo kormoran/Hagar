@@ -162,10 +162,13 @@ Vincoli già decisi:
 - archivio reversibile con `/memory confirm`;
 - summary delle chat in background con job SQLite durevoli;
 - chunking del transcript in base alla context window e merge
-  gerarchico dei summary parziali.
+  gerarchico dei summary parziali;
+- motore embedding ONNX dedicato (`multilingual-e5-small`);
+- tabella `memory_embeddings` e ricerca cosine.
 
-Restano fuori da questo taglio: merge automatico, embedding e
-consolidamento delle decisioni di progetto.
+Restano fuori da questo taglio: merge automatico, iniezione automatica
+dei risultati vettoriali nel contesto e consolidamento delle decisioni
+di progetto.
 
 ---
 
