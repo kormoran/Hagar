@@ -377,6 +377,78 @@ body.admin {
   min-width: 180px;
 }
 
+.job-status {
+  margin: 8px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #0d1015;
+}
+
+.job-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.job-id,
+.job-session {
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.job-session {
+  color: var(--muted);
+}
+
+.job-status {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+}
+
+.job-status.pending {
+  color: var(--muted);
+}
+
+.job-status.running {
+  color: var(--accent);
+}
+
+.job-status.done {
+  color: #7fd18b;
+}
+
+.job-status.failed {
+  color: #e07a7a;
+}
+
+.job-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-error {
+  margin-top: 4px;
+  color: #e07a7a;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 760px) {
   .admin-header {
     align-items: flex-start;

@@ -1015,6 +1015,18 @@ class ConfigLoader:
                 "memory.summary_max_chars",
                 4000,
             ),
+            summary_context_window=_positive_int(
+                memory_data,
+                "summary_context_window",
+                "memory.summary_context_window",
+                8192,
+            ),
+            summary_background=_bool(
+                memory_data,
+                "summary_background",
+                "memory.summary_background",
+                True,
+            ),
         )
 
         # -------------------------

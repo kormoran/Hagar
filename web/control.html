@@ -51,6 +51,16 @@
       <button id="reset-settings">Ritorna a configurazione hagar.yaml</button>
     </div>
   </section>
+
+  <section class="card">
+    <h2>Summary in background</h2>
+    <p class="hint">Job di riassunto delle chat archiviate. Il worker genera il summary senza bloccare la chat; i job falliti restano visibili.</p>
+    <div id="summary-jobs-status" class="job-status" role="status"></div>
+    <div id="summary-jobs" class="job-list"></div>
+    <div class="row">
+      <button id="refresh-jobs">Aggiorna job</button>
+    </div>
+  </section>
 </main>
 <script>window.HAGAR_TOKEN = __HAGAR_TOKEN__;</script>
 <script src="/static/admin.js"></script>

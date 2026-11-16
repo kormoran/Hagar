@@ -83,6 +83,33 @@ class FakeRegistry:
         return ["demo.echo"]
 
 
+class FakeMemory:
+    def __init__(self):
+        self.session_id = "old-session"
+        self.turns = [SimpleNamespace(turn_id="t1")]
+        self.archived = []
+
+    def session_turns(self, limit=None):
+        return list(self.turns)
+
+    def archive_session(self, project=None):
+        self.archived.append(project)
+        return ["session:old-session"]
+
+    def new_session(self):
+        self.session_id = "new-session"
+        return self.session_id
+
+
+class FakeSummaryRunner:
+    def __init__(self):
+        self.jobs = []
+
+    def enqueue(self, session_id, project=None):
+        self.jobs.append((session_id, project))
+        return 1
+
+
 def make_harness():
     config = SimpleNamespace(
         model=SimpleNamespace(
@@ -115,6 +142,53 @@ def make_harness():
     )
 
     return harness
+
+
+def test_new_chat_archives_previous_session():
+    harness = make_harness()
+    memory = FakeMemory()
+    harness.memory = memory
+    events = []
+    service = HarnessService(harness, events.append)
+
+    session_id = service.new_chat()
+
+    assert session_id == "new-session"
+    assert memory.session_id == "new-session"
+    assert memory.archived == [None]
+    assert any(
+        event[0] == "chat.archive"
+        for event in harness.audit.entries
+    )
+    assert any(
+        event.type == "chat.archive"
+        for event in events
+    )
+
+
+def test_new_chat_enqueues_summary_for_previous_session():
+    harness = make_harness()
+    memory = FakeMemory()
+    runner = FakeSummaryRunner()
+    harness.memory = memory
+    service = HarnessService(harness)
+    service.summary_runner = runner
+
+    service.new_chat()
+
+    assert runner.jobs == [("old-session", None)]
+
+
+def test_new_chat_skips_empty_session():
+    harness = make_harness()
+    memory = FakeMemory()
+    memory.turns = []
+    harness.memory = memory
+    service = HarnessService(harness)
+
+    service.new_chat()
+
+    assert memory.archived == []
 
 
 def test_ask_returns_answer_and_emits_events():

@@ -28,6 +28,23 @@ Rispondi SOLO con un oggetto JSON:
 Non inventare decisioni. Se non ci sono decisioni, usa una lista vuota.
 """
 
+CHUNK_PROMPT = """\
+Sei Hagar. Riassumi solo la parte di sessione che ricevi.
+Rispondi SOLO con un oggetto JSON:
+{
+  "summary": "riassunto conciso ma completo di questa parte",
+  "decisions": [
+    {
+      "title": "titolo breve",
+      "decision": "cosa è stato deciso",
+      "alternatives": ["strada scartata 1"],
+      "rationale": "perché"
+    }
+  ]
+}
+Non inventare decisioni. Se non ci sono decisioni, usa una lista vuota.
+"""
+
 
 class SessionSummarizer:
     """Genera il summary di fine sessione e gestisce la review."""
@@ -42,6 +59,8 @@ class SessionSummarizer:
         input_func: Any = None,
         output_func: Any = None,
         summary_max_chars: int = 4000,
+        session_id: str | None = None,
+        context_window: int | None = None,
     ) -> None:
 
         self.memory = memory
@@ -52,10 +71,20 @@ class SessionSummarizer:
         self.input_func = input_func or input
         self.output = output_func or print
         self.summary_max_chars = int(summary_max_chars)
+        self.session_id = session_id or memory.session_id
+        self.context_window = (
+            int(context_window)
+            if context_window
+            else 8192
+        )
 
-    def finish(self) -> dict[str, Any]:
+    def finish(
+        self,
+        *,
+        archive: bool = True,
+    ) -> dict[str, Any]:
 
-        turns = self.memory.session_turns()
+        turns = self._turns()
 
         if not turns:
             return {
@@ -67,7 +96,7 @@ class SessionSummarizer:
 
         transcript = self._transcript(turns)
 
-        summary, proposed = self._generate(
+        summary, proposed = self._generate_with_context(
             transcript,
             turns,
         )
@@ -79,8 +108,12 @@ class SessionSummarizer:
                 + "…"
             )
 
-        archived = self.memory.archive_session(
-            project=self.project_id,
+        archived = (
+            self.memory.archive_session(
+                project=self.project_id,
+            )
+            if archive
+            else []
         )
 
         digest = self._archived_digest(
@@ -93,6 +126,7 @@ class SessionSummarizer:
             project=self.project_id,
             archived=archived,
             transcript_sha256=digest,
+            session_id=self.session_id,
         )
 
         created_ids: list[str] = []
@@ -116,7 +150,7 @@ class SessionSummarizer:
                             "rationale",
                             "",
                         ),
-                        session=self.memory.session_id,
+                        session=self.session_id,
                         auto_saved=False,
                     )
 
@@ -129,7 +163,7 @@ class SessionSummarizer:
 
         self._record(
             "memory.summary",
-            session=self.memory.session_id,
+            session=self.session_id,
             turns=len(turns),
             archived=len(archived),
             decisions=len(created_ids),
@@ -148,55 +182,232 @@ class SessionSummarizer:
     # Generazione
     # ==================================================
 
+    def _turns(self) -> list[Turn]:
+
+        if self.session_id == self.memory.session_id:
+            return self.memory.session_turns()
+
+        rows = self.memory.read_session(self.session_id)
+
+        return [
+            Turn(
+                session=str(row["session"]),
+                turn_id=str(row["turn"]),
+                timestamp=str(row["timestamp"]),
+                question=str(row["question"]),
+                answer=str(row["answer"]),
+            )
+            for row in rows
+        ]
+
+    def _budget_chars(self) -> int:
+
+        tokens = max(512, int(self.context_window))
+        reserve = 1024
+        available = max(256, tokens - reserve)
+        return max(1000, available * 4)
+
+    def _turn_text(self, turn: Turn) -> str:
+
+        return (
+            f"[{turn.timestamp}] Utente: "
+            f"{_clip(turn.question, 1500)}\n"
+            f"Hagar: {_clip(turn.answer, 2500)}"
+        )
+
     def _transcript(
         self,
         turns: list[Turn],
     ) -> str:
 
-        lines = []
+        return "\n".join(
+            self._turn_text(turn)
+            for turn in turns
+        )
+
+    def _chunks(
+        self,
+        turns: list[Turn],
+        budget: int,
+    ) -> list[tuple[str, list[Turn]]]:
+
+        chunks: list[tuple[str, list[Turn]]] = []
+        current: list[Turn] = []
+        current_len = 0
 
         for turn in turns:
 
-            lines.append(
-                f"[{turn.timestamp}] Utente: "
-                f"{_clip(turn.question, 1500)}"
-            )
-            lines.append(
-                f"Hagar: {_clip(turn.answer, 2500)}"
-            )
+            text = self._turn_text(turn)
 
-        return "\n".join(lines)
+            if current and current_len + len(text) + 1 > budget:
 
-    def _archived_digest(
-        self,
-        archived: list[str],
-        fallback: str,
-    ) -> str:
+                chunks.append(
+                    (
+                        "\n".join(
+                            self._turn_text(item)
+                            for item in current
+                        ),
+                        current,
+                    )
+                )
+                current = []
+                current_len = 0
 
-        chunks: list[str] = []
+            if len(text) > budget:
 
-        for path in archived:
+                if current:
 
-            try:
-                chunks.append(self.memory.vault.read(path))
+                    chunks.append(
+                        (
+                            "\n".join(
+                                self._turn_text(item)
+                                for item in current
+                            ),
+                            current,
+                        )
+                    )
+                    current = []
+                    current_len = 0
 
-            except Exception:
+                for start in range(0, len(text), budget):
+                    chunks.append(
+                        (
+                            text[start:start + budget],
+                            [],
+                        )
+                    )
                 continue
 
-        payload = (
-            "\n".join(chunks)
-            if chunks
-            else fallback
-        )
+            current.append(turn)
+            current_len += len(text) + 1
 
-        return hashlib.sha256(
-            payload.encode("utf-8")
-        ).hexdigest()
+        if current:
+
+            chunks.append(
+                (
+                    "\n".join(
+                        self._turn_text(item)
+                        for item in current
+                    ),
+                    current,
+                )
+            )
+
+        return chunks or [("", [])]
+
+    @staticmethod
+    def _text_chunks(
+        text: str,
+        budget: int,
+    ) -> list[str]:
+
+        if len(text) <= budget:
+            return [text]
+
+        chunks = []
+        current: list[str] = []
+        current_len = 0
+
+        for paragraph in text.split("\n\n"):
+
+            if current and current_len + len(paragraph) + 2 > budget:
+
+                chunks.append("\n\n".join(current))
+                current = []
+                current_len = 0
+
+            if len(paragraph) > budget:
+
+                for start in range(0, len(paragraph), budget):
+                    chunks.append(paragraph[start:start + budget])
+                continue
+
+            current.append(paragraph)
+            current_len += len(paragraph) + 2
+
+        if current:
+            chunks.append("\n\n".join(current))
+
+        return chunks
+
+    def _generate_with_context(
+        self,
+        transcript: str,
+        turns: list[Turn],
+    ) -> tuple[str, list[dict[str, Any]]]:
+
+        budget = self._budget_chars()
+
+        if len(transcript) <= budget:
+            return self._generate(
+                transcript,
+                turns,
+                prompt=SUMMARY_PROMPT,
+            )
+
+        partials: list[str] = []
+        decisions: list[dict[str, Any]] = []
+
+        for chunk, chunk_turns in self._chunks(turns, budget):
+
+            summary, proposed = self._generate(
+                chunk,
+                chunk_turns,
+                prompt=CHUNK_PROMPT,
+            )
+            partials.append(summary)
+            decisions.extend(proposed)
+
+        combined = "\n\n".join(partials)
+
+        while len(combined) > budget:
+
+            groups = self._text_chunks(combined, budget)
+
+            if len(groups) <= 1:
+                combined = groups[0] if groups else ""
+                break
+
+            partials = [
+                self._generate(
+                    group,
+                    [],
+                    prompt=CHUNK_PROMPT,
+                )[0]
+                for group in groups
+            ]
+            combined = "\n\n".join(partials)
+
+        final, proposed = self._generate(
+            combined,
+            turns,
+            prompt=SUMMARY_PROMPT,
+        )
+        decisions.extend(proposed)
+
+        unique = []
+        seen = set()
+
+        for item in decisions:
+            key = (
+                str(item.get("title", "")).strip(),
+                str(item.get("decision", "")).strip(),
+            )
+
+            if not key[0] or key in seen:
+                continue
+
+            seen.add(key)
+            unique.append(item)
+
+        return final, unique[:20]
 
     def _generate(
         self,
         transcript: str,
         turns: list[Turn],
+        *,
+        prompt: str = SUMMARY_PROMPT,
     ) -> tuple[str, list[dict[str, Any]]]:
 
         if self.llm is not None:
@@ -207,7 +418,7 @@ class SessionSummarizer:
                     [
                         {
                             "role": "system",
-                            "content": SUMMARY_PROMPT,
+                            "content": prompt,
                         },
                         {
                             "role": "user",
@@ -243,6 +454,32 @@ class SessionSummarizer:
 
         return self._fallback(turns), []
 
+    def _archived_digest(
+        self,
+        archived: list[str],
+        fallback: str,
+    ) -> str:
+
+        chunks: list[str] = []
+
+        for path in archived:
+
+            try:
+                chunks.append(self.memory.vault.read(path))
+
+            except Exception:
+                continue
+
+        payload = (
+            "\n".join(chunks)
+            if chunks
+            else fallback
+        )
+
+        return hashlib.sha256(
+            payload.encode("utf-8")
+        ).hexdigest()
+
     def _parse(
         self,
         text: str,
@@ -276,7 +513,7 @@ class SessionSummarizer:
         ]
 
         lines = [
-            f"Sessione {self.memory.session_id}: "
+            f"Sessione {self.session_id}: "
             f"{len(turns)} turni.",
         ]
 

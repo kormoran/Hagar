@@ -96,6 +96,18 @@ class BrokerLLMClient(LLMClient):
 
         self._client.native_tools = config.native_tools
 
+    @property
+    def context_window(self) -> int | None:
+
+        if self.selection is not None:
+            return getattr(
+                self.selection.entry,
+                "context_window",
+                None,
+            )
+
+        return getattr(self.config, "context_window", None)
+
     def switch_profile(self, profile: str) -> Any:
         """Cambia profilo e client in modo atomico.
 

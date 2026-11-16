@@ -11,7 +11,7 @@ from pathlib import Path
 from memory.store import MemoryError
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def default_memory_path() -> Path:
@@ -206,6 +206,21 @@ class MemoryDatabase:
 
                 CREATE INDEX IF NOT EXISTS decisions_project_status
                     ON decisions(project_id, status, created_at);
+
+                CREATE TABLE IF NOT EXISTS summary_jobs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL UNIQUE,
+                    project TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    error TEXT,
+                    created_at TEXT NOT NULL,
+                    started_at TEXT,
+                    completed_at TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS summary_jobs_status
+                    ON summary_jobs(status, created_at);
                 """
             )
             self._ensure_fts(connection)

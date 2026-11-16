@@ -1330,6 +1330,8 @@ def test_memory_defaults(tmp_path):
     assert cfg.memory.max_context_chars == 6000
     assert cfg.memory.project_max_active == 200
     assert cfg.memory.summary_max_chars == 4000
+    assert cfg.memory.summary_context_window == 8192
+    assert cfg.memory.summary_background is True
 
 
 def test_memory_section(tmp_path):
@@ -1345,6 +1347,8 @@ def test_memory_section(tmp_path):
         "max_context_chars": 3000,
         "project_max_active": 50,
         "summary_max_chars": 1000,
+        "summary_context_window": 2048,
+        "summary_background": False,
     }
 
     cfg = ConfigLoader.load(write_yaml(tmp_path, data))
@@ -1359,6 +1363,8 @@ def test_memory_section(tmp_path):
     assert cfg.memory.max_context_chars == 3000
     assert cfg.memory.project_max_active == 50
     assert cfg.memory.summary_max_chars == 1000
+    assert cfg.memory.summary_context_window == 2048
+    assert cfg.memory.summary_background is False
 
 
 @pytest.mark.parametrize(

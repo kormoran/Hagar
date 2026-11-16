@@ -734,6 +734,24 @@ def test_admin_mutation_is_rejected_while_busy():
         server.close()
 
 
+def test_memory_jobs_endpoint_without_memory():
+    server = RunningServer()
+
+    try:
+        status, data = server.request(
+            "GET",
+            "/api/memory/jobs",
+        )
+
+        assert status == 200
+        data = json.loads(data)
+        assert data["enabled"] is False
+        assert data["jobs"] == []
+
+    finally:
+        server.close()
+
+
 def test_serve_exits_on_keyboard_interrupt(monkeypatch):
     def interrupt(self):
         raise KeyboardInterrupt

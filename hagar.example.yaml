@@ -63,6 +63,8 @@ memory:
   project_max_active: 200
   max_active_skills: 0
   summary_max_chars: 4000
+  summary_context_window: 8192
+  summary_background: true
   max_skill_chars: 4000
 
 hifi:

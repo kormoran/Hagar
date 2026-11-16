@@ -206,9 +206,11 @@ class SqliteMemoryStore:
         archived: list[str] | None = None,
         transcript_sha256: str | None = None,
         when: datetime | None = None,
+        session_id: str | None = None,
     ) -> Path:
 
         created_at = _iso_timestamp(when)
+        session_id = session_id or self.session_id
 
         with self.database.connection() as connection:
 
@@ -220,7 +222,7 @@ class SqliteMemoryStore:
                 ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    self.session_id,
+                    session_id,
                     project,
                     summary.strip(),
                     created_at,
@@ -239,7 +241,7 @@ class SqliteMemoryStore:
                 kind="summary",
                 project=project,
                 status=None,
-                title=f"Summary {self.session_id}",
+                title=f"Summary {session_id}",
                 body=summary.strip(),
             )
 

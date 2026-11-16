@@ -656,6 +656,8 @@ memory:
   project_max_active: 200
   max_active_skills: 0
   summary_max_chars: 4000
+  summary_context_window: 8192
+  summary_background: true
   max_skill_chars: 4000
 ```
 
@@ -672,6 +674,18 @@ non promuove mai una candidata.
 disattiva il limite. `/memory retention` mostra le più vecchie oltre la
 soglia; `/memory retention apply` le archivia. Nessun contenuto viene
 cancellato e l’operazione è reversibile con `/memory confirm`.
+
+### Summary in background
+
+Al cambio chat la sessione viene archiviata subito e inserita nella
+tabella `summary_jobs`. Un worker daemon la riprende e genera il
+summary senza bloccare la nuova chat. I job sono durevoli: quelli
+rimasti `running` tornano `pending` al riavvio.
+
+Il transcript viene diviso in base a `summary_context_window` (token,
+stimati in caratteri): se entra nel budget si usa una sola chiamata;
+altrimenti si usano summary parziali e un merge gerarchico. Il summary
+finale resta un indice della sessione, non sostituisce il transcript.
 
 
 
@@ -708,14 +722,20 @@ All’avvio Hagar mostra i progetti attivi e “attività libera”:
 
 Gli override non interattivi sono `--project <nome>` e `--free`.
 
-A fine sessione:
+Al cambio chat (`new_chat`) la sessione precedente viene archiviata
+prima di crearne una nuova. La stessa archiviazione avviene alla fine
+della sessione:
 
-1. il transcript viene spostato in `archive/chat/`;
+1. la chat viene marcata `archived` in SQLite; con il backend Markdown
+   il transcript viene spostato in `archive/chat/`;
 2. viene generato un summary con il modello, con fallback meccanico;
 3. il summary viene salvato con link e hash del transcript;
 4. se c’è un progetto, l’LLM propone decisioni `candidate`;
 5. l’utente può rivederle; se rifiuta, restano `candidate` con
    `auto_saved: true`.
+
+Al cambio chat l’archiviazione è immediata; il summary può essere
+generato in un secondo momento.
 
 Il contesto iniettato usa l’**indice** del progetto: summary, titoli
 delle decisioni attive e conteggio, non tutti i corpi. I dettagli si
@@ -1234,9 +1254,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1137 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1143 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; i 5 test di consolidamento memoria vanno rieseguiti
+  superati, 0 skip; gli 11 test di memoria aggiunti dopo vanno rieseguiti
   su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

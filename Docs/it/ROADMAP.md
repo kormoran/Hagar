@@ -159,7 +159,10 @@ Vincoli già decisi:
   cancellazione;
 - retention delle skill confermate con `memory.max_active_skills` e
   `/memory retention apply`;
-- archivio reversibile con `/memory confirm`.
+- archivio reversibile con `/memory confirm`;
+- summary delle chat in background con job SQLite durevoli;
+- chunking del transcript in base alla context window e merge
+  gerarchico dei summary parziali.
 
 Restano fuori da questo taglio: merge automatico, embedding e
 consolidamento delle decisioni di progetto.

@@ -134,6 +134,8 @@ class MemoryConfig:
     max_context_chars: int = 6000
     project_max_active: int = 200
     summary_max_chars: int = 4000
+    summary_context_window: int = 8192
+    summary_background: bool = True
 
 
 @dataclass(slots=True)

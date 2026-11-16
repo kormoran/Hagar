@@ -60,7 +60,24 @@ La modifica è **runtime**: non scrive `hagar.yaml`. Se il provider
 richiede una chiave API mancante, il cambio fallisce e il modello
 precedente resta attivo.
 
-### 2.3 Configurazione
+### 2.3 Summary in background
+
+La sezione **Summary in background** mostra lo stato dei job creati
+quando una chat viene archiviata al cambio chat:
+
+```text
+pending
+running
+done
+failed
+```
+
+Per ogni job compaiono id, sessione, progetto, tentativi ed eventuale
+errore. La pagina aggiorna lo stato ogni 5 secondi; il pulsante
+**Aggiorna job** forza la lettura. I job falliti restano visibili e non
+bloccano la chat.
+
+### 2.4 Configurazione
 
 Campi modificabili a runtime:
 
@@ -175,6 +192,7 @@ dettaglio resta visibile nelle API e nei `FileInfo`.
 
 | Metodo | Path | Funzione |
 |---|---|---|
+| GET | `/api/memory/jobs` | Stato e ultimi job di summary (`?limit=N`). |
 | GET | `/api/admin/control` | Tool, provider/modelli, impostazioni. `?refresh=1` forza la riscoperta dei modelli locali. |
 | POST | `/api/admin/tool` | `{name, enabled}`: allow/deny runtime. |
 | POST | `/api/admin/model` | `{provider, model}`: cambio modello runtime. |

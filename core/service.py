@@ -47,6 +47,7 @@ class HarnessService:
             registry.event_sink = self._emit_event
 
         self.usage = UsageLedger(self._emit_event)
+        self.summary_runner: Any = None
 
         llm = getattr(self.harness, "llm", None)
 
@@ -79,6 +80,104 @@ class HarnessService:
             event_type,
             **data,
         )
+
+    # ==================================================
+    # Summary in background
+    # ==================================================
+
+    def start_summary_worker(self) -> None:
+
+        if self.summary_runner is not None:
+            return
+
+        memory = getattr(self.harness, "memory", None)
+        database = getattr(memory, "database", None)
+
+        if memory is None or database is None:
+            return
+
+        config = getattr(self.harness, "config", None)
+        memory_config = getattr(config, "memory", None)
+
+        if not getattr(
+            memory_config,
+            "summary_background",
+            True,
+        ):
+            return
+
+        llm = getattr(self.harness, "llm", None)
+        context_window = getattr(
+            llm,
+            "context_window",
+            None,
+        )
+
+        if not context_window:
+            context_window = getattr(
+                memory_config,
+                "summary_context_window",
+                8192,
+            )
+
+        summary_llm = llm
+
+        try:
+
+            from llm.factory import create_llm
+
+            model_config = getattr(config, "model", None)
+
+            if model_config is not None:
+                summary_llm = create_llm(model_config)
+
+        except Exception:
+            summary_llm = llm
+
+        try:
+
+            from memory.summary_jobs import SummaryJobRunner
+
+            self.summary_runner = SummaryJobRunner(
+                memory,
+                llm=summary_llm,
+                projects=getattr(
+                    self.harness,
+                    "project_store",
+                    None,
+                ),
+                context_window=context_window,
+                summary_max_chars=getattr(
+                    memory_config,
+                    "summary_max_chars",
+                    4000,
+                ),
+                audit=getattr(self.harness, "audit", None),
+            )
+            self.summary_runner.start()
+
+        except Exception as exc:
+
+            self.summary_runner = None
+            audit = getattr(self.harness, "audit", None)
+
+            if audit is not None:
+
+                try:
+                    audit.record(
+                        "memory.summary_worker_failed",
+                        error=str(exc),
+                    )
+                except Exception:
+                    pass
+
+    def stop_summary_worker(self) -> None:
+
+        if self.summary_runner is None:
+            return
+
+        self.summary_runner.stop()
+        self.summary_runner = None
 
     # ==================================================
     # Turni
@@ -315,12 +414,81 @@ class HarnessService:
     # ==================================================
 
     def new_chat(self) -> str:
-        """Apre una nuova sessione e azzera il contesto della chat."""
+        """Archivia la chat corrente, poi apre una nuova sessione."""
 
         memory = getattr(self.harness, "memory", None)
 
         if memory is None:
             raise RuntimeError("memory is disabled")
+
+        old_session = getattr(memory, "session_id", None)
+        old_turns = []
+
+        if old_session:
+
+            try:
+                old_turns = memory.session_turns(limit=1)
+            except Exception:
+                old_turns = []
+
+        if old_turns:
+
+            audit = getattr(self.harness, "audit", None)
+            old_project = getattr(
+                self.harness,
+                "project_id",
+                None,
+            )
+
+            try:
+                archived = memory.archive_session(
+                    project=old_project
+                )
+
+            except Exception as exc:
+
+                if audit is not None:
+
+                    audit.record(
+                        "chat.archive_failed",
+                        session=old_session,
+                        error=str(exc),
+                    )
+
+            else:
+
+                if audit is not None:
+
+                    audit.record(
+                        "chat.archive",
+                        session=old_session,
+                        archived=archived,
+                    )
+
+                self._emit(
+                    "chat.archive",
+                    session_id=old_session,
+                )
+
+                if self.summary_runner is None:
+                    self.start_summary_worker()
+
+                if self.summary_runner is not None:
+
+                    try:
+                        self.summary_runner.enqueue(
+                            old_session,
+                            project=old_project,
+                        )
+                    except Exception as exc:
+
+                        if audit is not None:
+
+                            audit.record(
+                                "memory.summary_enqueue_failed",
+                                session=old_session,
+                                error=str(exc),
+                            )
 
         session_id = memory.new_session()
 
@@ -546,6 +714,22 @@ class HarnessService:
 
         try:
 
+            llm = getattr(self.harness, "llm", None)
+            memory_config = getattr(
+                getattr(self.harness, "config", None),
+                "memory",
+                None,
+            )
+            context_window = getattr(
+                llm,
+                "context_window",
+                None,
+            ) or getattr(
+                memory_config,
+                "summary_context_window",
+                8192,
+            )
+
             SessionSummarizer(
                 memory,
                 projects=getattr(
@@ -558,12 +742,13 @@ class HarnessService:
                     "project_id",
                     None,
                 ),
-                llm=self.harness.llm,
+                llm=llm,
                 audit=self.harness.audit,
                 input_func=prompt,
                 summary_max_chars=(
                     self.harness.config.memory.summary_max_chars
                 ),
+                context_window=context_window,
             ).finish()
 
         except Exception as exc:

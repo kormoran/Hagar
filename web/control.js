@@ -294,4 +294,66 @@ document.getElementById('reset-settings').onclick = async () => {
   }
 };
 
+function renderJobs(data) {
+  const status = document.getElementById('summary-jobs-status');
+  const box = document.getElementById('summary-jobs');
+  box.replaceChildren();
+
+  if (!data.enabled) {
+    status.textContent = 'Memoria SQLite non attiva.';
+    return;
+  }
+
+  const counts = data.counts || {};
+  status.textContent =
+    'worker: ' + (data.worker ? 'attivo' : 'fermo') +
+    ' · pending ' + (counts.pending || 0) +
+    ' · running ' + (counts.running || 0) +
+    ' · done ' + (counts.done || 0) +
+    ' · failed ' + (counts.failed || 0);
+
+  if (!data.jobs.length) {
+    box.appendChild(el('div', 'muted', 'Nessun job di summary.'));
+    return;
+  }
+
+  for (const job of data.jobs) {
+    const row = el('div', 'job-row');
+    const head = el('div', 'job-head');
+    head.appendChild(el('span', 'job-id', '#' + job.id));
+    head.appendChild(el('span', 'job-session', job.session));
+    head.appendChild(
+      el('span', 'job-status ' + job.status, job.status)
+    );
+    row.appendChild(head);
+
+    const details = [];
+    if (job.project) details.push('progetto: ' + job.project);
+    details.push('tentativi: ' + job.attempts);
+
+    if (details.length) {
+      row.appendChild(el('div', 'job-meta', details.join(' · ')));
+    }
+
+    if (job.error) {
+      row.appendChild(el('div', 'job-error', job.error));
+    }
+
+    box.appendChild(row);
+  }
+}
+
+async function refreshJobs() {
+  try {
+    renderJobs(await adminApi('/api/memory/jobs'));
+  } catch (error) {
+    document.getElementById('summary-jobs-status').textContent =
+      String(error);
+  }
+}
+
+document.getElementById('refresh-jobs').onclick = () => refreshJobs();
+setInterval(refreshJobs, 5000);
+
 loadControl();
+refreshJobs();

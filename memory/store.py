@@ -812,20 +812,22 @@ class MemoryStore:
         archived: list[str] | None = None,
         transcript_sha256: str | None = None,
         when: datetime | None = None,
+        session_id: str | None = None,
     ) -> Path:
 
         timestamp = _iso_timestamp(when)
+        session_id = session_id or self.session_id
 
         relative = (
             self.summaries_dir
-            / f"{timestamp[:10]}-{self.session_id}.md"
+            / f"{timestamp[:10]}-{session_id}.md"
         )
 
         self.vault.write(
             relative,
             _frontmatter(
                 {
-                    "session": self.session_id,
+                    "session": session_id,
                     "project": project,
                     "created_at": timestamp,
                     "archived_transcripts": list(

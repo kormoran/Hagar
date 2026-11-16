@@ -159,6 +159,7 @@ class WebSession:
             harness,
             event_sink=self._publish,
         )
+        self.service.start_summary_worker()
 
         self.admin = AdminService(
             harness,
@@ -411,6 +412,42 @@ class WebSession:
 
         return data
 
+    def summary_jobs(self, limit: int = 30) -> dict[str, Any]:
+
+        memory = getattr(self.harness, "memory", None)
+        database = getattr(memory, "database", None)
+
+        if database is None:
+            return {
+                "enabled": False,
+                "worker": False,
+                "counts": {},
+                "jobs": [],
+            }
+
+        from memory.summary_jobs import SummaryJobStore
+
+        store = SummaryJobStore(database)
+        jobs = store.list_jobs(limit=limit)
+        counts = store.counts()
+
+        return {
+            "enabled": True,
+            "worker": self.service.summary_runner is not None,
+            "counts": counts,
+            "jobs": [
+                {
+                    "id": job.id,
+                    "session": job.session_id,
+                    "project": job.project,
+                    "status": job.status,
+                    "attempts": job.attempts,
+                    "error": job.error,
+                }
+                for job in jobs
+            ],
+        }
+
     def resolve(
         self,
         request_id: str,
@@ -440,6 +477,8 @@ class WebSession:
         # durante Ctrl-C non deve bloccare la chiusura del processo.
         if summarize:
             self.service.finish_session(interactive=False)
+
+        self.service.stop_summary_worker()
 
 
 class HagarHTTPServer(ThreadingHTTPServer):
@@ -800,6 +839,25 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 return
 
             self._json(data)
+            return
+
+        if parsed.path == "/api/memory/jobs":
+
+            limit = 30
+            params = parse_qs(parsed.query)
+
+            try:
+                limit = max(
+                    1,
+                    min(
+                        int(params.get("limit", ["30"])[0]),
+                        100,
+                    ),
+                )
+            except (TypeError, ValueError):
+                limit = 30
+
+            self._json(self.session.summary_jobs(limit=limit))
             return
 
         if parsed.path == "/api/memory":

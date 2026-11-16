@@ -410,6 +410,8 @@ memory:
   project_max_active: 200
   max_active_skills: 0
   summary_max_chars: 4000
+  summary_context_window: 8192
+  summary_background: true
   max_skill_chars: 4000
 ```
 
@@ -426,6 +428,8 @@ memory:
 | `project_max_active` | `200` | soglia di manutenzione progetto |
 | `max_active_skills` | `0` | limite di skill confermate; `0` disattiva |
 | `summary_max_chars` | `4000` | lunghezza massima del summary |
+| `summary_context_window` | `8192` | token di contesto usati per il chunking |
+| `summary_background` | `true` | genera il summary in background |
 | `max_skill_chars` | `4000` | lunghezza massima di una skill |
 
 `vault_subdir` deve restare dentro il Vault: path assoluti, `..`,
@@ -832,13 +836,17 @@ esiste:
 
 ## 6.1 Fine sessione
 
-All’uscita, se la memoria è attiva e ci sono turni:
+All’uscita o al cambio chat, se la memoria è attiva e ci sono turni:
 
-1. il transcript viene spostato in `archive/chat/`;
+1. la chat viene marcata `archived` in SQLite; con il backend Markdown
+   il transcript viene spostato in `archive/chat/`;
 2. viene generato un summary (LLM, con fallback meccanico);
 3. il summary viene salvato con link e hash;
 4. se c’è un progetto, l’LLM propone decisioni candidate;
 5. l’utente può rivederle; se rifiuta restano candidate.
+
+Al cambio chat l’archiviazione è immediata; il summary può arrivare in
+un secondo momento.
 
 Se non ci sono turni non viene creato nessun summary.
 
