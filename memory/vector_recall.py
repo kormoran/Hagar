@@ -105,12 +105,27 @@ class ProjectVectorRecall:
 
             for row in rows:
 
-                if row["status"] == "archived":
+                status = row["status"]
+                entity = str(row["entity"])
+
+                if entity == "skill" and status != "confirmed":
+                    continue
+
+                if entity == "decision" and status != "active":
+                    continue
+
+                if entity == "project" and status != "active":
+                    continue
+
+                if entity == "summary" and status != "confirmed":
+                    continue
+
+                if status == "archived":
                     continue
 
                 text = self._text_for(
                     connection,
-                    str(row["entity"]),
+                    entity,
                     str(row["entity_id"]),
                 )
 

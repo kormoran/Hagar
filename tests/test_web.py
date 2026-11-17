@@ -157,6 +157,34 @@ def test_index_contains_token_and_ui():
         server.close()
 
 
+def test_memories_page_and_assets():
+    server = RunningServer()
+
+    try:
+        status, body = server.request(
+            "GET",
+            "/memories",
+            token=False,
+        )
+        text = body.decode("utf-8")
+
+        assert status == 200
+        assert "Memorie" in text
+        assert "data-kind=\"project\"" in text
+        assert "/static/memories.js" in text
+
+        status, body = server.request(
+            "GET",
+            "/static/memories.js",
+            token=False,
+        )
+        assert status == 200
+        assert b"/api/memories" in body
+
+    finally:
+        server.close()
+
+
 def test_static_assets_are_served_without_token():
     server = RunningServer()
 

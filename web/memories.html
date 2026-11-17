@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hagar — Memorie</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/admin.css">
+<link rel="stylesheet" href="/static/memories.css">
+</head>
+<body class="admin memories-page">
+<header class="admin-header">
+  <div>
+    <h1>Memorie</h1>
+    <p class="muted">Rivedi le memorie candidate prima che entrino nel contesto.</p>
+  </div>
+  <a class="button-link" href="/">← Torna alla chat</a>
+  <a class="button-link" href="/control">Pannello</a>
+</header>
+<main class="admin-main">
+  <nav class="memory-tabs" role="tablist" aria-label="Tipo di memoria">
+    <button type="button" class="memory-tab active" data-kind="project" role="tab">Progetto</button>
+    <button type="button" class="memory-tab" data-kind="skill" role="tab">Skill</button>
+    <button type="button" class="memory-tab" data-kind="summary" role="tab">Sommari</button>
+  </nav>
+
+  <div id="status" class="status" role="status"></div>
+
+  <section class="card">
+    <div class="memory-toolbar">
+      <span id="memory-kind-label" class="muted">Memorie di progetto candidate</span>
+      <button id="memory-refresh" type="button">Aggiorna</button>
+    </div>
+    <div id="memory-list" class="memory-list"></div>
+  </section>
+</main>
+<script>window.HAGAR_TOKEN = __HAGAR_TOKEN__;</script>
+<script src="/static/admin.js"></script>
+<script src="/static/memories.js"></script>
+</body>
+</html>

@@ -723,8 +723,10 @@ restituisce i risultati ordinati per score.
 corrente. A ogni turno calcola la similarità, applica `vector_min_score`,
 `vector_margin`, `vector_strong_score` e `vector_top_k`, e inietta solo
 le memorie abbastanza vicine e con un distacco netto dal secondo
-risultato. Ogni richiamo produce `memory.vector_recall` nell’audit. Il
-comando `/memory embeddings search` resta disponibile per diagnostica.
+risultato. Entrano solo skill `confirmed`, decisioni `active`, progetti
+`active` e summary `confirmed`; le candidate restano nella review e non
+vengono iniettate automaticamente. Ogni richiamo produce
+`memory.vector_recall` nell’audit.
 
 
 
@@ -1293,9 +1295,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1155 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1160 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; i 23 test di memoria/embedding aggiunti dopo vanno
+  superati, 0 skip; i 28 test di memoria/embedding aggiunti dopo vanno
   rieseguiti su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

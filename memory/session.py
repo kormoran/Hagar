@@ -670,6 +670,7 @@ class SessionSummarizer:
                 summary_id,
                 text,
                 project=self.project_id,
+                status="candidate",
             )
 
         except Exception as exc:

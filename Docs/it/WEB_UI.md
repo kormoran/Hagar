@@ -1,6 +1,6 @@
 # Pannello di controllo e Sandbox manager
 
-**Ambito:** due pagine amministrative della GUI web locale di Hagar.
+**Ambito:** tre pagine amministrative della GUI web locale di Hagar.
 Sono un’interfaccia per l’utente, non nuovi tool per il modello.
 
 ## 1. Accesso
@@ -10,8 +10,8 @@ hagar --config hagar.yaml web
 ```
 
 Nella pagina principale, accanto alla chat e nella sidebar, ci sono i
-pulsanti **Pannello** e **Sandbox**. Entrambe le pagine hanno
-**Torna alla chat** in alto.
+pulsanti **Pannello**, **Modelli**, **Memorie** e **Sandbox**. Le pagine
+hanno **Torna alla chat** in alto.
 
 Il server resta locale (`127.0.0.1` per default). Le pagine ricevono il
 token di sessione come la GUI principale; le API amministrative lo
@@ -155,7 +155,31 @@ salva una nuova scheda e un nuovo run. Dalla Web UI non viene eseguito
 il benchmark coding, perché comporterebbe l’esecuzione di codice
 generato dal modello; il coding eseguibile resta nel runner P1 locale.
 
-## 3. Sandbox manager
+## 3. Memorie candidate
+
+La pagina `/memories` mostra le memorie che non sono ancora entrate nel
+contesto automatico. Tre tab:
+
+```text
+Progetto   decisioni candidate
+Skill      skill candidate
+Sommari    summary delle sessioni candidate
+```
+
+Ogni memoria occupa una riga comprimibile e ha tre azioni:
+
+```text
+Conferma   skill confirmed, decisione active, summary confirmed
+Archivia   stato archived
+Elimina    cancellazione definitiva, con conferma nel browser
+```
+
+Le memorie archiviate non entrano nel recall automatico. La conferma di
+una decisione la rende `active`; la conferma di una skill o di un summary
+la rende `confirmed`. L’eliminazione rimuove anche FTS e vettori
+associati.
+
+## 4. Sandbox manager
 
 Mostra un albero dei file e delle directory nella sandbox. I nodi sono
 caricati in modo lazy: aprendo una directory vengono letti i figli.
@@ -188,11 +212,13 @@ e `delete`; la GUI li espone insieme come **W** per semplicità. Un
 override W=true li abilita tutti, W=false li disabilita tutti. Il
 dettaglio resta visibile nelle API e nei `FileInfo`.
 
-## 4. API
+## 5. API
 
 | Metodo | Path | Funzione |
 |---|---|---|
 | GET | `/api/memory/jobs` | Stato e ultimi job di summary (`?limit=N`). |
+| GET | `/api/memories?kind=project\|skill\|summary` | Memorie candidate. |
+| POST | `/api/memories/action` | `{kind, id, action}` con action `confirm`, `archive` o `delete`. |
 | GET | `/api/admin/control` | Tool, provider/modelli, impostazioni. `?refresh=1` forza la riscoperta dei modelli locali. |
 | POST | `/api/admin/tool` | `{name, enabled}`: allow/deny runtime. |
 | POST | `/api/admin/model` | `{provider, model}`: cambio modello runtime. |
@@ -204,7 +230,7 @@ dettaglio resta visibile nelle API e nei `FileInfo`.
 Non esistono endpoint di delete. Le API sono protette dal token e
 rifiutano le mutazioni durante un turno.
 
-## 5. Sicurezza
+## 6. Sicurezza
 
 - Le pagine sono servite solo dal server locale; non usare
   `--host 0.0.0.0` su reti non fidate.
@@ -218,7 +244,7 @@ rifiutano le mutazioni durante un turno.
 - Il reset da `hagar.yaml` non ricarica la policy: per cambiarla serve
   un riavvio.
 
-## 6. Test
+## 7. Test
 
 ```powershell
 python -m pytest tests/test_admin.py -q

@@ -340,14 +340,15 @@ class MemoryEmbeddingIndex:
                 ))
 
             for row in connection.execute(
-                "SELECT id, session_id, project, body FROM summaries"
+                "SELECT id, session_id, project, body, status "
+                "FROM summaries"
             ):
                 items.append((
                     "summary",
                     str(row["id"]),
                     str(row["body"]),
                     row["project"],
-                    None,
+                    row["status"],
                 ))
 
             for row in connection.execute(

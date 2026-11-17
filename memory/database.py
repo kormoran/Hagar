@@ -11,7 +11,7 @@ from pathlib import Path
 from memory.store import MemoryError
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 def default_memory_path() -> Path:
@@ -169,6 +169,7 @@ class MemoryDatabase:
                     session_id TEXT NOT NULL,
                     project TEXT,
                     body TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'candidate',
                     created_at TEXT NOT NULL,
                     transcript_sha256 TEXT,
                     archived_transcripts TEXT NOT NULL DEFAULT '[]'
@@ -239,6 +240,20 @@ class MemoryDatabase:
                     ON memory_embeddings(project, entity);
                 """
             )
+
+            summary_columns = {
+                row[1]
+                for row in connection.execute(
+                    "PRAGMA table_info(summaries)"
+                )
+            }
+
+            if "status" not in summary_columns:
+                connection.execute(
+                    "ALTER TABLE summaries ADD COLUMN "
+                    "status TEXT NOT NULL DEFAULT 'candidate'"
+                )
+
             self._ensure_fts(connection)
 
             if current < SCHEMA_VERSION:
@@ -356,7 +371,7 @@ class MemoryDatabase:
                 entity, entity_id, kind, project, status, title, body
             )
             SELECT 'summary', CAST(id AS TEXT), 'summary', project,
-                   NULL, 'Summary ' || session_id, body
+                   status, 'Summary ' || session_id, body
             FROM summaries;
 
             INSERT INTO memory_fts(

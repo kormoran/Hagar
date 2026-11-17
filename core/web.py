@@ -45,6 +45,8 @@ STATIC_TYPES = {
     "app.js": "application/javascript; charset=utf-8",
     "admin.js": "application/javascript; charset=utf-8",
     "models.js": "application/javascript; charset=utf-8",
+    "memories.js": "application/javascript; charset=utf-8",
+    "memories.css": "text/css; charset=utf-8",
     "control.js": "application/javascript; charset=utf-8",
     "sandbox.js": "application/javascript; charset=utf-8",
 }
@@ -412,8 +414,68 @@ class WebSession:
 
         return data
 
-    def summary_jobs(self, limit: int = 30) -> dict[str, Any]:
+    def memory_candidates(self, kind: str) -> list[dict[str, Any]]:
 
+        from core.memory_admin import MemoryAdmin
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        return MemoryAdmin(
+            memory,
+            projects=getattr(
+                self.harness,
+                "project_store",
+                None,
+            ),
+            audit=getattr(self.harness, "audit", None),
+        ).list(kind)
+
+    def memory_action(
+        self,
+        kind: str,
+        item_id: str,
+        action: str,
+    ) -> str:
+
+        with self._lock:
+
+            if self._busy:
+                raise RuntimeError(
+                    "a turn is already running"
+                )
+
+        from core.memory_admin import MemoryAdmin
+
+        memory = getattr(self.harness, "memory", None)
+
+        if memory is None:
+            raise RuntimeError("memory is disabled")
+
+        result = MemoryAdmin(
+            memory,
+            projects=getattr(
+                self.harness,
+                "project_store",
+                None,
+            ),
+            audit=getattr(self.harness, "audit", None),
+        ).act(kind, item_id, action)
+
+        vector_recall = getattr(
+            self.harness,
+            "vector_recall",
+            None,
+        )
+
+        if vector_recall is not None:
+            vector_recall.invalidate()
+
+        return result
+
+    def summary_jobs(self, limit: int = 30) -> dict[str, Any]:
         memory = getattr(self.harness, "memory", None)
         database = getattr(memory, "database", None)
 
@@ -654,6 +716,7 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
             "/control": "control.html",
             "/models": "models.html",
             "/sandbox": "sandbox.html",
+            "/memories": "memories.html",
         }.get(parsed.path.rstrip("/"))
 
         if page is not None:
@@ -800,6 +863,20 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                 return
 
             self._json(data)
+            return
+
+        if parsed.path == "/api/memories":
+
+            params = parse_qs(parsed.query)
+            kind = params.get("kind", ["project"])[0]
+
+            try:
+                items = self.session.memory_candidates(kind)
+            except Exception as exc:
+                self._error(str(exc), HTTPStatus.BAD_REQUEST)
+                return
+
+            self._json({"kind": kind, "items": items})
             return
 
         if parsed.path == "/api/projects":
@@ -1173,6 +1250,29 @@ class HagarRequestHandler(BaseHTTPRequestHandler):
                     )
                 }
             )
+            return
+
+        if parsed.path == "/api/memories/action":
+
+            kind = str(payload.get("kind", "")).strip()
+            item_id = str(payload.get("id", "")).strip()
+            action = str(payload.get("action", "")).strip()
+
+            if not kind or not item_id or not action:
+                self._error("kind, id and action are required")
+                return
+
+            try:
+                result = self.session.memory_action(
+                    kind,
+                    item_id,
+                    action,
+                )
+            except Exception as exc:
+                self._error(str(exc), HTTPStatus.BAD_REQUEST)
+                return
+
+            self._json({"ok": True, "action": result})
             return
 
         if parsed.path == "/api/admin/tool":

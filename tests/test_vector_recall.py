@@ -55,11 +55,12 @@ def make(tmp_path):
 def test_strong_match_is_injected(tmp_path):
 
     memory, projects = make(tmp_path)
-    projects.create_decision(
+    decision = projects.create_decision(
         "hagar",
         "Alpha",
         "usare alpha",
     )
+    projects.set_decision_status("hagar", decision.id, "active")
     index = MemoryEmbeddingIndex(memory.database, FakeEngine())
     index.reindex()
 
@@ -76,11 +77,28 @@ def test_strong_match_is_injected(tmp_path):
     assert hits[0]["score"] == 1.0
 
 
+def test_candidate_decision_is_not_injected(tmp_path):
+
+    memory, projects = make(tmp_path)
+    projects.create_decision("hagar", "Alpha", "usare alpha")
+    index = MemoryEmbeddingIndex(memory.database, FakeEngine())
+    index.reindex()
+
+    recall = ProjectVectorRecall(
+        memory.database,
+        index,
+    )
+
+    assert recall.context("alpha", "hagar") == (None, [])
+
+
 def test_weak_match_without_margin_is_discarded(tmp_path):
 
     memory, projects = make(tmp_path)
-    projects.create_decision("hagar", "Weak A", "weak-a")
-    projects.create_decision("hagar", "Weak B", "weak-b")
+    first = projects.create_decision("hagar", "Weak A", "weak-a")
+    second = projects.create_decision("hagar", "Weak B", "weak-b")
+    projects.set_decision_status("hagar", first.id, "active")
+    projects.set_decision_status("hagar", second.id, "active")
     index = MemoryEmbeddingIndex(memory.database, FakeEngine())
     index.reindex()
 
@@ -98,7 +116,8 @@ def test_weak_match_without_margin_is_discarded(tmp_path):
 def test_low_score_is_discarded(tmp_path):
 
     memory, projects = make(tmp_path)
-    projects.create_decision("hagar", "Low", "low")
+    decision = projects.create_decision("hagar", "Low", "low")
+    projects.set_decision_status("hagar", decision.id, "active")
     index = MemoryEmbeddingIndex(memory.database, FakeEngine())
     index.reindex()
 

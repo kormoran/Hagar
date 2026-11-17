@@ -217,14 +217,15 @@ class SqliteMemoryStore:
             cursor = connection.execute(
                 """
                 INSERT INTO summaries(
-                    session_id, project, body, created_at,
+                    session_id, project, body, status, created_at,
                     transcript_sha256, archived_transcripts
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
                     project,
                     summary.strip(),
+                    "candidate",
                     created_at,
                     transcript_sha256,
                     json.dumps(
@@ -294,6 +295,8 @@ class SqliteMemoryStore:
         if project is not None:
             clauses.append("project = ?")
             values.append(project)
+
+        clauses.append("status = 'confirmed'")
 
         where = (
             " WHERE " + " AND ".join(clauses)
