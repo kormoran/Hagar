@@ -71,6 +71,9 @@ memory:
   vector_margin: 0.04
   vector_top_k: 3
   vector_max_chars: 1200
+  candidate_ttl_days: 30
+  summary_retention_days: 0
+  chat_retention_days: 0
   max_skill_chars: 4000
 
 # Motore di embedding dedicato, separato dal modello di chat.

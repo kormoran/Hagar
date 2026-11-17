@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from memory.database import MemoryDatabase
+from memory.guard import ensure_candidate_text
 from memory.store import (
     MemoryError,
     Skill,
@@ -66,6 +67,7 @@ class SqliteMemoryStore:
         self.session_id = session_id
         self.context_turns = int(context_turns)
         self.context_skills = int(context_skills)
+        self.embedding_index = None
         self.max_skill_chars = int(max_skill_chars)
         self.model = model
         self.current_turn: str | None = None
@@ -241,10 +243,18 @@ class SqliteMemoryStore:
                 entity_id=str(summary_id),
                 kind="summary",
                 project=project,
-                status=None,
+                status="candidate",
                 title=f"Summary {session_id}",
                 body=summary.strip(),
             )
+
+        self._index_embedding(
+            "summary",
+            str(summary_id),
+            summary.strip(),
+            project=project,
+            status="candidate",
+        )
 
         return Path(f"sqlite:summary/{summary_id}")
 
@@ -623,6 +633,32 @@ class SqliteMemoryStore:
     # Skill
     # ==================================================
 
+    def _index_embedding(
+        self,
+        entity: str,
+        entity_id: str,
+        text: str,
+        *,
+        project: str | None = None,
+        status: str | None = None,
+    ) -> None:
+
+        index = getattr(self, "embedding_index", None)
+
+        if index is None:
+            return
+
+        try:
+            index.upsert(
+                entity,
+                entity_id,
+                text,
+                project=project,
+                status=status,
+            )
+        except Exception:
+            pass
+
     def create_skill(
         self,
         title: str,
@@ -645,6 +681,8 @@ class SqliteMemoryStore:
 
         if not isinstance(kind, str) or kind.lower() not in self.KINDS:
             raise MemoryError("kind must be 'fact' or 'procedure'")
+
+        ensure_candidate_text(title, content)
 
         kind = kind.lower()
         slug = slugify(title)
@@ -709,6 +747,12 @@ class SqliteMemoryStore:
             path=Path(f"sqlite:skills/{slug}"),
             content=content.strip(),
         )
+        self._index_embedding(
+            "skill",
+            slug,
+            f"{title.strip()}\n{content.strip()}",
+            status="candidate",
+        )
         return skill, False
 
     def update_skill(
@@ -746,6 +790,8 @@ class SqliteMemoryStore:
                 f"content exceeds max_skill_chars ({self.max_skill_chars})"
             )
 
+        ensure_candidate_text(next_title, next_content)
+
         timestamp = _iso_timestamp(when)
 
         with self.database.connection() as connection:
@@ -781,6 +827,13 @@ class SqliteMemoryStore:
             raise MemoryError(
                 f"skill not readable after update: {skill_id}"
             )
+
+        self._index_embedding(
+            "skill",
+            skill_id,
+            f"{updated.title}\n{updated.content}",
+            status=updated.status,
+        )
 
         return updated
 
@@ -873,6 +926,12 @@ class SqliteMemoryStore:
                 status=status,
                 title=row["title"],
                 body=row["content"],
+            )
+            connection.execute(
+                "UPDATE memory_embeddings "
+                "SET status = ?, updated_at = ? "
+                "WHERE entity = 'skill' AND entity_id = ?",
+                (status, timestamp, skill_id),
             )
 
         skill = self.get_skill(skill_id)

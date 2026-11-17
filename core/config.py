@@ -1065,6 +1065,24 @@ class ConfigLoader:
                 "memory.vector_max_chars",
                 1200,
             ),
+            candidate_ttl_days=_non_negative_int(
+                memory_data,
+                "candidate_ttl_days",
+                "memory.candidate_ttl_days",
+                30,
+            ),
+            summary_retention_days=_non_negative_int(
+                memory_data,
+                "summary_retention_days",
+                "memory.summary_retention_days",
+                0,
+            ),
+            chat_retention_days=_non_negative_int(
+                memory_data,
+                "chat_retention_days",
+                "memory.chat_retention_days",
+                0,
+            ),
         )
 
         if not 0.0 < memory.vector_min_score <= 1.0:

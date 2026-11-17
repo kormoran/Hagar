@@ -65,12 +65,13 @@ class ProjectVectorRecall:
                 """
                 SELECT MAX(updated_at) AS updated, COUNT(*) AS total
                 FROM memory_embeddings
-                WHERE project = ? AND model = ? AND dimensions = ?
+                WHERE model = ? AND dimensions = ?
+                  AND (project = ? OR entity = 'skill')
                 """,
                 (
-                    project_id,
                     self.index.model,
                     self.index.dimensions,
+                    project_id,
                 ),
             ).fetchone()
 
@@ -94,12 +95,13 @@ class ProjectVectorRecall:
                 """
                 SELECT entity, entity_id, project, status, vector
                 FROM memory_embeddings
-                WHERE project = ? AND model = ? AND dimensions = ?
+                WHERE model = ? AND dimensions = ?
+                  AND (project = ? OR entity = 'skill')
                 """,
                 (
-                    project_id,
                     self.index.model,
                     self.index.dimensions,
+                    project_id,
                 ),
             ).fetchall()
 
@@ -193,6 +195,18 @@ class ProjectVectorRecall:
                 return None
 
             return f"{row['title']}\n{row['summary'] or ''}"
+
+        if entity == "skill":
+
+            row = connection.execute(
+                "SELECT title, content FROM skills WHERE id = ?",
+                (entity_id,),
+            ).fetchone()
+
+            if row is None:
+                return None
+
+            return f"{row['title']}\n{row['content']}"
 
         return None
 

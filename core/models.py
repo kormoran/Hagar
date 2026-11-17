@@ -142,6 +142,9 @@ class MemoryConfig:
     vector_margin: float = 0.04
     vector_top_k: int = 3
     vector_max_chars: int = 1200
+    candidate_ttl_days: int = 30
+    summary_retention_days: int = 0
+    chat_retention_days: int = 0
 
 
 @dataclass(slots=True)

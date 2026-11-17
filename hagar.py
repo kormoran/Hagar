@@ -531,6 +531,38 @@ def build_harness(
 
             try:
 
+                from memory.retention import MemoryRetention
+
+                database = getattr(memory, "database", None)
+
+                if database is not None:
+
+                    counts = MemoryRetention(
+                        database,
+                        candidate_ttl_days=(
+                            config.memory.candidate_ttl_days
+                        ),
+                        summary_retention_days=(
+                            config.memory.summary_retention_days
+                        ),
+                        chat_retention_days=(
+                            config.memory.chat_retention_days
+                        ),
+                    ).sweep()
+                    audit.record(
+                        "memory.retention",
+                        **counts,
+                    )
+
+            except Exception as exc:
+
+                audit.record(
+                    "memory.retention_failed",
+                    error=str(exc),
+                )
+
+            try:
+
                 if config.memory.backend == "sqlite":
 
                     from memory.sqlite_projects import SqliteProjectStore
@@ -610,12 +642,13 @@ def build_harness(
 
             from memory.vector_index import MemoryEmbeddingIndex
             from memory.vector_recall import ProjectVectorRecall
+            from memory.hybrid_recall import FtsRecall, HybridRecall
 
             embedding_index = MemoryEmbeddingIndex(
                 memory.database,
                 embeddings,
             )
-            vector_recall = ProjectVectorRecall(
+            vector = ProjectVectorRecall(
                 memory.database,
                 embedding_index,
                 min_score=config.memory.vector_min_score,
@@ -624,6 +657,19 @@ def build_harness(
                 top_k=config.memory.vector_top_k,
                 max_chars=config.memory.vector_max_chars,
             )
+            vector_recall = HybridRecall(
+                vector,
+                FtsRecall(
+                    memory.database,
+                    top_k=config.memory.vector_top_k,
+                    max_chars=config.memory.vector_max_chars,
+                ),
+            )
+            if hasattr(memory, "embedding_index"):
+                memory.embedding_index = embedding_index
+
+            if hasattr(project_store, "embedding_index"):
+                project_store.embedding_index = embedding_index
             audit.record(
                 "memory.vector_recall_enabled",
                 min_score=config.memory.vector_min_score,

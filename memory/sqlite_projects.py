@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from memory.database import MemoryDatabase
+from memory.guard import ensure_candidate_text
+from memory.guard import normalize_text
 from memory.projects import (
     DECISION_STATUSES,
     PROJECT_STATUSES,
@@ -31,6 +33,34 @@ class SqliteProjectStore:
             self.database = database
         else:
             self.database = MemoryDatabase(database)
+
+        self.embedding_index = None
+
+    def _index_embedding(
+        self,
+        entity: str,
+        entity_id: str,
+        text: str,
+        *,
+        project: str | None = None,
+        status: str | None = None,
+    ) -> None:
+
+        index = getattr(self, "embedding_index", None)
+
+        if index is None:
+            return
+
+        try:
+            index.upsert(
+                entity,
+                entity_id,
+                text,
+                project=project,
+                status=status,
+            )
+        except Exception:
+            pass
 
     def ensure(self) -> None:
         self.database.ensure()
@@ -222,6 +252,14 @@ class SqliteProjectStore:
                 body=summary.strip(),
             )
 
+        self._index_embedding(
+            "project",
+            project_id,
+            f"{row['title']}\n{summary.strip()}",
+            project=project_id,
+            status=row["status"],
+        )
+
         project = self.get_project(project_id)
 
         if project is None:
@@ -262,10 +300,44 @@ class SqliteProjectStore:
                 "decision text must be non-empty"
             )
 
+        ensure_candidate_text(
+            title,
+            decision,
+            rationale,
+        )
+
         if self.get_project(project_id) is None:
             raise ProjectError(
                 f"project not found: {project_id}"
             )
+
+        wanted = (
+            normalize_text(title),
+            normalize_text(decision),
+        )
+
+        with self.database.connection() as connection:
+
+            for row in connection.execute(
+                "SELECT id, title, decision FROM decisions "
+                "WHERE project_id = ?",
+                (project_id,),
+            ).fetchall():
+
+                existing = (
+                    normalize_text(str(row["title"])),
+                    normalize_text(str(row["decision"])),
+                )
+
+                if existing == wanted:
+
+                    loaded = self.get_decision(
+                        project_id,
+                        str(row["id"]),
+                    )
+
+                    if loaded is not None:
+                        return loaded
 
         moment = _iso_timestamp(when)
         decision_id = f"{moment[:10]}-{slugify(title)}"
@@ -337,6 +409,18 @@ class SqliteProjectStore:
                 title=title.strip(),
                 body=decision.strip() + "\n" + rationale.strip(),
             )
+
+        self._index_embedding(
+            "decision",
+            decision_id,
+            "\n".join([
+                title.strip(),
+                decision.strip(),
+                rationale.strip(),
+            ]),
+            project=project_id,
+            status=status,
+        )
 
         loaded = self.get_decision(project_id, decision_id)
 
@@ -456,6 +540,12 @@ class SqliteProjectStore:
                 title=row["title"],
                 body=row["decision"] + "\n" + row["rationale"],
             )
+            connection.execute(
+                "UPDATE memory_embeddings "
+                "SET status = ?, updated_at = ? "
+                "WHERE entity = 'decision' AND entity_id = ?",
+                (status, moment, decision_id),
+            )
 
         updated = self.get_decision(project_id, decision_id)
 
@@ -465,6 +555,31 @@ class SqliteProjectStore:
             )
 
         return updated
+
+    def supersede_decision(
+        self,
+        project_id: str,
+        old_id: str,
+        new_id: str,
+    ) -> tuple[Decision, Decision]:
+
+        if old_id == new_id:
+            raise ProjectError(
+                "a decision cannot supersede itself"
+            )
+
+        old = self.set_decision_status(
+            project_id,
+            old_id,
+            "superseded",
+        )
+        new = self.set_decision_status(
+            project_id,
+            new_id,
+            "active",
+        )
+
+        return old, new
 
     def mark_auto_saved(
         self,

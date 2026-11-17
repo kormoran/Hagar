@@ -91,6 +91,7 @@ consumano tool call.
 | `/project status` o `/project current` | mostra il progetto corrente |
 | `/project archive <id>` | archivia un progetto |
 | `/project unarchive <id>` | riattiva un progetto archiviato |
+| `/project supersede <vecchia> <nuova>` | sostituisce una decisione con una nuova |
 | `/project help` | aiuto |
 
 `select` e `archive` usano l’**id** del progetto, non il titolo.
@@ -445,6 +446,9 @@ memory:
 | `vector_margin` | `0.04` | distacco minimo dal secondo risultato |
 | `vector_top_k` | `3` | memorie massime iniettate |
 | `vector_max_chars` | `1200` | budget del blocco vettoriale |
+| `candidate_ttl_days` | `30` | archivia le candidate più vecchie; `0` disattiva |
+| `summary_retention_days` | `0` | archivia i summary confermati più vecchi; `0` disattiva |
+| `chat_retention_days` | `0` | archivia le sessioni più vecchie; `0` disattiva |
 | `max_skill_chars` | `4000` | lunghezza massima di una skill |
 
 `vault_subdir` deve restare dentro il Vault: path assoluti, `..`,

@@ -165,10 +165,15 @@ Vincoli già decisi:
   gerarchico dei summary parziali;
 - motore embedding ONNX dedicato (`multilingual-e5-small`);
 - tabella `memory_embeddings` e ricerca cosine;
-- recall vettoriale automatico del progetto con soglia e margine.
+- recall vettoriale automatico del progetto con soglia e margine;
+- cache RAM con skill confermate e routing FTS per termini esatti;
+- indicizzazione automatica di skill, decisioni e summary;
+- pagina `/memories` per confermare, archiviare o eliminare le candidate;
+- retention di candidate, summary e sessioni;
+- supersession esplicita delle decisioni di progetto.
 
 Restano fuori da questo taglio: merge automatico, calibrazione delle
-soglie su dati reali e consolidamento delle decisioni di progetto.
+soglie su dati reali e consolidamento automatico delle decisioni.
 
 ---
 

@@ -588,6 +588,31 @@ class ProjectStore:
 
         return updated
 
+    def supersede_decision(
+        self,
+        project_id: str,
+        old_id: str,
+        new_id: str,
+    ) -> tuple[Decision, Decision]:
+
+        if old_id == new_id:
+            raise ProjectError(
+                "a decision cannot supersede itself"
+            )
+
+        old = self.set_decision_status(
+            project_id,
+            old_id,
+            "superseded",
+        )
+        new = self.set_decision_status(
+            project_id,
+            new_id,
+            "active",
+        )
+
+        return old, new
+
     def mark_auto_saved(
         self,
         project_id: str,

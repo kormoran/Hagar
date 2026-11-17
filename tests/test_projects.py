@@ -224,6 +224,31 @@ def test_session_summary_archives_and_creates_candidate(
     assert decisions[0].auto_saved is True
 
 
+def test_supersede_decision_activates_new_and_archives_old(tmp_path):
+
+    _, _, projects = make_store(tmp_path)
+    projects.create_project("Hagar")
+    old = projects.create_decision(
+        "hagar",
+        "Vecchia",
+        "vecchia decisione",
+    )
+    new = projects.create_decision(
+        "hagar",
+        "Nuova",
+        "nuova decisione",
+    )
+
+    old_after, new_after = projects.supersede_decision(
+        "hagar",
+        old.id,
+        new.id,
+    )
+
+    assert old_after.status == "superseded"
+    assert new_after.status == "active"
+
+
 def test_session_review_can_activate_decision(tmp_path):
     _, memory, projects = make_store(tmp_path)
     projects.create_project("Hagar")

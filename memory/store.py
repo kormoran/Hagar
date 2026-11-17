@@ -15,10 +15,8 @@ from typing import Any
 import yaml
 
 from memory.vault import Vault
-
-
-class MemoryError(RuntimeError):
-    pass
+from memory.errors import MemoryError
+from memory.guard import ensure_candidate_text
 
 
 FRONTMATTER = re.compile(
@@ -1136,6 +1134,8 @@ class MemoryStore:
                 "kind must be 'fact' or 'procedure'"
             )
 
+        ensure_candidate_text(title, content)
+
         kind = kind.lower()
 
         slug = slugify(title)
@@ -1224,6 +1224,8 @@ class MemoryStore:
             raise MemoryError(
                 f"content exceeds max_skill_chars ({self.max_skill_chars})"
             )
+
+        ensure_candidate_text(next_title, next_content)
 
         relative = current.path
         text = self.vault.read(relative)

@@ -675,6 +675,17 @@ disattiva il limite. `/memory retention` mostra le più vecchie oltre la
 soglia; `/memory retention apply` le archivia. Nessun contenuto viene
 cancellato e l’operazione è reversibile con `/memory confirm`.
 
+`memory.retention` esegue inoltre uno sweep all’avvio:
+
+```text
+candidate_ttl_days       archivia skill, decisioni e summary candidate vecchi
+summary_retention_days   archivia i summary confermati vecchi
+chat_retention_days      marca archived le sessioni inattive vecchie
+```
+
+Lo sweep aggiorna anche FTS e `memory_embeddings`, così il recall non usa
+stati obsoleti. I valori `0` disattivano la singola soglia.
+
 ### Summary in background
 
 Al cambio chat la sessione viene archiviata subito e inserita nella
@@ -717,16 +728,27 @@ filtri SQL e calcola la similarità coseno in Python. La chiave include
 `MemoryEmbeddingIndex.reindex()` calcola i vettori per skill, summary,
 decisioni e progetti e salta i testi con lo stesso `content_hash`.
 `search()` filtra per progetto e tipo, esclude le memorie archiviate e
-restituisce i risultati ordinati per score.
+restituisce i risultati ordinati per score. Il reindex con `--prune`
+rimuove i vettori dei modelli precedenti e quelli delle entità scomparse.
+
+Skill, decisioni e summary vengono indicizzati automaticamente quando
+vengono creati o modificati, se il motore embedding è attivo. La
+transizione di stato aggiorna anche `memory_embeddings`; non serve un
+reindex manuale per confermare o archiviare una memoria.
 
 `ProjectVectorRecall` tiene in RAM i vettori e i testi del progetto
-corrente. A ogni turno calcola la similarità, applica `vector_min_score`,
-`vector_margin`, `vector_strong_score` e `vector_top_k`, e inietta solo
-le memorie abbastanza vicine e con un distacco netto dal secondo
-risultato. Entrano solo skill `confirmed`, decisioni `active`, progetti
-`active` e summary `confirmed`; le candidate restano nella review e non
-vengono iniettate automaticamente. Ogni richiamo produce
-`memory.vector_recall` nell’audit.
+corrente, incluse le skill globali confermate. A ogni turno calcola la
+similarità, applica `vector_min_score`, `vector_margin`,
+`vector_strong_score` e `vector_top_k`, e inietta solo le memorie
+abbastanza vicine e con un distacco netto dal secondo risultato. Entrano
+solo skill `confirmed`, decisioni `active`, progetti `active` e summary
+`confirmed`; le candidate restano nella review e non vengono iniettate
+automaticamente. Ogni richiamo produce `memory.vector_recall` nell’audit.
+
+`memory/hybrid_recall.py` sceglie il canale: se la domanda contiene path,
+estensioni, versioni, codici errore o identificatori usa FTS; altrimenti
+usa il recall vettoriale. FTS e vettori applicano gli stessi filtri di
+stato.
 
 
 
@@ -743,7 +765,9 @@ Ogni progetto ha un `index.md` con stato, ultima attività, summary e
 conteggio delle decisioni attive. Ogni decisione ha stato
 `candidate`/`active`/`superseded`/`archived`, alternative, motivazione,
 provenance e `auto_saved`. Le decisioni non si riscrivono: una nuova
-decisione può sostituirne una vecchia.
+decisione può sostituirne una vecchia con
+`/project supersede <vecchia> <nuova>`, che marca la prima
+`superseded` e attiva la seconda.
 
 Con `memory.backend: sqlite` progetti e decisioni usano le tabelle
 `projects` e `decisions` dello stesso database; il backend Markdown
@@ -1295,9 +1319,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1160 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1174 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; i 28 test di memoria/embedding aggiunti dopo vanno
+  superati, 0 skip; i 40 test di memoria/embedding aggiunti dopo vanno
   rieseguiti su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;
@@ -1339,13 +1363,12 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
   la qualità della scelta.
 - Il client MCP supporta bearer/header e OAuth authorization code; non
   gestisce device flow, DPoP, mTLS o client assertion.
-- La revisione delle skill è manuale da CLI; manca una GUI.
-- La ricerca nella memoria è per parola chiave, senza indice né
-  embedding.
-- Il contesto iniettato usa turni recenti globali e fino a 3 skill
-  confermate per match lessicale, senza selezione semantica.
-- La memoria non cancella chat o skill per anzianità: `archive` è
-  l'unica rimozione dal contesto.
+- La pagina `/memories` copre la review delle candidate; mancano
+  dettaglio, azioni multiple e visualizzazione delle archiviate.
+- Il recall automatico usa embedding, cache RAM e routing FTS; le soglie
+  non sono ancora calibrate su un set reale di domande e memorie.
+- La retention archivia chat, summary e candidate; non elimina i
+  transcript storici.
 - L'audit ha rotazione e retention (`max_files`), ma non compattazione
   delle sessioni né un ancoraggio esterno della catena.
 - `feed.read` valida gli indirizzi e i redirect, ma resta il caso DNS

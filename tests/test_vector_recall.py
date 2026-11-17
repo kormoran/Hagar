@@ -92,6 +92,25 @@ def test_candidate_decision_is_not_injected(tmp_path):
     assert recall.context("alpha", "hagar") == (None, [])
 
 
+def test_confirmed_skill_is_injected(tmp_path):
+
+    memory, _ = make(tmp_path)
+    skill, _ = memory.create_skill("Alpha skill", "alpha")
+    memory.set_skill_status(skill.id, "confirmed")
+    index = MemoryEmbeddingIndex(memory.database, FakeEngine())
+    index.reindex()
+
+    recall = ProjectVectorRecall(
+        memory.database,
+        index,
+    )
+
+    text, hits = recall.context("alpha", "hagar")
+
+    assert text is not None
+    assert any(hit["entity"] == "skill" for hit in hits)
+
+
 def test_weak_match_without_margin_is_discarded(tmp_path):
 
     memory, projects = make(tmp_path)

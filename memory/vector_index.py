@@ -195,6 +195,30 @@ class MemoryEmbeddingIndex:
 
         return int(cursor.rowcount or 0)
 
+    def cleanup_orphans(self) -> int:
+
+        sources = {
+            "skill": "skills",
+            "summary": "summaries",
+            "decision": "decisions",
+            "project": "projects",
+        }
+        removed = 0
+
+        with self.database.connection() as connection:
+
+            for entity, table in sources.items():
+
+                cursor = connection.execute(
+                    f"DELETE FROM memory_embeddings "
+                    f"WHERE entity = ? AND entity_id NOT IN "
+                    f"(SELECT CAST(id AS TEXT) FROM {table})",
+                    (entity,),
+                )
+                removed += int(cursor.rowcount or 0)
+
+        return removed
+
     def search(
         self,
         query: str,
@@ -385,6 +409,7 @@ class MemoryEmbeddingIndex:
         *,
         batch_size: int = 16,
         prune_other_models: bool = False,
+        prune_orphans: bool = False,
     ) -> dict[str, int]:
 
         items = self._items()
@@ -396,6 +421,7 @@ class MemoryEmbeddingIndex:
             "updated": 0,
             "unchanged": 0,
             "pruned": 0,
+            "orphans": 0,
         }
         batch_size = max(1, int(batch_size))
 
@@ -427,5 +453,8 @@ class MemoryEmbeddingIndex:
 
         if prune_other_models:
             counts["pruned"] = self.prune_other_models()
+
+        if prune_orphans:
+            counts["orphans"] = self.cleanup_orphans()
 
         return counts

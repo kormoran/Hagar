@@ -71,6 +71,9 @@ class ProjectCLI:
         elif command in {"status", "current"}:
             self._status()
 
+        elif command == "supersede":
+            self._supersede(arguments[1:])
+
         else:
             self._help()
 
@@ -281,6 +284,43 @@ class ProjectCLI:
         )
         self.output(f"Ultima attività: {project.last_activity}")
 
+    def _supersede(self, arguments: list[str]) -> None:
+
+        project_id = self.get_project_id()
+
+        if project_id is None:
+
+            self.output(
+                "Seleziona un progetto con /project select <nome>."
+            )
+            return
+
+        if len(arguments) != 2:
+
+            self.output(
+                "Uso: /project supersede <vecchia> <nuova>"
+            )
+            return
+
+        old_id, new_id = arguments
+
+        try:
+
+            old, new = self.store.supersede_decision(
+                project_id,
+                old_id,
+                new_id,
+            )
+
+        except Exception as exc:
+
+            self.output(f"Supersession fallita: {exc}")
+            return
+
+        self.output(
+            f"Decisione sostituita: {old.id} → {new.id} (active)."
+        )
+
     def _archive(
         self,
         arguments: list[str],
@@ -420,5 +460,6 @@ class ProjectCLI:
             "  /project free\n"
             "  /project archive <nome>\n"
             "  /project unarchive <nome>\n"
+            "  /project supersede <vecchia> <nuova>\n"
             "  /project status"
         )

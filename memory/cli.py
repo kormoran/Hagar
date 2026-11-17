@@ -656,6 +656,7 @@ class MemoryCLI:
             )
             counts = self.embedding_index.reindex(
                 prune_other_models=prune,
+                prune_orphans=prune,
             )
 
             if self.vector_recall is not None:
