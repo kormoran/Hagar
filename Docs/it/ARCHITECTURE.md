@@ -1346,9 +1346,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1188 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1189 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; i 54 test di memoria/embedding aggiunti dopo vanno
+  superati, 0 skip; i 55 test di memoria/embedding aggiunti dopo vanno
   rieseguiti su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

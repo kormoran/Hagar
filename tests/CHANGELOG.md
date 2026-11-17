@@ -5,9 +5,9 @@ Questo file riguarda solo `tests/`. La storia del progetto è in
 
 ## Stato
 
-- 1188 test superati, 2 skip e 1 xfailed su Windows (symlink non
+- 1189 test superati, 2 skip e 1 xfailed su Windows (symlink non
   disponibili senza Developer Mode).
-- 1134 test superati, 0 skip su Debian Linux (2026-11-14); i 54 test di
+- 1134 test superati, 0 skip su Debian Linux (2026-11-14); i 55 test di
   memoria/embedding aggiunti dopo questa verifica vanno rieseguiti. I due test
   symlink girano davvero. Questo è il primo controllo multipiattaforma
   reale prima della release.
