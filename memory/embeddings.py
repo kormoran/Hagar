@@ -8,6 +8,7 @@ import math
 import os
 import threading
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import Sequence
@@ -41,24 +42,130 @@ def default_embedding_cache() -> Path:
     return base / "Hagar" / "embedding-models"
 
 
-class OnnxE5Provider:
-    """ONNX Runtime diretto per intfloat/multilingual-e5-small."""
+E5_MODEL = "intfloat/multilingual-e5-small"
+E5_REVISION = "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+E5_SHA256 = {
+    "model.onnx": (
+        "4654c156f3e4171abc9c716cdb771bf9116455d15ac1aab364aeeede0e3205b0"
+    ),
+    "tokenizer.json": (
+        "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+    ),
+}
+E5_FILES = {
+    "model.onnx": "onnx/model_O4.onnx",
+    "tokenizer.json": "onnx/tokenizer.json",
+}
 
-    MODEL_REVISION = "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+
+@dataclass(frozen=True, slots=True)
+class OnnxModelManifest:
+    """Descrizione dichiarativa di un modello ONNX supportato."""
+
+    name: str
+    revision: str
+    dimensions: int
+    files: dict[str, str]
+    checksums: dict[str, str]
+    pooling: str = "mean"
+    output: str = "token"
+    preset: str | None = None
+
+
+E5_MANIFEST = OnnxModelManifest(
+    name=E5_MODEL,
+    revision=E5_REVISION,
+    dimensions=384,
+    files=E5_FILES,
+    checksums=E5_SHA256,
+    pooling="mean",
+    output="token",
+    preset="e5-small",
+)
+
+
+def build_manifest(config: EmbeddingConfig) -> OnnxModelManifest:
+
+    preset = config.preset
+
+    if preset is None and config.model == E5_MODEL:
+        preset = "e5-small"
+
+    if preset not in {None, "e5-small"}:
+        raise EmbeddingError(
+            f"unknown embedding preset: {preset}"
+        )
+
+    base = E5_MANIFEST if preset == "e5-small" else None
+    files = config.files or (base.files if base else None)
+    checksums = (
+        config.model_sha256
+        or (base.checksums if base else None)
+    )
+    revision = config.revision or (base.revision if base else None)
+
+    if not files:
+        raise EmbeddingError(
+            "embedding.files is required for a custom model"
+        )
+
+    if not {"model.onnx", "tokenizer.json"} <= set(files):
+        raise EmbeddingError(
+            "embedding.files must define model.onnx and "
+            "tokenizer.json"
+        )
+
+    if not checksums:
+        raise EmbeddingError(
+            "embedding.checksums is required for a custom model"
+        )
+
+    if not revision:
+        raise EmbeddingError(
+            "embedding.revision is required for a custom model"
+        )
+
+    if set(checksums) != set(files):
+        raise EmbeddingError(
+            "embedding.checksums must cover every file"
+        )
+
+    pooling = config.pooling or (base.pooling if base else "mean")
+    output = config.output or (base.output if base else "token")
+
+    if pooling not in {"mean", "cls"}:
+        raise EmbeddingError(
+            "embedding.pooling must be 'mean' or 'cls'"
+        )
+
+    if output not in {"token", "pooled"}:
+        raise EmbeddingError(
+            "embedding.output must be 'token' or 'pooled'"
+        )
+
+    return OnnxModelManifest(
+        name=config.model,
+        revision=revision,
+        dimensions=int(config.dimensions),
+        files=dict(files),
+        checksums=dict(checksums),
+        pooling=pooling,
+        output=output,
+        preset=preset,
+    )
+
+
+class OnnxProvider:
+    """Provider ONNX generico; ``e5-small`` è il preset predefinito."""
+
+    MODEL_REVISION = E5_REVISION
 
     MODEL_FILES = {
         "model.onnx": "model_O4.onnx",
         "tokenizer.json": "tokenizer.json",
     }
 
-    MODEL_SHA256 = {
-        "model.onnx": (
-            "4654c156f3e4171abc9c716cdb771bf9116455d15ac1aab364aeeede0e3205b0"
-        ),
-        "tokenizer.json": (
-            "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
-        ),
-    }
+    MODEL_SHA256 = E5_SHA256
 
     def __init__(
         self,
@@ -66,6 +173,7 @@ class OnnxE5Provider:
     ) -> None:
 
         self.config = config
+        self.manifest = build_manifest(config)
         self._session: Any = None
         self._tokenizer: Any = None
         self._lock = threading.Lock()
@@ -119,7 +227,7 @@ class OnnxE5Provider:
 
         expected = (
             (self.config.model_sha256 or {}).get(local_name)
-            or self.MODEL_SHA256.get(local_name)
+            or self.manifest.checksums.get(local_name)
         )
 
         if not expected:
@@ -212,12 +320,14 @@ class OnnxE5Provider:
 
             try:
 
-                for local_name, remote_name in self.MODEL_FILES.items():
+                for local_name, remote_path in (
+                    self.manifest.files.items()
+                ):
 
                     self._download(
                         "https://huggingface.co/"
-                        f"{self.config.model}/resolve/"
-                        f"{self.MODEL_REVISION}/onnx/{remote_name}",
+                        f"{self.manifest.name}/resolve/"
+                        f"{self.manifest.revision}/{remote_path}",
                         cache / local_name,
                         local_name,
                     )
@@ -284,6 +394,12 @@ class OnnxE5Provider:
             item.name for item in session.get_inputs()
         }
 
+        if not {"input_ids", "attention_mask"} <= input_names:
+            raise EmbeddingError(
+                "ONNX model must accept input_ids and "
+                "attention_mask"
+            )
+
         if "token_type_ids" in input_names:
             feed["token_type_ids"] = np.zeros_like(input_ids)
 
@@ -297,17 +413,43 @@ class OnnxE5Provider:
                 f"embedding failed: {exc}"
             ) from exc
 
-        mask = attention[..., None].astype(np.float32)
-        masked = output * mask
-        pooled = masked.sum(axis=1) / np.maximum(
-            mask.sum(axis=1),
-            1,
-        )
+        output = np.asarray(output)
+
+        if self.manifest.output == "pooled":
+
+            if output.ndim != 2:
+                raise EmbeddingError(
+                    "embedding output is not pooled: "
+                    f"shape {output.shape}"
+                )
+
+            pooled = output
+
+        else:
+
+            if output.ndim != 3:
+                raise EmbeddingError(
+                    "embedding output is not token-level: "
+                    f"shape {output.shape}"
+                )
+
+            if self.manifest.pooling == "cls":
+                pooled = output[:, 0, :]
+            else:
+                mask = attention[..., None].astype(np.float32)
+                masked = output * mask
+                pooled = masked.sum(axis=1) / np.maximum(
+                    mask.sum(axis=1),
+                    1,
+                )
 
         return [
             [float(value) for value in vector]
             for vector in pooled
         ]
+
+
+OnnxE5Provider = OnnxProvider
 
 
 class EmbeddingEngine:
@@ -328,6 +470,27 @@ class EmbeddingEngine:
     def dimensions(self) -> int:
 
         return int(self.config.dimensions)
+
+    @property
+    def key(self) -> str:
+        """Chiave stabile per non mescolare provider/revisioni."""
+
+        manifest = getattr(self.provider, "manifest", None)
+
+        if manifest is None:
+            return self.config.model
+
+        if (
+            manifest.preset == "e5-small"
+            and self.config.model == E5_MODEL
+            and self.config.revision in {None, E5_REVISION}
+        ):
+            return E5_MODEL
+
+        return (
+            f"{self.config.provider}:"
+            f"{manifest.name}@{manifest.revision}"
+        )
 
     def _decorate(
         self,
@@ -425,8 +588,28 @@ class EmbeddingEngine:
         return {
             "enabled": bool(self.config.enabled),
             "provider": self.config.provider,
+            "preset": getattr(
+                getattr(self.provider, "manifest", None),
+                "preset",
+                self.config.preset,
+            ),
             "model": self.config.model,
+            "revision": getattr(
+                getattr(self.provider, "manifest", None),
+                "revision",
+                self.config.revision,
+            ),
             "dimensions": self.dimensions,
+            "pooling": getattr(
+                getattr(self.provider, "manifest", None),
+                "pooling",
+                self.config.pooling,
+            ),
+            "output": getattr(
+                getattr(self.provider, "manifest", None),
+                "output",
+                self.config.output,
+            ),
             "available": bool(
                 getattr(self.provider, "available", False)
             ),

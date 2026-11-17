@@ -366,6 +366,7 @@ def build_harness(
     config: AppConfig,
     mcp_client_factory: Callable[..., Any] = MCPClient,
     confirmation: ConfirmationProvider | None = None,
+    startup_confirmation: ConfirmationProvider | None = None,
 ) -> Harness:
     """
     Costruisce il harness a partire dalla configurazione.
@@ -677,35 +678,83 @@ def build_harness(
                 memory.database,
                 embeddings,
             )
-            vector = ProjectVectorRecall(
+
+            from memory.migration import EmbeddingMigration
+
+            migration = EmbeddingMigration(
                 memory.database,
                 embedding_index,
-                min_score=config.memory.vector_min_score,
-                strong_score=config.memory.vector_strong_score,
-                margin=config.memory.vector_margin,
-                top_k=config.memory.vector_top_k,
-                max_chars=config.memory.vector_max_chars,
+                confirmation=(
+                    startup_confirmation
+                    or confirmation
+                    or DenyAllConfirmation()
+                ),
+                audit=audit,
             )
-            vector_recall = HybridRecall(
-                vector,
-                FtsRecall(
+
+            try:
+                migration_result = migration.migrate()
+            except Exception as exc:
+                embeddings = None
+                embedding_index = None
+                embedding_error = (
+                    "embedding migration failed: "
+                    f"{exc}"
+                )
+                audit.record(
+                    "memory.embedding_migration_failed",
+                    error=str(exc),
+                )
+                migration_result = "failed"
+
+            if migration_result == "declined":
+
+                embeddings = None
+                embedding_index = None
+                embedding_error = (
+                    "embedding model migration declined "
+                    "for this session"
+                )
+                audit.record(
+                    "memory.embedding_disabled",
+                    reason="migration_declined",
+                )
+
+            if embeddings is None or embedding_index is None:
+
+                vector_recall = None
+
+            else:
+
+                vector = ProjectVectorRecall(
                     memory.database,
+                    embedding_index,
+                    min_score=config.memory.vector_min_score,
+                    strong_score=config.memory.vector_strong_score,
+                    margin=config.memory.vector_margin,
                     top_k=config.memory.vector_top_k,
                     max_chars=config.memory.vector_max_chars,
-                ),
-            )
-            if hasattr(memory, "embedding_index"):
-                memory.embedding_index = embedding_index
+                )
+                vector_recall = HybridRecall(
+                    vector,
+                    FtsRecall(
+                        memory.database,
+                        top_k=config.memory.vector_top_k,
+                        max_chars=config.memory.vector_max_chars,
+                    ),
+                )
+                if hasattr(memory, "embedding_index"):
+                    memory.embedding_index = embedding_index
 
-            if hasattr(project_store, "embedding_index"):
-                project_store.embedding_index = embedding_index
-            audit.record(
-                "memory.vector_recall_enabled",
-                min_score=config.memory.vector_min_score,
-                strong_score=config.memory.vector_strong_score,
-                margin=config.memory.vector_margin,
-                top_k=config.memory.vector_top_k,
-            )
+                if hasattr(project_store, "embedding_index"):
+                    project_store.embedding_index = embedding_index
+                audit.record(
+                    "memory.vector_recall_enabled",
+                    min_score=config.memory.vector_min_score,
+                    strong_score=config.memory.vector_strong_score,
+                    margin=config.memory.vector_margin,
+                    top_k=config.memory.vector_top_k,
+                )
 
         except Exception as exc:
 
@@ -1320,6 +1369,7 @@ def _run_web(
         harness = build_harness(
             config,
             confirmation=provider,
+            startup_confirmation=ConsoleConfirmation(),
         )
 
         if args.project:

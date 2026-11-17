@@ -4,29 +4,32 @@ Hagar non ha un comando dedicato al cambio del modello di embedding.
 Questa è la procedura manuale per un utente che vuole farlo in modo
 controllato.
 
-> **Avvertenza.** Il provider integrato è specifico per E5. La procedura
-> configura un modello **compatibile** con lo stesso layout ONNX e lo
-> stesso tokenizer. Un modello con architettura, input o pooling diversi
-> richiede un provider dedicato, non solo un cambio di YAML.
+> **Avvertenza.** Il caricamento è generico per modelli ONNX con
+> `tokenizer.json`, ma non per qualsiasi architettura. Il modello deve
+> rispettare uno dei formati descritti sotto. In caso contrario serve un
+> provider dedicato.
 
 ## Compatibilità richiesta
 
-Il provider `builtin` presume:
+Il provider `onnx` supporta:
 
 ```text
-repo con onnx/model_O4.onnx
-repo con onnx/tokenizer.json
-output ONNX [batch, sequenza, dimensione]
-pooling mean sui token
+file locali model.onnx e tokenizer.json
+qualsiasi nome file remoto, mappato in embedding.files
+revisione remota configurabile
+output token-level [batch, sequenza, dimensione]
+output già pooled [batch, dimensione]
+pooling mean o cls per l'output token-level
 input input_ids e attention_mask
 token_type_ids opzionale
-prefissi E5 query: / passage:
-revisione fissata da MODEL_REVISION
+prefissi configurabili
 ```
 
-La revisione e i nomi dei file sono nel codice, non nella
-configurazione. Se il nuovo modello non li rispetta, il download o il
-caricamento falliscono.
+`preset: e5-small` mantiene i valori attuali: revisione, file, checksum,
+prefissi e pooling E5.
+
+Non sono supportati modelli con nomi di input diversi, pooling diverso
+da mean/cls o tokenizer non in formato `tokenizer.json`.
 
 ## 1. Fermare Hagar
 
@@ -84,25 +87,43 @@ Controllare:
 ```text
 input_ids presente
 attention_mask presente
-output token-level, non già pooled
+output token-level oppure pooled
 dimensione output = embedding.dimensions
 ```
 
-Se l’output è `[batch, dimensione]` senza asse sequenza, il pooling
-attuale non è compatibile.
+Se l’output è `[batch, dimensione]`, configurare `output: pooled`.
+Se è `[batch, sequenza, dimensione]`, usare `output: token` e scegliere
+`pooling: mean` o `pooling: cls`.
 
 ## 5. Configurare
 
 ```yaml
 embedding:
   enabled: true
-  provider: builtin
+  provider: onnx
   model: "modello-compatibile"
+  revision: "<revisione Hugging Face>"
   dimensions: 384
+  files:
+    model.onnx: "onnx/model.onnx"
+    tokenizer.json: "onnx/tokenizer.json"
   checksums:
     model.onnx: "<sha256 del file>"
     tokenizer.json: "<sha256 del file>"
+  pooling: mean
+  output: token
+  query_prefix: ""
+  document_prefix: ""
   cache_dir: "C:\\Users\\<utente>\\AppData\\Local\\Hagar\\embedding-models"
+```
+
+Per il preset E5-small basta:
+
+```yaml
+embedding:
+  enabled: true
+  provider: onnx
+  preset: e5-small
 ```
 
 `cache_dir` è facoltativo. La cache viene separata per nome modello.
@@ -126,7 +147,44 @@ Se il checksum non corrisponde, il file viene rimosso e il motore
 embedding viene disattivato. Hagar continua a funzionare senza recall
 vettoriale.
 
-## 7. Ricostruire i vettori
+## 7. Cambio rilevato automaticamente
+
+All’avvio Hagar confronta il modello corrente con:
+
+```text
+meta.embedding_model
+modelli presenti in memory_embeddings
+```
+
+Se il modello è cambiato, chiede:
+
+```text
+Il modello di embedding è cambiato.
+Posso scartare i vettori vecchi e ricrearli?
+```
+
+Se l’utente accetta:
+
+```text
+elimina i vettori del modello precedente
+ricalcola skill, summary, decisioni e progetti
+salva il nuovo modello in meta.embedding_model
+```
+
+Se l’utente rifiuta:
+
+```text
+embedding disattivato
+vector search disattivata
+FTS e memoria normale continuano a funzionare
+```
+
+Il consenso viene chiesto prima che Hagar sia pronto. Nella GUI web il
+prompt usa il terminale da cui è stato avviato `hagar web`; in un
+processo senza terminale il silenzio vale come rifiuto e la sessione
+parte senza embedding.
+
+## 8. Ricostruire i vettori
 
 Prima senza pruning, per non cancellare i vecchi vettori prima di aver
 verificato il nuovo modello:
@@ -151,7 +209,7 @@ Solo dopo la verifica:
 `--prune` rimuove i vettori dei modelli precedenti e quelli delle
 entità scomparse.
 
-## 8. Ricalibrare
+## 9. Ricalibrare
 
 ```powershell
 hagar calibrate `
@@ -170,7 +228,7 @@ memory.vector_margin
 
 in `hagar.yaml`. Le soglie del vecchio modello non sono valide.
 
-## 9. Verifica finale
+## 10. Verifica finale
 
 ```text
 /memory embeddings status
@@ -198,14 +256,19 @@ del backup è la via più sicura per tornare ai vettori precedenti.
 ## Cosa non è supportato
 
 ```text
-modello con pooling diverso
-modello con output già pooled
-modello con input names diversi
 modello senza tokenizer.json
-modello con file ONNX dal nome diverso
-revisione remota diversa
+modello con input names diversi
+modello con pooling diverso da mean/cls
+modello con output non token-level o pooled
+modello che richiede codice Python custom
 ```
 
-Per questi casi serve modificare `OnnxE5Provider` o aggiungere un nuovo
+Per questi casi serve modificare `OnnxProvider` o aggiungere un nuovo
 provider. La calibrazione è già indipendente dal modello, ma il
 caricamento no.
+
+## Famiglia E5
+
+`preset: e5-small` è incluso e verificato. E5-base ed E5-large possono
+essere configurati come modelli custom con revisione, file e checksum
+espliciti; non sono preset preconfezionati in questa versione.

@@ -11,6 +11,7 @@ from core.models import EmbeddingConfig
 from memory.embeddings import EmbeddingEngine
 from memory.embeddings import EmbeddingError
 from memory.embeddings import OnnxE5Provider
+from memory.embeddings import build_manifest
 
 
 class FakeProvider:
@@ -52,20 +53,85 @@ def test_model_checksum_mismatch_is_rejected(tmp_path):
 
 def test_model_checksum_match_is_accepted(
     tmp_path,
-    monkeypatch,
 ):
 
-    provider = OnnxE5Provider(EmbeddingConfig())
+    digest = hashlib.sha256(b"model").hexdigest()
+    provider = OnnxE5Provider(
+        EmbeddingConfig(
+            model_sha256={
+                "model.onnx": digest,
+                "tokenizer.json": "0" * 64,
+            },
+        )
+    )
     path = tmp_path / "model.onnx"
     path.write_bytes(b"model")
-    digest = hashlib.sha256(b"model").hexdigest()
-    monkeypatch.setattr(
-        provider,
-        "MODEL_SHA256",
-        {"model.onnx": digest},
-    )
 
     provider._verify(path, "model.onnx")
+
+
+def test_custom_manifest_is_supported():
+
+    manifest = build_manifest(
+        EmbeddingConfig(
+            model="custom/model",
+            revision="abc123",
+            dimensions=768,
+            files={
+                "model.onnx": "onnx/model.onnx",
+                "tokenizer.json": "onnx/tokenizer.json",
+            },
+            model_sha256={
+                "model.onnx": "1" * 64,
+                "tokenizer.json": "2" * 64,
+            },
+            pooling="cls",
+            output="pooled",
+        )
+    )
+
+    assert manifest.name == "custom/model"
+    assert manifest.revision == "abc123"
+    assert manifest.dimensions == 768
+    assert manifest.pooling == "cls"
+    assert manifest.output == "pooled"
+
+
+def test_custom_manifest_requires_checksums():
+
+    with pytest.raises(EmbeddingError, match="checksums"):
+
+        build_manifest(
+            EmbeddingConfig(
+                model="custom/model",
+                revision="abc123",
+                files={
+                    "model.onnx": "onnx/model.onnx",
+                    "tokenizer.json": "onnx/tokenizer.json",
+                },
+            )
+        )
+
+
+def test_provider_revision_is_part_of_the_key():
+
+    engine = EmbeddingEngine(
+        EmbeddingConfig(
+            model="custom/model",
+            revision="abc123",
+            dimensions=768,
+            files={
+                "model.onnx": "onnx/model.onnx",
+                "tokenizer.json": "onnx/tokenizer.json",
+            },
+            model_sha256={
+                "model.onnx": "1" * 64,
+                "tokenizer.json": "2" * 64,
+            },
+        )
+    )
+
+    assert engine.key == "builtin:custom/model@abc123"
 
 
 def test_engine_uses_query_and_document_prefixes():

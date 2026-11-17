@@ -153,11 +153,16 @@ class EmbeddingConfig:
 
     enabled: bool = False
     provider: str = "builtin"
+    preset: str | None = None
     model: str = "intfloat/multilingual-e5-small"
+    revision: str | None = None
+    files: dict[str, str] | None = None
     dimensions: int = 384
     batch_size: int = 16
     max_length: int = 512
     normalize: bool = True
+    pooling: str = "mean"
+    output: str = "token"
     cache_dir: str | None = None
     query_prefix: str = "query: "
     document_prefix: str = "passage: "

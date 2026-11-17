@@ -1458,3 +1458,48 @@ def test_memory_max_skill_chars_is_validated(
         match="memory.max_skill_chars",
     ):
         ConfigLoader.load(write_yaml(tmp_path, data))
+
+
+def test_embedding_custom_manifest_is_parsed(tmp_path):
+
+    data = base_config(tmp_path)
+    data["embedding"] = {
+        "enabled": True,
+        "provider": "onnx",
+        "model": "custom/model",
+        "revision": "abc123",
+        "dimensions": 768,
+        "files": {
+            "model.onnx": "onnx/model.onnx",
+            "tokenizer.json": "onnx/tokenizer.json",
+        },
+        "checksums": {
+            "model.onnx": "1" * 64,
+            "tokenizer.json": "2" * 64,
+        },
+        "pooling": "cls",
+        "output": "pooled",
+    }
+
+    config = ConfigLoader.load(write_yaml(tmp_path, data))
+
+    assert config.embedding.provider == "onnx"
+    assert config.embedding.revision == "abc123"
+    assert config.embedding.pooling == "cls"
+    assert config.embedding.output == "pooled"
+    assert config.embedding.model_sha256 == {
+        "model.onnx": "1" * 64,
+        "tokenizer.json": "2" * 64,
+    }
+
+
+def test_embedding_rejects_unknown_pooling(tmp_path):
+
+    data = base_config(tmp_path)
+    data["embedding"] = {
+        "enabled": True,
+        "pooling": "max",
+    }
+
+    with pytest.raises(ConfigError):
+        ConfigLoader.load(write_yaml(tmp_path, data))

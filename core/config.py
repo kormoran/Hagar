@@ -1118,10 +1118,47 @@ class ConfigLoader:
             or "builtin"
         )
 
-        if embedding_provider != "builtin":
+        if embedding_provider not in {"builtin", "onnx"}:
 
             raise ConfigError(
-                "embedding.provider must be 'builtin'"
+                "embedding.provider must be 'builtin' or 'onnx'"
+            )
+
+        raw_files = embedding_data.get("files", {}) or {}
+        if not isinstance(raw_files, dict):
+            raise ConfigError(
+                "embedding.files must be a mapping"
+            )
+
+        embedding_files = {
+            str(name): str(remote)
+            for name, remote in raw_files.items()
+        }
+
+        pooling = (
+            _optional_text(
+                embedding_data,
+                "pooling",
+                "embedding.pooling",
+            )
+            or "mean"
+        )
+        if pooling not in {"mean", "cls"}:
+            raise ConfigError(
+                "embedding.pooling must be 'mean' or 'cls'"
+            )
+
+        output_mode = (
+            _optional_text(
+                embedding_data,
+                "output",
+                "embedding.output",
+            )
+            or "token"
+        )
+        if output_mode not in {"token", "pooled"}:
+            raise ConfigError(
+                "embedding.output must be 'token' or 'pooled'"
             )
 
         raw_checksums = embedding_data.get("checksums", {}) or {}
@@ -1154,6 +1191,11 @@ class ConfigLoader:
                 False,
             ),
             provider=embedding_provider,
+            preset=_optional_text(
+                embedding_data,
+                "preset",
+                "embedding.preset",
+            ),
             model=(
                 _optional_text(
                     embedding_data,
@@ -1162,6 +1204,12 @@ class ConfigLoader:
                 )
                 or "intfloat/multilingual-e5-small"
             ),
+            revision=_optional_text(
+                embedding_data,
+                "revision",
+                "embedding.revision",
+            ),
+            files=embedding_files or None,
             dimensions=_positive_int(
                 embedding_data,
                 "dimensions",
@@ -1186,6 +1234,8 @@ class ConfigLoader:
                 "embedding.normalize",
                 True,
             ),
+            pooling=pooling,
+            output=output_mode,
             cache_dir=_optional_text(
                 embedding_data,
                 "cache_dir",

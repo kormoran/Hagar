@@ -37,12 +37,16 @@ class CalibrationResult:
     precision: float
     recall: float
     f1: float
+    provider: str = ""
+    revision: str = ""
     notes: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
 
         return {
             "model": self.model,
+            "provider": self.provider,
+            "revision": self.revision,
             "dimensions": self.dimensions,
             "queries": self.queries,
             "positives": self.positives,
@@ -64,7 +68,9 @@ class CalibrationResult:
 
         lines = [
             "# Generato da `hagar calibrate`.",
+            f"# provider: {self.provider}",
             f"# model: {self.model}",
+            f"# revision: {self.revision}",
             f"# queries: {self.queries}",
             f"# precision: {self.precision:.4f}",
             f"# recall: {self.recall:.4f}",
@@ -388,5 +394,17 @@ def calibrate(
         precision=float(precision),
         recall=float(recall),
         f1=float(best[0]),
+        provider=str(getattr(engine.config, "provider", "")),
+        revision=str(
+            getattr(
+                getattr(
+                    getattr(engine, "provider", None),
+                    "manifest",
+                    None,
+                ),
+                "revision",
+                "",
+            )
+        ),
         notes=tuple(notes),
     )

@@ -121,13 +121,18 @@ rollback, è in `EMBEDDING.md`.
 
 ## Checksum per un modello diverso
 
-Il provider built-in conosce i checksum di `multilingual-e5-small`. Se si
-usa un altro modello ONNX con gli stessi nomi file, dichiarare i digest:
+Il preset `e5-small` conosce i checksum del modello. Per un modello
+custom dichiarare revisione, file e digest:
 
 ```yaml
 embedding:
+  provider: onnx
   model: "altro-modello"
+  revision: "<revisione>"
   dimensions: 768
+  files:
+    model.onnx: "onnx/model.onnx"
+    tokenizer.json: "onnx/tokenizer.json"
   checksums:
     model.onnx: "<sha256>"
     tokenizer.json: "<sha256>"

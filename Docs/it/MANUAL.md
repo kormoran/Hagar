@@ -482,11 +482,16 @@ Serve per la ricerca vettoriale delle memorie.
 embedding:
   enabled: false
   provider: builtin
+  preset: e5-small
   model: intfloat/multilingual-e5-small
+  revision: null
+  files: {}
   dimensions: 384
   batch_size: 16
   max_length: 512
   normalize: true
+  pooling: mean
+  output: token
   query_prefix: "query: "
   document_prefix: "passage: "
   checksums: {}
@@ -495,21 +500,27 @@ embedding:
 | Campo | Default | Effetto |
 |---|---|---|
 | `enabled` | `false` | attiva il motore |
-| `provider` | `builtin` | solo provider ONNX integrato |
+| `provider` | `builtin` | `builtin` o `onnx` |
+| `preset` | `e5-small` se il modello è E5 | preset noto |
 | `model` | `intfloat/multilingual-e5-small` | modello di embedding |
+| `revision` | revisione E5 | revisione remota |
+| `files` | file E5 | mappa locale → percorso remoto |
 | `dimensions` | `384` | dimensione attesa dei vettori |
 | `batch_size` | `16` | testi per chiamata |
 | `max_length` | `512` | limite token del testo |
 | `normalize` | `true` | normalizza per cosine |
+| `pooling` | `mean` | `mean` o `cls` |
+| `output` | `token` | `token` o `pooled` |
 | `cache_dir` | dati locali | cache del modello ONNX |
 | `query_prefix` | `query: ` | prefisso delle domande |
 | `document_prefix` | `passage: ` | prefisso dei documenti |
-| `checksums` | vuoto | SHA-256 dei file per un modello custom |
+| `checksums` | vuoto | SHA-256 dei file |
 
 I file `model.onnx` e `tokenizer.json` vengono verificati con SHA-256
 prima del caricamento. Se un digest non corrisponde, il motore viene
 disattivato e il file viene rimosso. Per un modello diverso da E5-small
-dichiarare i digest in `embedding.checksums`.
+dichiarare `revision`, `files`, `checksums`, `dimensions` e, se serve,
+`pooling`/`output` in `embedding`.
 
 La calibrazione delle soglie è in `CALIBRATION.md`:
 
@@ -522,6 +533,11 @@ hagar calibrate --config hagar.yaml `
 Il cambio manuale del modello di embedding è descritto in
 `EMBEDDING.md`. Non esiste un comando dedicato: la procedura richiede
 modifica della configurazione, riavvio, reindex e ricalibrazione.
+
+All’avvio Hagar rileva un cambio di modello confrontando la chiave
+corrente con i vettori presenti e con `meta.embedding_model`. Se serve,
+chiede il permesso di scartare i vettori vecchi e ricrearli. Il rifiuto
+disattiva embedding e vector search solo per la sessione corrente.
 
 Il modello gira **nello stesso processo** tramite ONNX Runtime e
 `tokenizers`, ma resta indipendente dal modello di chat. Non viene scelto

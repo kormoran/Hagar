@@ -55,7 +55,8 @@ class MemoryEmbeddingIndex:
     @property
     def model(self) -> str:
 
-        return self.engine.config.model
+        key = getattr(self.engine, "key", None)
+        return key if key is not None else self.engine.config.model
 
     @property
     def dimensions(self) -> int:

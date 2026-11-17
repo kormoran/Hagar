@@ -81,14 +81,19 @@ memory:
 embedding:
   enabled: false
   provider: builtin
+  preset: e5-small
   model: intfloat/multilingual-e5-small
   dimensions: 384
   batch_size: 16
   max_length: 512
   normalize: true
+  pooling: mean
+  output: token
   query_prefix: "query: "
   document_prefix: "passage: "
-  # SHA-256 opzionali per un modello diverso da E5-small.
+  # Per un modello custom: revision, files e checksums.
+  revision: null
+  files: {}
   checksums: {}
 
 hifi:
