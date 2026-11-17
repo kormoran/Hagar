@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import math
 import os
 import threading
@@ -50,6 +51,15 @@ class OnnxE5Provider:
         "tokenizer.json": "tokenizer.json",
     }
 
+    MODEL_SHA256 = {
+        "model.onnx": (
+            "4654c156f3e4171abc9c716cdb771bf9116455d15ac1aab364aeeede0e3205b0"
+        ),
+        "tokenizer.json": (
+            "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+        ),
+    }
+
     def __init__(
         self,
         config: EmbeddingConfig,
@@ -86,14 +96,59 @@ class OnnxE5Provider:
         name = self.config.model.replace("/", "--")
         return root / name
 
+    @staticmethod
+    def _sha256(path: Path) -> str:
+
+        digest = hashlib.sha256()
+
+        with path.open("rb") as handle:
+
+            for chunk in iter(
+                lambda: handle.read(1024 * 1024),
+                b"",
+            ):
+                digest.update(chunk)
+
+        return digest.hexdigest()
+
+    def _verify(
+        self,
+        path: Path,
+        local_name: str,
+    ) -> None:
+
+        expected = (
+            (self.config.model_sha256 or {}).get(local_name)
+            or self.MODEL_SHA256.get(local_name)
+        )
+
+        if not expected:
+            raise EmbeddingError(
+                f"no checksum configured for {local_name}"
+            )
+
+        actual = self._sha256(path)
+
+        if actual != expected:
+            raise EmbeddingError(
+                f"embedding model checksum mismatch for "
+                f"{local_name}: expected {expected}, got {actual}"
+            )
+
     def _download(
         self,
         url: str,
         path: Path,
+        local_name: str,
     ) -> None:
 
         if path.is_file() and path.stat().st_size > 0:
-            return
+
+            try:
+                self._verify(path, local_name)
+                return
+            except EmbeddingError:
+                path.unlink(missing_ok=True)
 
         import requests
 
@@ -118,6 +173,7 @@ class OnnxE5Provider:
                         if chunk:
                             handle.write(chunk)
 
+            self._verify(temporary, local_name)
             os.replace(temporary, path)
 
         finally:
@@ -163,6 +219,7 @@ class OnnxE5Provider:
                         f"{self.config.model}/resolve/"
                         f"{self.MODEL_REVISION}/onnx/{remote_name}",
                         cache / local_name,
+                        local_name,
                     )
 
                 self._tokenizer = Tokenizer.from_file(

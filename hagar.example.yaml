@@ -88,6 +88,8 @@ embedding:
   normalize: true
   query_prefix: "query: "
   document_prefix: "passage: "
+  # SHA-256 opzionali per un modello diverso da E5-small.
+  checksums: {}
 
 hifi:
   # Pre-pass di disambiguazione: una chiamata extra prima della risposta.

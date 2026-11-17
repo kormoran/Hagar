@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from core.config import ConfigLoader
 from core.models import EmbeddingConfig
 from memory.embeddings import EmbeddingEngine
 from memory.embeddings import EmbeddingError
+from memory.embeddings import OnnxE5Provider
 
 
 class FakeProvider:
@@ -23,6 +26,46 @@ class FakeProvider:
             [1.0, 0.0, 0.0, 0.0]
             for _ in texts
         ]
+
+
+def test_model_checksums_are_configured():
+
+    assert set(OnnxE5Provider.MODEL_SHA256) == {
+        "model.onnx",
+        "tokenizer.json",
+    }
+
+    for digest in OnnxE5Provider.MODEL_SHA256.values():
+        assert len(digest) == 64
+        int(digest, 16)
+
+
+def test_model_checksum_mismatch_is_rejected(tmp_path):
+
+    provider = OnnxE5Provider(EmbeddingConfig())
+    path = tmp_path / "model.onnx"
+    path.write_bytes(b"not the model")
+
+    with pytest.raises(EmbeddingError, match="checksum mismatch"):
+        provider._verify(path, "model.onnx")
+
+
+def test_model_checksum_match_is_accepted(
+    tmp_path,
+    monkeypatch,
+):
+
+    provider = OnnxE5Provider(EmbeddingConfig())
+    path = tmp_path / "model.onnx"
+    path.write_bytes(b"model")
+    digest = hashlib.sha256(b"model").hexdigest()
+    monkeypatch.setattr(
+        provider,
+        "MODEL_SHA256",
+        {"model.onnx": digest},
+    )
+
+    provider._verify(path, "model.onnx")
 
 
 def test_engine_uses_query_and_document_prefixes():

@@ -750,6 +750,12 @@ estensioni, versioni, codici errore o identificatori usa FTS; altrimenti
 usa il recall vettoriale. FTS e vettori applicano gli stessi filtri di
 stato.
 
+`hagar calibrate` è la funzione ufficiale per ricalcolare le soglie con
+un dataset di coppie query/positivo/negativo. Il modello scaricato viene
+verificato con SHA-256 prima del caricamento; i dettagli sono in
+`CALIBRATION.md`. Il cambio manuale del modello, con backup, checksum,
+reindex e rollback, è in `EMBEDDING.md`; non esiste un comando dedicato.
+
 
 
 La memoria di progetto è separata dalle skill:
@@ -1319,9 +1325,9 @@ GUI dedicata. I dettagli sono in `SUBAGENTS.md`.
 # 5. Sviluppo
 
 - Suite: `./tools/run_tests.sh` (Linux/macOS) oppure
-  `.\tools\run_tests.ps1` (Windows). Su Windows: 1174 superati, 2 skip,
+  `.\tools\run_tests.ps1` (Windows). Su Windows: 1180 superati, 2 skip,
   1 xfailed. Su Debian Linux (2026-11-14): ultima verifica 1134
-  superati, 0 skip; i 40 test di memoria/embedding aggiunti dopo vanno
+  superati, 0 skip; i 46 test di memoria/embedding aggiunti dopo vanno
   rieseguiti su Linux. Dettagli e motivazione dello shim in README §3.1.
 - Test live: `./tools/run_tests.sh --live` (Linux/macOS) oppure
   `.\tools\run_tests.ps1 --live` (Windows) — 9 test in più (Ollama;

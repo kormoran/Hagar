@@ -1124,6 +1124,28 @@ class ConfigLoader:
                 "embedding.provider must be 'builtin'"
             )
 
+        raw_checksums = embedding_data.get("checksums", {}) or {}
+        if not isinstance(raw_checksums, dict):
+            raise ConfigError(
+                "embedding.checksums must be a mapping"
+            )
+
+        checksums = {}
+        for name, digest in raw_checksums.items():
+            if not isinstance(digest, str) or len(digest) != 64:
+                raise ConfigError(
+                    f"embedding.checksums.{name} must be "
+                    "a SHA-256 hex string"
+                )
+            try:
+                int(digest, 16)
+            except ValueError as exc:
+                raise ConfigError(
+                    f"embedding.checksums.{name} must be "
+                    "a SHA-256 hex string"
+                ) from exc
+            checksums[str(name)] = digest.lower()
+
         embedding = EmbeddingConfig(
             enabled=_bool(
                 embedding_data,
@@ -1185,6 +1207,7 @@ class ConfigLoader:
                 )
                 or "passage: "
             ),
+            model_sha256=checksums or None,
         )
 
         # -------------------------

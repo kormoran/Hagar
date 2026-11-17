@@ -161,6 +161,7 @@ class EmbeddingConfig:
     cache_dir: str | None = None
     query_prefix: str = "query: "
     document_prefix: str = "passage: "
+    model_sha256: dict[str, str] | None = None
 
 
 @dataclass(slots=True)

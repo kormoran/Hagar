@@ -489,6 +489,7 @@ embedding:
   normalize: true
   query_prefix: "query: "
   document_prefix: "passage: "
+  checksums: {}
 ```
 
 | Campo | Default | Effetto |
@@ -503,6 +504,24 @@ embedding:
 | `cache_dir` | dati locali | cache del modello ONNX |
 | `query_prefix` | `query: ` | prefisso delle domande |
 | `document_prefix` | `passage: ` | prefisso dei documenti |
+| `checksums` | vuoto | SHA-256 dei file per un modello custom |
+
+I file `model.onnx` e `tokenizer.json` vengono verificati con SHA-256
+prima del caricamento. Se un digest non corrisponde, il motore viene
+disattivato e il file viene rimosso. Per un modello diverso da E5-small
+dichiarare i digest in `embedding.checksums`.
+
+La calibrazione delle soglie è in `CALIBRATION.md`:
+
+```powershell
+hagar calibrate --config hagar.yaml `
+  --dataset calibration.jsonl `
+  --output embedding-thresholds.yaml
+```
+
+Il cambio manuale del modello di embedding è descritto in
+`EMBEDDING.md`. Non esiste un comando dedicato: la procedura richiede
+modifica della configurazione, riavvio, reindex e ricalibrazione.
 
 Il modello gira **nello stesso processo** tramite ONNX Runtime e
 `tokenizers`, ma resta indipendente dal modello di chat. Non viene scelto

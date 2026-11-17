@@ -173,8 +173,37 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["web"],
-        help="avvia la GUI web locale",
+        choices=["web", "calibrate"],
+        help=(
+            "avvia la GUI web locale oppure calibra "
+            "le soglie di embedding"
+        ),
+    )
+
+    parser.add_argument(
+        "--dataset",
+        metavar="PATH",
+        help=(
+            "dataset JSONL per `hagar calibrate`"
+        ),
+    )
+
+    parser.add_argument(
+        "--output",
+        metavar="PATH",
+        help=(
+            "file YAML di output per `hagar calibrate`"
+        ),
+    )
+
+    parser.add_argument(
+        "--min-precision",
+        type=float,
+        default=0.90,
+        help=(
+            "precisione minima per vector_strong_score "
+            "(default: 0.90)"
+        ),
     )
 
     parser.add_argument(
@@ -1336,11 +1365,81 @@ def _run_web(
     )
 
 
+def _run_calibration(
+    args: argparse.Namespace,
+) -> None:
+
+    from memory.calibration import CalibrationError
+    from memory.calibration import calibrate
+    from memory.calibration import load_pairs
+    from memory.embeddings import EmbeddingEngine
+    from memory.embeddings import EmbeddingError
+
+    if not args.dataset:
+
+        print(
+            "Errore: --dataset è obbligatorio per `hagar calibrate`.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    config = _load_config(args)
+
+    if not config.embedding.enabled:
+
+        print(
+            "Errore: embedding.enabled è false. "
+            "Attiva il motore embedding per calibrare.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    try:
+
+        pairs = load_pairs(args.dataset)
+        engine = EmbeddingEngine(config.embedding)
+
+        if not engine.status().get("available"):
+
+            raise EmbeddingError(
+                "motore embedding non disponibile: "
+                "installa hagar[embedding]"
+            )
+
+        result = calibrate(
+            engine,
+            pairs,
+            min_precision=args.min_precision,
+        )
+
+    except (CalibrationError, EmbeddingError) as exc:
+
+        print(f"Calibrazione fallita: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    text = result.as_yaml()
+
+    if args.output:
+
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text, encoding="utf-8")
+        print(f"Calibrazione scritta in {output}")
+
+    else:
+
+        print(text, end="")
+
+
 def _main(
     argv: list[str] | None = None,
 ) -> None:
 
     args = build_parser().parse_args(argv)
+
+    if args.command == "calibrate":
+        _run_calibration(args)
+        return
 
     if args.command == "web":
         _run_web(args)
